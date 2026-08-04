@@ -48,20 +48,29 @@
 
 ### Belum pernah pakai terminal? Ikuti ini dulu
 
-**🪟 Cara buka terminal di Windows**
+<details>
+<summary><b>🪟 Cara buka terminal di Windows</b></summary>
 
 1. Tekan tombol **Windows**, ketik `PowerShell`, lalu tekan **Enter**
 2. Jendela hitam/biru akan terbuka. Itu tempat kamu mengetik perintah
 3. Semua perintah `python ...` atau `pip ...` di panduan ini diketik di jendela itu, lalu tekan **Enter**
 
-**🍎 Cara buka terminal di macOS**
+</details>
+
+<details>
+<summary><b>🍎 Cara buka terminal di macOS</b></summary>
 
 1. Tekan **Cmd + Spasi**, ketik `Terminal`, lalu tekan **Enter**
 2. Ketik perintah-perintah di panduan ini di situ, lalu tekan **Enter**
 
-**🐧 Cara buka terminal di Linux**
+</details>
+
+<details>
+<summary><b>🐧 Cara buka terminal di Linux</b></summary>
 
 Tekan **Ctrl + Alt + T**, atau cari aplikasi "Terminal" di menu aplikasi.
+
+</details>
 
 ### Belum punya Python?
 
@@ -83,14 +92,18 @@ Kalau muncul angka versi (misal `Python 3.12.1`), berarti sudah siap.
 
 Pilih salah satu cara:
 
-**Cara A: Punya Git terinstall**
+<details>
+<summary><b>Cara A — Punya Git terinstall</b></summary>
 
 ```bash
 git clone https://github.com/nekonaru/wattpdl.git
 cd wattpdl
 ```
 
-**Cara B: Tidak punya Git (paling gampang untuk pemula)**
+</details>
+
+<details>
+<summary><b>Cara B — Tidak punya Git (paling gampang untuk pemula)</b></summary>
 
 1. Buka halaman repository di GitHub
 2. Klik tombol hijau **`Code`** → pilih **`Download ZIP`**
@@ -100,6 +113,8 @@ cd wattpdl
 ```bash
 cd Downloads/wattpdl-main
 ```
+
+</details>
 
 **2. Install dependency**
 ```bash
@@ -209,21 +224,33 @@ Isi teks chapter 2...
 
 ## ❓ FAQ
 
-**Apakah ini legal / aman dipakai?**
+<details>
+<summary><b>Apakah ini legal / aman dipakai?</b></summary>
 
 Script ini memakai endpoint publik Wattpad yang sama seperti saat kamu baca cerita lewat browser, jadi tidak meng-hack apa pun. Tapi gunakan secara bertanggung jawab: unduh untuk bacaan pribadi/offline, dan hormati hak cipta penulis. Jangan sebar ulang atau jual isi cerita orang lain.
 
-**Apakah butuh akun Wattpad?**
+</details>
+
+<details>
+<summary><b>Apakah butuh akun Wattpad?</b></summary>
 
 Tidak. Tidak perlu login atau API key sama sekali.
 
-**Cerita private / dihapus, bisa diunduh?**
+</details>
+
+<details>
+<summary><b>Cerita private / dihapus, bisa diunduh?</b></summary>
 
 Tidak. Script hanya bisa mengakses cerita yang memang publik.
 
-**Prosesnya lama, kenapa?**
+</details>
+
+<details>
+<summary><b>Prosesnya lama, kenapa?</b></summary>
 
 Ada jeda 0.5 detik antar chapter (sengaja, biar tidak membebani server Wattpad). Untuk cerita ratusan chapter, wajar kalau prosesnya makan waktu beberapa menit.
+
+</details>
 
 ## 👤 Author
 
