@@ -35,10 +35,11 @@
 
 | Fitur | Keterangan |
 |-------|------------|
+| 🎨 **Tampilan CLI rapi** | Panel, tabel info cerita, dan warna berkat library `rich` |
 | 📁 **Pilih folder simpan** | Default ke folder `Downloads` sistem, bisa dikustomisasi |
 | 🔄 **Auto-retry** | Chapter gagal dicoba ulang hingga 3× sebelum dilewati |
-| 📊 **Progress bar** | Tampil persentase & nomor chapter yang sedang diunduh |
-| 📋 **Ringkasan akhir** | Laporan chapter yang gagal (jika ada) setelah selesai |
+| 📊 **Progress bar animasi** | Spinner, persentase, jumlah chapter, dan estimasi waktu tersisa |
+| 📋 **Ringkasan akhir** | Panel laporan chapter yang gagal (jika ada) setelah selesai |
 | 🗂 **Nama file aman** | Karakter ilegal otomatis dihapus dari nama file |
 | 🔗 **Link sumber tersimpan** | URL cerita dicantumkan di header file hasil |
 | ⚡ **Tanpa login** | Pakai endpoint publik Wattpad — tidak butuh akun |
@@ -49,7 +50,7 @@
 
 - **Python** 3.7 atau lebih baru
 - **Koneksi internet**
-- Library: `requests`
+- Library: `requests`, `rich`
 
 Cek Python sudah terinstall:
 ```bash
@@ -70,12 +71,17 @@ cd wattpdl
 
 **2. Install dependency**
 ```bash
-pip install requests
+pip install requests rich
 ```
+
+> Kalau `pip` tidak dikenali, coba:
+> ```bash
+> python -m pip install requests rich
+> ```
 
 > Kalau muncul error `externally-managed-environment` (biasanya di Linux):
 > ```bash
-> pip install requests --break-system-packages
+> pip install requests rich --break-system-packages
 > ```
 
 ---
@@ -84,7 +90,7 @@ pip install requests
 
 **Jalankan script:**
 ```bash
-python download_wattpad.py
+python wattpdl.py
 ```
 
 **Masukkan link atau ID cerita saat diminta:**
@@ -108,13 +114,15 @@ Tekan **Enter** untuk simpan di `Downloads`, atau ketik path kustom seperti:
 
 **Tunggu proses selesai:**
 ```
-[████████████████░░░░░░░░░░░░░░]  53.3%  (24/45)  Chapter 24...
+⠋ Chapter 24...              ████████████████░░░░░░░░░░░░░░  53.3%  24/45  0:00:12  0:00:11
 ```
 
 **Done! 🎉**
 ```
-✅ Semua chapter tersimpan di:
-   C:\Users\user\Downloads\Judul_Cerita.txt
+╭──────────── 🎉 Berhasil! ────────────╮
+│ File tersimpan di   C:\Users\user\Downloads\Judul_Cerita.txt │
+│ Total chapter       45                                       │
+╰────────────────────────────────────────────────────────────╯
 ```
 
 ---
@@ -157,6 +165,7 @@ Isi teks chapter 2...
 | Masalah | Solusi |
 |---------|--------|
 | `ModuleNotFoundError: No module named 'requests'` | Jalankan `pip install requests` |
+| `ModuleNotFoundError: No module named 'rich'` | Jalankan `pip install rich` |
 | Error `404` / "Tidak ada chapter ditemukan" | Pastikan ID/link benar & cerita tidak di-private |
 | Folder tidak bisa dibuat | Cek path valid & kamu punya izin tulis di sana |
 | Proses macet di satu chapter | Cek koneksi internet, jalankan ulang — progress akan lanjut |
