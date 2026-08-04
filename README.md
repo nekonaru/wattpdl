@@ -21,15 +21,11 @@
 
 </div>
 
----
-
 ## ✨ Tentang Project
 
 **WattPDL** adalah script Python ringan yang mengunduh seluruh chapter dari cerita Wattpad pilihanmu, dari chapter pertama sampai tamat lalu menggabungkannya jadi satu file `.txt` yang bersih dan rapi. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
 
 > _"Karena cerita yang bagus layak dibaca kapan saja, bahkan tanpa internet."_
-
----
 
 ## 🎯 Fitur
 
@@ -42,9 +38,7 @@
 | 📋 **Ringkasan akhir** | Panel laporan chapter yang gagal (jika ada) setelah selesai |
 | 🗂 **Nama file aman** | Karakter ilegal otomatis dihapus dari nama file |
 | 🔗 **Link sumber tersimpan** | URL cerita dicantumkan di header file hasil |
-| ⚡ **Tanpa login** | Pakai endpoint publik Wattpad — tidak butuh akun |
-
----
+| ⚡ **Tanpa login** | Pakai endpoint publik Wattpad, jadi tidak butuh akun |
 
 ## 📦 Requirements
 
@@ -58,7 +52,7 @@
 <summary><b>🪟 Cara buka terminal di Windows</b></summary>
 
 1. Tekan tombol **Windows**, ketik `PowerShell`, lalu tekan **Enter**
-2. Jendela hitam/biru akan terbuka — itu tempat kamu mengetik perintah
+2. Jendela hitam/biru akan terbuka. Itu tempat kamu mengetik perintah
 3. Semua perintah `python ...` atau `pip ...` di panduan ini diketik di jendela itu, lalu tekan **Enter**
 
 </details>
@@ -81,7 +75,7 @@ Tekan **Ctrl + Alt + T**, atau cari aplikasi "Terminal" di menu aplikasi.
 ### Belum punya Python?
 
 1. Buka [python.org/downloads](https://www.python.org/downloads/) dan unduh versi terbaru
-2. **Khusus Windows**: saat instalasi, centang dulu kotak **"Add Python to PATH"** di layar pertama sebelum klik Install — kalau ini kelewat, perintah `python` nanti tidak akan dikenali
+2. **Khusus Windows**: saat instalasi, centang dulu kotak **"Add Python to PATH"** di layar pertama sebelum klik Install. Kalau ini kelewat, perintah `python` nanti tidak akan dikenali
 3. Setelah selesai install, buka terminal (lihat panduan di atas) lalu cek dengan:
 
 ```bash
@@ -91,8 +85,6 @@ python3 --version
 ```
 
 Kalau muncul angka versi (misal `Python 3.12.1`), berarti sudah siap.
-
----
 
 ## 🚀 Instalasi
 
@@ -139,8 +131,6 @@ pip install requests rich
 > pip install requests rich --break-system-packages
 > ```
 
----
-
 ## 🖥️ Cara Pakai
 
 **Jalankan script:**
@@ -180,8 +170,6 @@ Tekan **Enter** untuk simpan di `Downloads`, atau ketik path kustom seperti:
 ╰────────────────────────────────────────────────────────────╯
 ```
 
----
-
 ## 📂 Struktur Output
 
 File `.txt` yang dihasilkan punya format seperti ini:
@@ -197,13 +185,10 @@ Sumber : https://www.wattpad.com/story/123456789
 
 Isi teks chapter 1...
 
-
 ##### Judul Chapter 2 #####
 
 Isi teks chapter 2...
 ```
-
----
 
 ## 🗺️ Default Folder per OS
 
@@ -213,8 +198,6 @@ Isi teks chapter 2...
 | 🍎 macOS | `/Users/<namauser>/Downloads` |
 | 🐧 Linux | `/home/<namauser>/Downloads` |
 
----
-
 ## ⚠️ Troubleshooting
 
 | Masalah | Solusi |
@@ -223,18 +206,14 @@ Isi teks chapter 2...
 | `ModuleNotFoundError: No module named 'rich'` | Jalankan `pip install rich` |
 | Error `404` / "Tidak ada chapter ditemukan" | Pastikan ID/link benar & cerita tidak di-private |
 | Folder tidak bisa dibuat | Cek path valid & kamu punya izin tulis di sana |
-| Proses macet di satu chapter | Cek koneksi internet, jalankan ulang — progress akan lanjut |
-
----
+| Proses macet di satu chapter | Cek koneksi internet, jalankan ulang, progress akan lanjut |
 
 ## 📝 Catatan Penting
 
 - ID cerita adalah angka di URL Wattpad, tepat setelah `/story/`
-- Script memakai endpoint publik — tidak butuh login atau API key
-- Jeda **0.5 detik** antar chapter sudah diatur untuk menghindari rate limit server — jangan dihapus
+- Script memakai endpoint publik, tidak butuh login atau API key
+- Jeda **0.5 detik** antar chapter sudah diatur untuk menghindari rate limit server, jangan dihapus
 - Script ini hanya untuk membaca cerita milik sendiri atau cerita publik secara offline. Hormati hak cipta penulis
-
----
 
 ## 🛠️ Dibuat dengan
 
@@ -243,14 +222,12 @@ Isi teks chapter 2...
 ![Rich](https://img.shields.io/badge/-Rich-FAE742?style=flat-square)
 ![Wattpad API](https://img.shields.io/badge/-Wattpad%20Public%20API-FF6122?style=flat-square)
 
----
-
 ## ❓ FAQ
 
 <details>
 <summary><b>Apakah ini legal / aman dipakai?</b></summary>
 
-Script ini memakai endpoint publik Wattpad yang sama seperti saat kamu baca cerita lewat browser — tidak meng-hack apa pun. Tapi gunakan secara bertanggung jawab: unduh untuk bacaan pribadi/offline, dan hormati hak cipta penulis. Jangan sebar ulang atau jual isi cerita orang lain.
+Script ini memakai endpoint publik Wattpad yang sama seperti saat kamu baca cerita lewat browser, jadi tidak meng-hack apa pun. Tapi gunakan secara bertanggung jawab: unduh untuk bacaan pribadi/offline, dan hormati hak cipta penulis. Jangan sebar ulang atau jual isi cerita orang lain.
 
 </details>
 
@@ -275,8 +252,6 @@ Ada jeda 0.5 detik antar chapter (sengaja, biar tidak membebani server Wattpad).
 
 </details>
 
----
-
 ## 👤 Author
 
 <div align="center">
@@ -288,17 +263,13 @@ Ada jeda 0.5 detik antar chapter (sengaja, biar tidak membebani server Wattpad).
 
 </div>
 
----
-
 ## 📄 License
 
 Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
 
----
-
 <div align="center">
 
-Made with ☕ and 📖 by **Nicolas Dwi Dharma**
+Made with by **Nicolas Dwi Dharma**
 
 *Star ⭐ repo ini kalau project ini membantumu!*
 
