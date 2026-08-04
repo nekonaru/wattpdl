@@ -1,16 +1,16 @@
 <div align="center">
 
 ```
- ██╗    ██╗ █████╗ ████████╗████████╗██████╗ ██╗      ██████╗ ██╗
- ██║    ██║██╔══██╗╚══██╔══╝╚══██╔══╝██╔══██╗██║     ██╔═══██╗██║
- ██║ █╗ ██║███████║   ██║      ██║   ██████╔╝██║     ██║   ██║██║
- ██║███╗██║██╔══██║   ██║      ██║   ██╔═══╝ ██║     ██║   ██║╚═╝
- ╚███╔███╔╝██║  ██║   ██║      ██║   ██║     ███████╗╚██████╔╝██╗
-  ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚══════╝ ╚═════╝ ╚═╝
+     ██╗    ██╗ █████╗ ████████╗████████╗██████╗ ██████╗ ██╗     
+     ██║    ██║██╔══██╗╚══██╔══╝╚══██╔══╝██╔══██╗██╔══██╗██║     
+     ██║ █╗ ██║███████║   ██║      ██║   ██████╔╝██║  ██║██║     
+     ██║███╗██║██╔══██║   ██║      ██║   ██╔═══╝ ██║  ██║██║     
+     ╚███╔███╔╝██║  ██║   ██║      ██║   ██║     ██████╔╝███████╗
+      ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚═════╝ ╚══════╝
 ```
 
 ### 📖 Wattpad Story Downloader
-**Simpan semua chapter favoritmu jadi satu file `.txt` — offline, rapi, selamanya.**
+**Simpan semua chapter favoritmu jadi satu file `.txt` secara offline.**
 
 <br>
 
@@ -25,7 +25,7 @@
 
 ## ✨ Tentang Project
 
-**WattPDL** adalah script Python ringan yang mengunduh seluruh chapter dari cerita Wattpad pilihanmu — dari chapter pertama sampai tamat — lalu menggabungkannya jadi satu file `.txt` yang bersih dan rapi. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
+**WattPDL** adalah script Python ringan yang mengunduh seluruh chapter dari cerita Wattpad pilihanmu, dari chapter pertama sampai tamat lalu menggabungkannya jadi satu file `.txt` yang bersih dan rapi. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
 
 > _"Karena cerita yang bagus layak dibaca kapan saja, bahkan tanpa internet."_
 
