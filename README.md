@@ -52,22 +52,77 @@
 - **Koneksi internet**
 - Library: `requests`, `rich`
 
-Cek Python sudah terinstall:
+### Belum pernah pakai terminal? Ikuti ini dulu
+
+<details>
+<summary><b>🪟 Cara buka terminal di Windows</b></summary>
+
+1. Tekan tombol **Windows**, ketik `PowerShell`, lalu tekan **Enter**
+2. Jendela hitam/biru akan terbuka — itu tempat kamu mengetik perintah
+3. Semua perintah `python ...` atau `pip ...` di panduan ini diketik di jendela itu, lalu tekan **Enter**
+
+</details>
+
+<details>
+<summary><b>🍎 Cara buka terminal di macOS</b></summary>
+
+1. Tekan **Cmd + Spasi**, ketik `Terminal`, lalu tekan **Enter**
+2. Ketik perintah-perintah di panduan ini di situ, lalu tekan **Enter**
+
+</details>
+
+<details>
+<summary><b>🐧 Cara buka terminal di Linux</b></summary>
+
+Tekan **Ctrl + Alt + T**, atau cari aplikasi "Terminal" di menu aplikasi.
+
+</details>
+
+### Belum punya Python?
+
+1. Buka [python.org/downloads](https://www.python.org/downloads/) dan unduh versi terbaru
+2. **Khusus Windows**: saat instalasi, centang dulu kotak **"Add Python to PATH"** di layar pertama sebelum klik Install — kalau ini kelewat, perintah `python` nanti tidak akan dikenali
+3. Setelah selesai install, buka terminal (lihat panduan di atas) lalu cek dengan:
+
 ```bash
 python --version
 # atau
 python3 --version
 ```
 
+Kalau muncul angka versi (misal `Python 3.12.1`), berarti sudah siap.
+
 ---
 
 ## 🚀 Instalasi
 
-**1. Clone repository ini**
+**1. Ambil kode project ini**
+
+Pilih salah satu cara:
+
+<details>
+<summary><b>Cara A — Punya Git terinstall</b></summary>
+
 ```bash
 git clone https://github.com/nekonaru/wattpdl.git
 cd wattpdl
 ```
+
+</details>
+
+<details>
+<summary><b>Cara B — Tidak punya Git (paling gampang untuk pemula)</b></summary>
+
+1. Buka halaman repository di GitHub
+2. Klik tombol hijau **`Code`** → pilih **`Download ZIP`**
+3. Ekstrak file ZIP yang terunduh ke folder pilihanmu
+4. Di terminal, masuk ke folder hasil ekstrak, contoh:
+
+```bash
+cd Downloads/wattpdl-main
+```
+
+</details>
 
 **2. Install dependency**
 ```bash
@@ -185,7 +240,40 @@ Isi teks chapter 2...
 
 ![Python](https://img.shields.io/badge/-Python-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Requests](https://img.shields.io/badge/-Requests-FF6B6B?style=flat-square)
+![Rich](https://img.shields.io/badge/-Rich-FAE742?style=flat-square)
 ![Wattpad API](https://img.shields.io/badge/-Wattpad%20Public%20API-FF6122?style=flat-square)
+
+---
+
+## ❓ FAQ
+
+<details>
+<summary><b>Apakah ini legal / aman dipakai?</b></summary>
+
+Script ini memakai endpoint publik Wattpad yang sama seperti saat kamu baca cerita lewat browser — tidak meng-hack apa pun. Tapi gunakan secara bertanggung jawab: unduh untuk bacaan pribadi/offline, dan hormati hak cipta penulis. Jangan sebar ulang atau jual isi cerita orang lain.
+
+</details>
+
+<details>
+<summary><b>Apakah butuh akun Wattpad?</b></summary>
+
+Tidak. Tidak perlu login atau API key sama sekali.
+
+</details>
+
+<details>
+<summary><b>Cerita private / dihapus, bisa diunduh?</b></summary>
+
+Tidak. Script hanya bisa mengakses cerita yang memang publik.
+
+</details>
+
+<details>
+<summary><b>Prosesnya lama, kenapa?</b></summary>
+
+Ada jeda 0.5 detik antar chapter (sengaja, biar tidak membebani server Wattpad). Untuk cerita ratusan chapter, wajar kalau prosesnya makan waktu beberapa menit.
+
+</details>
 
 ---
 
