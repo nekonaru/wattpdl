@@ -20,11 +20,6 @@ from rich.prompt import Prompt
 from rich import box
 
 console = Console()
-
-# ─────────────────────────────────────────────
-#  Konfigurasi
-# ─────────────────────────────────────────────
-
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -39,13 +34,8 @@ STORY_INFO_URL = (
 )
 CHAPTER_TEXT_URL = "https://www.wattpad.com/apiv2/storytext?id={part_id}"
 
-DELAY_SECONDS = 0.5   # jeda antar chapter (jangan dihapus)
-MAX_RETRIES   = 3     # maksimal percobaan ulang per chapter
-
-
-# ─────────────────────────────────────────────
-#  Fungsi Utilitas
-# ─────────────────────────────────────────────
+DELAY_SECONDS = 0.5   
+MAX_RETRIES   = 3    
 
 def get_default_download_dir() -> pathlib.Path:
     """
@@ -62,7 +52,6 @@ def get_default_download_dir() -> pathlib.Path:
     downloads.mkdir(parents=True, exist_ok=True)
     return downloads
 
-
 def extract_story_id(user_input: str) -> str:
     """Terima link penuh atau ID angka, kembalikan ID cerita saja."""
     user_input = user_input.strip()
@@ -77,7 +66,6 @@ def extract_story_id(user_input: str) -> str:
         "Contoh ID   : 398440633"
     )
 
-
 def get_story_info(story_id: str) -> tuple[str, str, list]:
     """Ambil metadata cerita: judul, penulis, dan daftar chapter."""
     url  = STORY_INFO_URL.format(story_id=story_id)
@@ -88,7 +76,6 @@ def get_story_info(story_id: str) -> tuple[str, str, list]:
     author = data.get("user", {}).get("name", "unknown")
     parts  = data.get("parts", [])
     return title, author, parts
-
 
 def get_chapter_html(part_id: int, retries: int = MAX_RETRIES) -> str:
     """Unduh HTML teks chapter dengan retry otomatis."""
@@ -107,8 +94,7 @@ def get_chapter_html(part_id: int, retries: int = MAX_RETRIES) -> str:
                 f"coba lagi dalam {wait}s… ({e})[/yellow]"
             )
             time.sleep(wait)
-    return ""   # tidak akan tercapai, tapi memuaskan type-checker
-
+    return ""  
 
 def html_to_text(html: str) -> str:
     """Konversi HTML Wattpad ke teks bersih."""
@@ -126,11 +112,6 @@ def safe_filename(name: str) -> str:
     name = re.sub(r"\s+", "_", name)
     return name or "cerita_wattpad"
 
-
-# ─────────────────────────────────────────────
-#  Program Utama
-# ─────────────────────────────────────────────
-
 def main():
     console.print()
     console.print(
@@ -143,7 +124,6 @@ def main():
         )
     )
 
-    # ── 1. Input link / ID ──────────────────────────────────
     raw = Prompt.ask("\n[bold]Masukkan link atau ID cerita Wattpad[/bold]")
     try:
         story_id = extract_story_id(raw)
@@ -151,7 +131,6 @@ def main():
         console.print(f"\n[bold red]❌  {e}[/bold red]")
         sys.exit(1)
 
-    # ── 2. Ambil info cerita ────────────────────────────────
     with console.status(f"[cyan]Mengambil info cerita (ID: {story_id})…[/cyan]"):
         try:
             title, author, parts = get_story_info(story_id)
@@ -172,8 +151,6 @@ def main():
     info_table.add_row("Jumlah chapter", str(len(parts)))
     console.print()
     console.print(Panel(info_table, title="📖 Info Cerita", border_style="green", box=box.ROUNDED))
-
-    # ── 3. Pilih folder simpan ──────────────────────────────
     default_dir = get_default_download_dir()
     console.print(f"\n[dim]Folder default penyimpanan:[/dim] {default_dir}")
     custom = Prompt.ask(
@@ -197,8 +174,6 @@ def main():
     full_path = save_dir / filename
 
     console.print(f"\n[bold]💾 File akan disimpan di:[/bold] [cyan]{full_path}[/cyan]\n")
-
-    # ── 4. Unduh chapter satu per satu ─────────────────────
     failed_chapters: list[str] = []
 
     progress_columns = [
@@ -212,7 +187,6 @@ def main():
     ]
 
     with open(full_path, "w", encoding="utf-8") as f:
-        # Header file
         f.write(f"{title}\n")
         f.write(f"oleh {author}\n")
         f.write(f"Sumber : https://www.wattpad.com/story/{story_id}\n")
@@ -243,7 +217,6 @@ def main():
                 progress.advance(task)
                 time.sleep(DELAY_SECONDS)
 
-    # ── 5. Ringkasan ────────────────────────────────────────
     console.print()
     if failed_chapters:
         summary = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
