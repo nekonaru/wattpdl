@@ -95,7 +95,7 @@ Kalau muncul angka versi (misal `Python 3.12.1`), berarti sudah siap.
 Pilih salah satu cara:
 
 <details>
-<summary><b>Cara A — Punya Git terinstall</b></summary>
+<summary><b>Cara A: Punya Git terinstall</b></summary>
 
 ```bash
 git clone https://github.com/nekonaru/wattpdl.git
@@ -105,7 +105,7 @@ cd wattpdl
 </details>
 
 <details>
-<summary><b>Cara B — Tidak punya Git (paling gampang untuk pemula)</b></summary>
+<summary><b>Cara B: Tidak punya Git (paling gampang untuk pemula)</b></summary>
 
 1. Buka halaman repository di GitHub
 2. Klik tombol hijau **`Code`** → pilih **`Download ZIP`**
@@ -133,7 +133,7 @@ pip install requests rich python-docx
 > pip install requests rich python-docx --break-system-packages
 > ```
 
-> Cuma mau simpan sebagai `.txt` saja? `python-docx` boleh dilewati — script tetap jalan normal untuk mode `.txt`, dan baru akan minta library ini kalau kamu pilih format `.docx` saat menjalankannya.
+> Cuma mau simpan sebagai `.txt` saja? `python-docx` boleh dilewati. Script tetap jalan normal untuk mode `.txt`, dan baru akan minta library ini kalau kamu pilih format `.docx` saat menjalankannya.
 
 ## 🖥️ Cara Pakai
 
@@ -161,10 +161,10 @@ Link atau ID cerita Wattpad: 123456789
 Pilih mode [1/2/3/4] (1):
 ```
 
-- **Mode 1** — cara paling umum, seluruh cerita jadi satu file rapi dari chapter pertama sampai terakhir
-- **Mode 2** — cocok kalau mau baca per chapter terpisah; hasilnya satu `.zip` berisi file per chapter
-- **Mode 3** — muncul daftar semua judul chapter bernomor, lalu ketik nomor yang mau diunduh, bisa gabung koma dan rentang, contoh: `1,3,5-8`
-- **Mode 4** — muncul daftar semua judul chapter, ketik satu nomor untuk unduh chapter itu saja
+- **Mode 1**: cara paling umum, seluruh cerita jadi satu file rapi dari chapter pertama sampai terakhir
+- **Mode 2**: cocok kalau mau baca per chapter terpisah, hasilnya satu `.zip` berisi file per chapter
+- **Mode 3**: muncul daftar semua judul chapter bernomor, lalu ketik nomor yang mau diunduh, bisa gabung koma dan rentang, contoh: `1,3,5-8`
+- **Mode 4**: muncul daftar semua judul chapter, ketik satu nomor untuk unduh chapter itu saja
 
 **Pilih format file:**
 ```
@@ -203,19 +203,19 @@ Nama dan bentuk file yang dihasilkan tergantung mode & format yang kamu pilih:
 
 | Mode | Format `.txt` | Format `.docx` |
 |------|----------------|-----------------|
-| 1 — Semua, gabungan | `Judul_Cerita.txt` | `Judul_Cerita.docx` |
-| 2 — Semua, terpisah | `Judul_Cerita.zip` (isi: `.txt` per chapter) | `Judul_Cerita.zip` (isi: `.docx` per chapter) |
-| 3 — Beberapa chapter | `Judul_Cerita_pilihan.txt` | `Judul_Cerita_pilihan.docx` |
-| 4 — Satu chapter | `Judul_Cerita_Ch003_Nama_Chapter.txt` | `Judul_Cerita_Ch003_Nama_Chapter.docx` |
+| 1 - Semua, gabungan | `Judul_Cerita.txt` | `Judul_Cerita.docx` |
+| 2 - Semua, terpisah | `Judul_Cerita.zip` (isi: `.txt` per chapter) | `Judul_Cerita.zip` (isi: `.docx` per chapter) |
+| 3 - Beberapa chapter | `Judul_Cerita_pilihan.txt` | `Judul_Cerita_pilihan.docx` |
+| 4 - Satu chapter | `Judul_Cerita_Ch003_Nama_Chapter.txt` | `Judul_Cerita_Ch003_Nama_Chapter.docx` |
 
-**Isi file gabungan (mode 1 & 3)** — judul cerita, penulis, dan sumber di bagian atas, lalu tiap chapter dipisah dengan penanda `#####`:
+**Isi file gabungan (mode 1 & 3):** judul cerita, penulis, dan sumber di bagian atas, lalu tiap chapter dipisah dengan penanda `#####`.
 
 ```
 Judul Cerita
 oleh Nama Penulis
 Sumber : https://www.wattpad.com/story/123456789
 
-══════════════════════════════════════════════════
+==================================================
 
 ##### Judul Chapter 1 #####
 
@@ -226,9 +226,9 @@ Isi teks chapter 1...
 Isi teks chapter 2...
 ```
 
-Di versi `.docx`, judul cerita jadi heading utama dan tiap chapter otomatis jadi Heading 1 dengan halaman baru — tinggal buka di Word/Google Docs dan enak dibaca.
+Di versi `.docx`, judul cerita jadi heading utama dan tiap chapter otomatis jadi Heading 1 dengan halaman baru, tinggal buka di Word atau Google Docs dan langsung enak dibaca.
 
-**Isi zip (mode 2)** — satu file per chapter, bernomor urut sesuai posisi di cerita, plus `000_info.txt`/`000_info.docx` berisi judul, penulis, dan sumber:
+**Isi zip (mode 2):** satu file per chapter, bernomor urut sesuai posisi di cerita, plus `000_info.txt`/`000_info.docx` berisi judul, penulis, dan sumber. Ekstensi file di dalam zip mengikuti format yang dipilih saat menjalankan script (`.txt` atau `.docx`):
 
 ```
 Judul_Cerita.zip
