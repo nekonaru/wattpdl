@@ -22,6 +22,8 @@
 
 </div>
 
+<img width="1920" height="1080" alt="Screenshot 2026-08-05 133015" src="https://github.com/user-attachments/assets/b05d67bf-386b-4e13-8a59-35e9af245cda" />
+
 ## ✨ Tentang Project
 
 **WattPDL** adalah script Python ringan yang mengunduh chapter dari cerita Wattpad pilihanmu, lalu menyimpannya sebagai file `.txt` atau dokumen Word `.docx` yang bersih dan rapi. Kamu bisa unduh seluruh cerita jadi satu file, semua chapter terpisah dalam satu `.zip`, atau cukup chapter tertentu yang kamu pilih sendiri. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
