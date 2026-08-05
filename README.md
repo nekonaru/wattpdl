@@ -18,6 +18,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square)
+![Tests](https://github.com/nekonaru/wattpdl/actions/workflows/tests.yml/badge.svg)
 
 </div>
 
@@ -120,17 +121,17 @@ cd Downloads/wattpdl-main
 
 **2. Install dependency**
 ```bash
-pip install requests rich python-docx
+pip install -r requirements.txt
 ```
 
 > Kalau `pip` tidak dikenali, coba:
 > ```bash
-> python -m pip install requests rich python-docx
+> python -m pip install -r requirements.txt
 > ```
 
 > Kalau muncul error `externally-managed-environment` (biasanya di Linux):
 > ```bash
-> pip install requests rich python-docx --break-system-packages
+> pip install -r requirements.txt --break-system-packages
 > ```
 
 > Cuma mau simpan sebagai `.txt` saja? `python-docx` boleh dilewati. Script tetap jalan normal untuk mode `.txt`, dan baru akan minta library ini kalau kamu pilih format `.docx` saat menjalankannya.
@@ -271,6 +272,15 @@ Judul_Cerita.zip
 ![Rich](https://img.shields.io/badge/-Rich-FAE742?style=flat-square)
 ![python--docx](https://img.shields.io/badge/-python--docx-2B579A?style=flat-square)
 ![Wattpad API](https://img.shields.io/badge/-Wattpad%20Public%20API-FF6122?style=flat-square)
+
+## 🧪 Testing
+
+Ada unit test untuk fungsi-fungsi inti (parsing ID cerita, validasi nama file, parsing pilihan chapter, konversi HTML ke teks, dll).
+
+```bash
+pip install pytest
+pytest tests/ -v
+```
 
 ## ❓ FAQ
 

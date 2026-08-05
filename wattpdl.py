@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import html
 import time
 import pathlib
 import tempfile
@@ -137,11 +138,12 @@ def get_chapter_html(part_id: int, retries: int = MAX_RETRIES) -> str:
     return ""   
 
 
-def html_to_text(html: str) -> str:
+def html_to_text(raw_html: str) -> str:
     """Konversi HTML Wattpad ke teks bersih."""
-    text = re.sub(r"</p>",       "\n\n", html, flags=re.IGNORECASE)
+    text = re.sub(r"</p>",       "\n\n", raw_html, flags=re.IGNORECASE)
     text = re.sub(r"<br\s*/?>",  "\n",   text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>",   "",     text)
+    text = html.unescape(text)
     text = re.sub(r"\n{3,}",    "\n\n", text)
     return text.strip()
 
