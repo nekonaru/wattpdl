@@ -1,0 +1,33 @@
+# ── Python ──────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+
+# ── Virtual environment ────────────────────────
+venv/
+env/
+.venv/
+
+# ── Environment / kredensial ───────────────────
+.env
+*.env
+
+# ── Hasil unduhan wattpdl (jangan ikut ke-commit) ──
+*.txt
+*.docx
+*.zip
+!requirements.txt
+
+# ── OS files ────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor / IDE ────────────────────────────────
+.vscode/
+.idea/
+*.swp
