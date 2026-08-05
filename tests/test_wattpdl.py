@@ -2,19 +2,16 @@
 Unit test untuk fungsi-fungsi murni (pure function) di wattpdl.py.
 Jalankan dengan: pytest
 """
-import sys
 import pathlib
+import sys
+
 import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from wattpdl import (
-    extract_story_id,
-    safe_filename,
-    parse_chapter_selection,
-    html_to_text,
-    format_duration,
-)
+from api import extract_story_id
+from cli import format_duration, parse_chapter_selection
+from writers import html_to_text, safe_filename
 
 
 class TestExtractStoryId:

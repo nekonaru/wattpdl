@@ -273,14 +273,46 @@ Judul_Cerita.zip
 ![python--docx](https://img.shields.io/badge/-python--docx-2B579A?style=flat-square)
 ![Wattpad API](https://img.shields.io/badge/-Wattpad%20Public%20API-FF6122?style=flat-square)
 
+## 🗂️ Struktur Project
+
+```
+wattpdl/
+├── wattpdl.py            # entry point, orkestrasi alur program (main())
+├── api.py                # komunikasi ke Wattpad public API
+├── writers.py            # konversi teks & penulisan file .txt/.docx/.zip
+├── cli.py                # tampilan terminal (rich), interaksi dengan user
+├── requirements.txt      # daftar dependency
+├── pyproject.toml        # konfigurasi ruff (linting)
+├── tests/
+│   ├── __init__.py
+│   └── test_wattpdl.py   # unit test (pytest)
+├── .github/
+│   └── workflows/
+│       └── tests.yml     # CI: jalankan test & lint otomatis
+├── CONTRIBUTING.md       # panduan kontribusi
+├── LICENSE
+└── README.md
+```
+
+**Prinsip pemisahan modul:**
+- `api.py` — tidak tahu apa-apa soal tampilan (`rich`), murni fetch data
+- `writers.py` — tidak melakukan request jaringan, murni konversi & tulis file
+- `cli.py` — semua interaksi dengan user & tampilan progress bar
+- `wattpdl.py` — menyatukan ketiganya, tanpa logika bisnis sendiri
+
 ## 🧪 Testing
 
 Ada unit test untuk fungsi-fungsi inti (parsing ID cerita, validasi nama file, parsing pilihan chapter, konversi HTML ke teks, dll).
 
 ```bash
-pip install pytest
+pip install pytest ruff
 pytest tests/ -v
+ruff check .
 ```
+
+## 🤝 Kontribusi
+
+Mau bantu kembangin WattPDL? Baca [`CONTRIBUTING.md`](CONTRIBUTING.md) untuk struktur project dan alur kontribusi.
 
 ## ❓ FAQ
 
