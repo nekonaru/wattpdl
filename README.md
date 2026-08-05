@@ -22,7 +22,7 @@
 
 </div>
 
-<img width="1920" height="1080" alt="Screenshot 2026-08-05 133015" src="https://github.com/user-attachments/assets/b05d67bf-386b-4e13-8a59-35e9af245cda" />
+<img width="1123" height="942" alt="Screenshot 2026-08-05 133639" src="https://github.com/user-attachments/assets/197ad4bc-fa04-492e-903a-d9f95a1aeb2c" />
 
 ## ✨ Tentang Project
 
