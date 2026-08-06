@@ -14,7 +14,8 @@
 
 <br>
 
-![Python](https://img.shields.io/badge/Python-3.7%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![PyPI](https://img.shields.io/pypi/v/wattpdl?style=flat-square&color=blue)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square)
@@ -48,9 +49,9 @@
 
 ## 📦 Requirements
 
-- **Python** 3.7 atau lebih baru
+- **Python** 3.9 atau lebih baru
 - **Koneksi internet**
-- Library: `requests`, `rich`, `python-docx` (hanya perlu kalau mau simpan sebagai `.docx`)
+- Library: `requests`, `rich`, `python-docx` — otomatis terinstall bareng `wattpdl`, tidak perlu diinstall manual
 
 ### Belum pernah pakai terminal? Ikuti ini dulu
 
@@ -94,12 +95,30 @@ Kalau muncul angka versi (misal `Python 3.12.1`), berarti sudah siap.
 
 ## 🚀 Instalasi
 
+### Cara A: Install dari PyPI (paling gampang)
+
+```bash
+pip install wattpdl
+```
+
+> Kalau `pip` tidak dikenali, coba:
+> ```bash
+> python -m pip install wattpdl
+> ```
+
+> Kalau muncul error `externally-managed-environment` (biasanya di Linux):
+> ```bash
+> pip install wattpdl --break-system-packages
+> ```
+
+Setelah terinstall, command `wattpdl` langsung bisa dipakai dari terminal mana saja — lanjut ke bagian [Cara Pakai](#️-cara-pakai).
+
+### Cara B: Install dari source (untuk development / mau lihat/ubah kode)
+
 **1. Ambil kode project ini**
 
-Pilih salah satu cara:
-
 <details>
-<summary><b>Cara A: Punya Git terinstall</b></summary>
+<summary><b>Punya Git terinstall</b></summary>
 
 ```bash
 git clone https://github.com/nekonaru/wattpdl.git
@@ -109,7 +128,7 @@ cd wattpdl
 </details>
 
 <details>
-<summary><b>Cara B: Tidak punya Git (paling gampang untuk pemula)</b></summary>
+<summary><b>Tidak punya Git</b></summary>
 
 1. Buka halaman repository di GitHub
 2. Klik tombol hijau **`Code`** → pilih **`Download ZIP`**
@@ -122,29 +141,23 @@ cd Downloads/wattpdl-main
 
 </details>
 
-**2. Install dependency**
+**2. Install dalam mode "editable"**
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
-> Kalau `pip` tidak dikenali, coba:
-> ```bash
-> python -m pip install -r requirements.txt
-> ```
+> Sama seperti Cara A, tambahkan `--break-system-packages` di akhir kalau muncul error `externally-managed-environment`.
 
-> Kalau muncul error `externally-managed-environment` (biasanya di Linux):
-> ```bash
-> pip install -r requirements.txt --break-system-packages
-> ```
-
-> Cuma mau simpan sebagai `.txt` saja? `python-docx` boleh dilewati. Script tetap jalan normal untuk mode `.txt`, dan baru akan minta library ini kalau kamu pilih format `.docx` saat menjalankannya.
+Ini juga mendaftarkan command `wattpdl`, tapi mengambil kodenya langsung dari folder ini — cocok kalau kamu mau modifikasi kode dan langsung lihat hasilnya tanpa install ulang.
 
 ## 🖥️ Cara Pakai
 
-**Jalankan script:**
+**Jalankan:**
 ```bash
-python wattpdl.py
+wattpdl
 ```
+
+> Kalau kamu install dari source tanpa `pip install -e .`, jalankan lewat `python -m wattpdl` dari dalam folder `src/` — tapi cara Editable Install di atas lebih direkomendasikan.
 
 **Masukkan link atau ID cerita saat diminta:**
 ```
@@ -220,7 +233,7 @@ Folder simpan dan format file terakhir yang kamu pilih otomatis tersimpan di `~/
 Selain mode tanya-jawab, WattPDL juga bisa dijalankan lewat argumen command line — cocok buat dijadwalkan (cron/Task Scheduler) atau dipanggil dari script lain.
 
 ```bash
-python wattpdl.py --id 398440633 --mode 1 --format docx
+wattpdl --id 398440633 --mode 1 --format docx
 ```
 
 **Argumen yang tersedia:**
@@ -238,16 +251,16 @@ python wattpdl.py --id 398440633 --mode 1 --format docx
 
 ```bash
 # Unduh semua chapter sebagai .zip terpisah
-python wattpdl.py --id 398440633 --mode 2 --format txt
+wattpdl --id 398440633 --mode 2 --format txt
 
 # Unduh chapter 1, 3, dan 5-8 saja, jadi 1 file gabungan
-python wattpdl.py --id 398440633 --mode 3 --chapters 1,3,5-8 --format docx
+wattpdl --id 398440633 --mode 3 --chapters 1,3,5-8 --format docx
 
 # Unduh chapter 10 saja, simpan ke folder custom
-python wattpdl.py --id 398440633 --mode 4 --chapter 10 --output-dir "D:\Cerita Wattpad"
+wattpdl --id 398440633 --mode 4 --chapter 10 --output-dir "D:\Cerita Wattpad"
 
 # Lihat semua opsi
-python wattpdl.py --help
+wattpdl --help
 ```
 
 ## 📂 Struktur Output
@@ -329,22 +342,27 @@ Judul_Cerita.zip
 
 ```
 wattpdl/
-├── wattpdl.py            # entry point, orkestrasi alur program (main())
-├── api.py                # komunikasi ke Wattpad public API
-├── writers.py            # konversi teks & penulisan file .txt/.docx/.zip
-├── cli.py                # tampilan terminal (rich), interaksi dengan user
-├── cli_args.py           # parsing argumen untuk mode non-interaktif
-├── config.py             # simpan preferensi user (folder simpan, format)
-├── progress.py           # cache progress unduhan untuk fitur resume
-├── requirements.txt      # daftar dependency
-├── pyproject.toml        # konfigurasi ruff (linting)
+├── src/
+│   └── wattpdl/
+│       ├── __init__.py       # metadata package (__version__)
+│       ├── __main__.py       # entry untuk `python -m wattpdl`
+│       ├── app.py            # orkestrasi alur program (main())
+│       ├── api.py            # komunikasi ke Wattpad public API
+│       ├── writers.py        # konversi teks & penulisan file .txt/.docx/.zip
+│       ├── cli.py            # tampilan terminal (rich), interaksi dengan user
+│       ├── cli_args.py       # parsing argumen untuk mode non-interaktif
+│       ├── config.py         # simpan preferensi user (folder simpan, format)
+│       └── progress.py       # cache progress unduhan untuk fitur resume
+├── requirements.txt          # daftar dependency (untuk referensi manual)
+├── pyproject.toml            # metadata package + build config + ruff
 ├── tests/
 │   ├── __init__.py
-│   └── test_wattpdl.py   # unit test (pytest)
+│   └── test_wattpdl.py       # unit test (pytest)
 ├── .github/
 │   └── workflows/
-│       └── tests.yml     # CI: jalankan test & lint otomatis
-├── CONTRIBUTING.md       # panduan kontribusi
+│       ├── tests.yml         # CI: test, lint, & build check otomatis
+│       └── publish.yml       # auto-publish ke PyPI saat rilis baru
+├── CONTRIBUTING.md           # panduan kontribusi
 ├── LICENSE
 └── README.md
 ```
@@ -355,14 +373,14 @@ wattpdl/
 - `cli.py` — semua interaksi dengan user & tampilan progress bar
 - `cli_args.py` — parsing & validasi argumen command line, tidak ada logika bisnis
 - `config.py` / `progress.py` — baca-tulis file JSON di `~/.wattpdl/`, tidak tahu soal CLI atau jaringan
-- `wattpdl.py` — menyatukan semuanya, tanpa logika bisnis sendiri
+- `app.py` — menyatukan semuanya, tanpa logika bisnis sendiri (dipanggil lewat command `wattpdl` setelah install)
 
 ## 🧪 Testing
 
-Ada unit test untuk fungsi-fungsi inti (parsing ID cerita, validasi nama file, parsing pilihan chapter, konversi HTML ke teks, dll).
+Ada unit test untuk fungsi-fungsi inti (parsing ID cerita, validasi nama file, parsing pilihan chapter, konversi HTML ke teks, config, progress/resume, parsing argumen CLI, dll).
 
 ```bash
-pip install pytest ruff
+pip install -e .[dev]
 pytest tests/ -v
 ruff check .
 ```

@@ -1,20 +1,16 @@
 """
-Unit test untuk fungsi-fungsi murni (pure function) di wattpdl.py.
+Unit test untuk fungsi-fungsi murni (pure function) di package wattpdl.
 Jalankan dengan: pytest
+(path ke src/ sudah diatur lewat [tool.pytest.ini_options] di pyproject.toml)
 """
-import pathlib
-import sys
-
 import pytest
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-
-import cli_args
-import config as config_mod
-import progress as progress_mod
-from api import extract_story_id
-from cli import format_duration, parse_chapter_selection
-from writers import html_to_text, safe_filename
+from wattpdl import cli_args
+from wattpdl import config as config_mod
+from wattpdl import progress as progress_mod
+from wattpdl.api import extract_story_id
+from wattpdl.cli import format_duration, parse_chapter_selection
+from wattpdl.writers import html_to_text, safe_filename
 
 
 class TestExtractStoryId:

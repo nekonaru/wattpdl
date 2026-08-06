@@ -17,13 +17,10 @@ from rich.align import Align
 from rich.panel import Panel
 from rich.table import Table
 
-import api
-import cli
-import cli_args
-import config as config_mod
-import progress as progress_mod
-import writers
-from cli import console, step_rule
+from . import api, cli, cli_args, writers
+from . import config as config_mod
+from . import progress as progress_mod
+from .cli import console, step_rule
 
 
 def resolve_save_dir(custom_path: str, config: dict) -> pathlib.Path:

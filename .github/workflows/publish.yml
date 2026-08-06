@@ -1,0 +1,50 @@
+name: Publish to PyPI
+
+# Jalan otomatis tiap kali ada GitHub Release baru dipublish.
+# Pakai PyPI Trusted Publishing (OIDC) — TIDAK perlu simpan API token
+# sebagai secret. Syaratnya: repo ini harus didaftarkan sebagai
+# "trusted publisher" di halaman pengaturan project PyPI terlebih dahulu.
+# Panduan: https://docs.pypi.org/trusted-publishers/
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tool
+        run: pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # wajib untuk trusted publishing (OIDC)
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

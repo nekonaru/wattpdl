@@ -20,7 +20,7 @@ from rich.prompt import Prompt
 from rich.rule import Rule
 from rich.theme import Theme
 
-import api
+from . import api
 
 THEME = Theme({
     "primary":   "bold cyan",
@@ -168,8 +168,8 @@ def download_chapters(indexed_parts: list, story_id: str = None) -> tuple:
     Return: (results, failed_chapters)
       results = list of (nomor_chapter, judul_chapter, teks)
     """
-    import progress as progress_mod
-    from writers import html_to_text
+    from . import progress as progress_mod
+    from .writers import html_to_text
 
     results = []
     failed = []
