@@ -12,7 +12,7 @@ MODE_HELP = (
     "4 = pilih 1 chapter saja (perlu --chapter)"
 )
 
-FORMAT_TO_CODE = {"txt": "1", "docx": "2"}
+FORMAT_TO_CODE = {"txt": "1", "docx": "2", "epub": "3"}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--mode", choices=["1", "2", "3", "4"], help=MODE_HELP)
     parser.add_argument(
-        "--format", choices=["txt", "docx"],
+        "--format", choices=["txt", "docx", "epub"],
         help="Format file output. Default: dari config tersimpan, atau txt kalau belum ada.",
     )
     parser.add_argument(

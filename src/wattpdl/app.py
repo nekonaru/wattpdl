@@ -70,7 +70,7 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
     """Alur unduh bersama untuk mode interaktif maupun non-interaktif."""
     indexed_parts = resolve_chapters(mode, parts, chapters_arg, chapter_arg)
 
-    ext = "docx" if file_format == "2" else "txt"
+    ext = {"2": "docx", "3": "epub"}.get(file_format, "txt")
     base_name = writers.safe_filename(title)
 
     if mode == "1":
@@ -94,11 +94,15 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
     if mode == "2":
         if file_format == "2":
             writers.write_separate_docx_zip(full_path, title, author, story_id, results)
+        elif file_format == "3":
+            writers.write_separate_epub_zip(full_path, title, author, story_id, results)
         else:
             writers.write_separate_zip(full_path, title, author, story_id, results)
     else:
         if file_format == "2":
             writers.write_combined_docx(full_path, title, author, story_id, results)
+        elif file_format == "3":
+            writers.write_combined_epub(full_path, title, author, story_id, results)
         else:
             writers.write_combined_txt(full_path, title, author, story_id, results)
 
@@ -188,6 +192,8 @@ def run_non_interactive(args):
     file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
     if file_format == "2":
         writers.check_docx_available(console)
+    elif file_format == "3":
+        writers.check_epub_available(console)
 
     save_dir = resolve_save_dir(args.output_dir, config)
 
@@ -244,16 +250,19 @@ def run_interactive():
     format_table.add_column(style="value")
     format_table.add_row("1", "Teks polos (.txt)")
     format_table.add_row("2", "Dokumen Word (.docx)")
+    format_table.add_row("3", "Ebook (.epub)")
     console.print()
     console.print(format_table)
 
     file_format = cli.Prompt.ask(
         "\n[value]Pilih format file[/value]",
-        choices=["1", "2"],
+        choices=["1", "2", "3"],
         default=config.get("file_format", "1"),
     )
     if file_format == "2":
         writers.check_docx_available(console)
+    elif file_format == "3":
+        writers.check_epub_available(console)
 
     step_rule("Folder Penyimpanan")
     default_dir = pathlib.Path(config["save_dir"]) if config.get("save_dir") else cli.get_default_download_dir()

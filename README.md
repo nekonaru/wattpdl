@@ -10,7 +10,7 @@
 ```
 
 ### 📖 Wattpad Story Downloader
-**Simpan cerita favoritmu jadi file `.txt` atau `.docx`, lengkap atau per chapter, secara offline.**
+**Simpan cerita favoritmu jadi file `.txt`, `.docx`, atau `.epub`, lengkap atau per chapter, secara offline.**
 
 <br>
 
@@ -25,7 +25,7 @@
 
 ## ✨ Tentang Project
 
-**WattPDL** adalah script Python ringan yang mengunduh chapter dari cerita Wattpad pilihanmu, lalu menyimpannya sebagai file `.txt` atau dokumen Word `.docx` yang bersih dan rapi. Kamu bisa unduh seluruh cerita jadi satu file, semua chapter terpisah dalam satu `.zip`, atau cukup chapter tertentu yang kamu pilih sendiri. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
+**WattPDL** adalah script Python ringan yang mengunduh chapter dari cerita Wattpad pilihanmu, lalu menyimpannya sebagai file `.txt` polos, dokumen Word `.docx`, atau ebook `.epub` yang bersih dan rapi. Kamu bisa unduh seluruh cerita jadi satu file, semua chapter terpisah dalam satu `.zip`, atau cukup chapter tertentu yang kamu pilih sendiri. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
 
 > _"Karena cerita yang bagus layak dibaca kapan saja, bahkan tanpa internet."_
 
@@ -35,7 +35,7 @@
 |-------|------------|
 | 🎨 **Tampilan CLI rapi** | Panel, tabel info cerita, dan warna berkat library `rich` |
 | 🧩 **4 mode unduh** | Semua jadi 1 file, semua terpisah dalam `.zip`, pilih beberapa chapter, atau cukup 1 chapter |
-| 📄 **2 pilihan format** | Simpan sebagai `.txt` polos atau dokumen Word `.docx` |
+| 📄 **3 pilihan format** | Simpan sebagai `.txt` polos, dokumen Word `.docx`, atau ebook `.epub` |
 | 📁 **Pilih folder simpan** | Default ke folder `Downloads` sistem, bisa dikustomisasi |
 | 🔄 **Auto-retry** | Chapter gagal dicoba ulang hingga 3× sebelum dilewati |
 | 📊 **Progress bar animasi** | Spinner, persentase, jumlah chapter, dan estimasi waktu tersisa |
@@ -51,7 +51,7 @@
 
 - **Python** 3.9 atau lebih baru
 - **Koneksi internet**
-- Library: `requests`, `rich`, `python-docx` — otomatis terinstall bareng `wattpdl`, tidak perlu diinstall manual
+- Library: `requests`, `rich`, `python-docx`, `EbookLib` — otomatis terinstall bareng `wattpdl`, tidak perlu diinstall manual
 
 ### Belum pernah pakai terminal? Ikuti ini dulu
 
@@ -187,8 +187,9 @@ Pilih mode [1/2/3/4] (1):
 ```
   1  Teks polos (.txt)
   2  Dokumen Word (.docx)
+  3  Ebook (.epub)
 
-Pilih format file [1/2] (1):
+Pilih format file [1/2/3] (1):
 ```
 
 **Pilih folder penyimpanan:**
@@ -242,7 +243,7 @@ wattpdl --id 398440633 --mode 1 --format docx
 |---|---|
 | `--id` | ID atau link cerita Wattpad. Mengisi ini mengaktifkan mode non-interaktif. |
 | `--mode {1,2,3,4}` | 1 = semua jadi 1 file, 2 = semua terpisah `.zip`, 3 = pilih beberapa chapter, 4 = pilih 1 chapter |
-| `--format {txt,docx}` | Format file output. Default: dari config tersimpan, atau `txt` |
+| `--format {txt,docx,epub}` | Format file output. Default: dari config tersimpan, atau `txt` |
 | `--chapters` | Nomor chapter untuk `--mode 3`, contoh: `1,3,5-8` |
 | `--chapter` | Nomor chapter untuk `--mode 4`, contoh: `5` |
 | `--output-dir` | Folder penyimpanan custom. Default: dari config tersimpan, atau folder `Downloads` |
@@ -259,6 +260,9 @@ wattpdl --id 398440633 --mode 3 --chapters 1,3,5-8 --format docx
 # Unduh chapter 10 saja, simpan ke folder custom
 wattpdl --id 398440633 --mode 4 --chapter 10 --output-dir "D:\Cerita Wattpad"
 
+# Unduh semua chapter jadi 1 ebook .epub
+wattpdl --id 398440633 --mode 1 --format epub
+
 # Lihat semua opsi
 wattpdl --help
 ```
@@ -267,12 +271,12 @@ wattpdl --help
 
 Nama dan bentuk file yang dihasilkan tergantung mode & format yang kamu pilih:
 
-| Mode | Format `.txt` | Format `.docx` |
-|------|----------------|-----------------|
-| 1 - Semua, gabungan | `Judul_Cerita.txt` | `Judul_Cerita.docx` |
-| 2 - Semua, terpisah | `Judul_Cerita.zip` (isi: `.txt` per chapter) | `Judul_Cerita.zip` (isi: `.docx` per chapter) |
-| 3 - Beberapa chapter | `Judul_Cerita_pilihan.txt` | `Judul_Cerita_pilihan.docx` |
-| 4 - Satu chapter | `Judul_Cerita_Ch003_Nama_Chapter.txt` | `Judul_Cerita_Ch003_Nama_Chapter.docx` |
+| Mode | Format `.txt` | Format `.docx` | Format `.epub` |
+|------|----------------|-----------------|------------------|
+| 1 - Semua, gabungan | `Judul_Cerita.txt` | `Judul_Cerita.docx` | `Judul_Cerita.epub` |
+| 2 - Semua, terpisah | `Judul_Cerita.zip` (isi: `.txt` per chapter) | `Judul_Cerita.zip` (isi: `.docx` per chapter) | `Judul_Cerita.zip` (isi: `.epub` per chapter) |
+| 3 - Beberapa chapter | `Judul_Cerita_pilihan.txt` | `Judul_Cerita_pilihan.docx` | `Judul_Cerita_pilihan.epub` |
+| 4 - Satu chapter | `Judul_Cerita_Ch003_Nama_Chapter.txt` | `Judul_Cerita_Ch003_Nama_Chapter.docx` | `Judul_Cerita_Ch003_Nama_Chapter.epub` |
 
 **Isi file gabungan (mode 1 & 3):** judul cerita, penulis, dan sumber di bagian atas, lalu tiap chapter dipisah dengan penanda `#####`.
 
@@ -294,7 +298,9 @@ Isi teks chapter 2...
 
 Di versi `.docx`, judul cerita jadi heading utama dan tiap chapter otomatis jadi Heading 1 dengan halaman baru, tinggal buka di Word atau Google Docs dan langsung enak dibaca.
 
-**Isi zip (mode 2):** satu file per chapter, bernomor urut sesuai posisi di cerita, plus `000_info.txt`/`000_info.docx` berisi judul, penulis, dan sumber. Ekstensi file di dalam zip mengikuti format yang dipilih saat menjalankan script (`.txt` atau `.docx`):
+Di versi `.epub`, cerita jadi ebook standar dengan daftar isi (table of contents) otomatis per chapter — tinggal buka di aplikasi pembaca ebook favoritmu (Google Play Books, Apple Books, Calibre, dll).
+
+**Isi zip (mode 2):** satu file per chapter, bernomor urut sesuai posisi di cerita, plus `000_info.txt`/`000_info.docx`/`000_info.epub` berisi judul, penulis, dan sumber. Ekstensi file di dalam zip mengikuti format yang dipilih saat menjalankan script (`.txt`, `.docx`, atau `.epub`):
 
 ```
 Judul_Cerita.zip
@@ -319,6 +325,7 @@ Judul_Cerita.zip
 | `ModuleNotFoundError: No module named 'requests'` | Jalankan `pip install requests` |
 | `ModuleNotFoundError: No module named 'rich'` | Jalankan `pip install rich` |
 | `Library 'python-docx' belum terinstall` | Jalankan `pip install python-docx` (cuma dibutuhkan kalau memilih format `.docx`) |
+| `Library 'EbookLib' belum terinstall` | Jalankan `pip install EbookLib` (cuma dibutuhkan kalau memilih format `.epub`) |
 | Error `404` / "Tidak ada chapter ditemukan" | Pastikan ID/link benar & cerita tidak di-private |
 | Folder tidak bisa dibuat | Cek path valid & kamu punya izin tulis di sana |
 | Proses macet di satu chapter | Cek koneksi internet, jalankan ulang, progress akan lanjut |
@@ -422,10 +429,11 @@ Ada jeda 0.5 detik antar chapter (sengaja, biar tidak membebani server Wattpad).
 <details>
 <summary><b>Mode dan format mana yang sebaiknya dipilih?</b></summary>
 
-- Mau baca dari awal sampai akhir kayak buku → **Mode 1**, format `.txt` atau `.docx` sama-sama enak
+- Mau baca dari awal sampai akhir kayak buku → **Mode 1**, format `.epub` paling enak dibaca di aplikasi ebook
 - Mau tiap chapter jadi file sendiri-sendiri → **Mode 2**
 - Cuma butuh beberapa chapter tertentu (misal lagi ulang baca bagian tertentu) → **Mode 3**
 - Cuma penasaran satu chapter → **Mode 4**
+- Mau baca santai di HP/tablet pakai aplikasi ebook (Google Play Books, Apple Books, dll) → pilih format **`.epub`**
 - Mau edit atau print rapi pakai Word → pilih format **`.docx`**
 - Mau file kecil dan simpel, atau mau dibaca di aplikasi e-reader/notes → pilih format **`.txt`**
 

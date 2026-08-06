@@ -10,7 +10,7 @@ src/wattpdl/
 ├── __main__.py   # entry untuk `python -m wattpdl`
 ├── app.py        # orkestrasi alur program (main())
 ├── api.py        # komunikasi ke Wattpad public API (fetch info & teks chapter)
-├── writers.py    # konversi teks & penulisan file .txt/.docx/.zip
+├── writers.py    # konversi teks & penulisan file .txt/.docx/.epub/.zip
 ├── cli.py        # tampilan terminal (rich), interaksi dengan user
 ├── cli_args.py   # parsing & validasi argumen command line (mode non-interaktif)
 ├── config.py     # simpan preferensi user (folder simpan, format) di ~/.wattpdl/config.json

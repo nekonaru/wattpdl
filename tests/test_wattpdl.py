@@ -3,6 +3,9 @@ Unit test untuk fungsi-fungsi murni (pure function) di package wattpdl.
 Jalankan dengan: pytest
 (path ke src/ sudah diatur lewat [tool.pytest.ini_options] di pyproject.toml)
 """
+import pathlib
+import tempfile
+
 import pytest
 
 from wattpdl import cli_args
@@ -10,7 +13,7 @@ from wattpdl import config as config_mod
 from wattpdl import progress as progress_mod
 from wattpdl.api import extract_story_id
 from wattpdl.cli import format_duration, parse_chapter_selection
-from wattpdl.writers import html_to_text, safe_filename
+from wattpdl.writers import html_to_text, safe_filename, write_combined_epub, write_separate_epub_zip
 
 
 class TestExtractStoryId:
@@ -241,4 +244,50 @@ class TestCliArgs:
         cli_args.validate_non_interactive_args(args)  # tidak boleh raise
 
     def test_format_to_code_mapping(self):
-        assert cli_args.FORMAT_TO_CODE == {"txt": "1", "docx": "2"}
+        assert cli_args.FORMAT_TO_CODE == {"txt": "1", "docx": "2", "epub": "3"}
+
+
+class TestEpubWriters:
+    @pytest.fixture
+    def sample_results(self):
+        return [
+            (1, "Chapter 1: Awal", "Paragraf pertama.\nBaris kedua.\n\nParagraf kedua."),
+            (2, "Chapter 2: Tengah", "Cerita berlanjut & makin seru."),
+        ]
+
+    def test_combined_epub_is_readable(self, tmp_path, sample_results):
+        from ebooklib import epub
+
+        out = tmp_path / "cerita.epub"
+        write_combined_epub(out, "Judul Cerita", "Penulis X", "12345", sample_results)
+
+        assert out.exists()
+        assert out.stat().st_size > 0
+
+        book = epub.read_epub(str(out))
+        titles = dict(book.get_metadata("DC", "title"))
+        assert "Judul Cerita" in titles
+
+    def test_combined_epub_contains_all_chapters(self, tmp_path, sample_results):
+        from ebooklib import epub
+
+        out = tmp_path / "cerita.epub"
+        write_combined_epub(out, "Judul", "Penulis", "1", sample_results)
+
+        book = epub.read_epub(str(out))
+        doc_names = [item.get_name() for item in book.get_items() if item.get_type() == 9]
+        assert "chap_001.xhtml" in doc_names
+        assert "chap_002.xhtml" in doc_names
+
+    def test_separate_epub_zip_creates_valid_zip(self, tmp_path, sample_results):
+        import zipfile
+
+        out = tmp_path / "cerita_terpisah.zip"
+        write_separate_epub_zip(out, "Judul", "Penulis", "1", sample_results)
+
+        assert out.exists()
+        with zipfile.ZipFile(out) as zf:
+            names = zf.namelist()
+            assert any(n.endswith("_Chapter_1_Awal.epub") for n in names)
+            assert any(n.endswith("_Chapter_2_Tengah.epub") for n in names)
+            assert "000_info.epub" in names
