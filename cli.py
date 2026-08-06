@@ -158,17 +158,23 @@ def select_single_chapter(parts: list) -> tuple:
     return n, part
 
 
-def download_chapters(indexed_parts: list) -> tuple:
+def download_chapters(indexed_parts: list, story_id: str = None) -> tuple:
     """
     Unduh sekumpulan chapter dengan progress bar.
     indexed_parts: list of (nomor_chapter, part_dict)
+    story_id: kalau diisi, chapter yang sudah berhasil diunduh sebelumnya
+        (tersimpan dari sesi yang macet/terhenti) akan dipakai ulang dari
+        cache tanpa fetch ulang ke server — lihat modul `progress`.
     Return: (results, failed_chapters)
       results = list of (nomor_chapter, judul_chapter, teks)
     """
+    import progress as progress_mod
     from writers import html_to_text
 
     results = []
     failed = []
+    cached = progress_mod.load_progress(story_id) if story_id else {}
+    resumed_count = 0
 
     def on_retry(attempt, retries, wait, error):
         console.print(
@@ -194,13 +200,23 @@ def download_chapters(indexed_parts: list) -> tuple:
         for idx, part in indexed_parts:
             part_id = part["id"]
             chapter_title = part.get("title", f"Chapter {idx}")
+            cache_key = str(part_id)
 
             short_title = (chapter_title[:26] + "…") if len(chapter_title) > 26 else chapter_title
             progress.update(task, description=f"{short_title:<28}")
 
+            if cache_key in cached:
+                text = cached[cache_key]["text"]
+                resumed_count += 1
+                results.append((idx, chapter_title, text))
+                progress.advance(task)
+                continue
+
             try:
                 raw_html = api.get_chapter_html(part_id, on_retry=on_retry)
                 text = html_to_text(raw_html)
+                if story_id:
+                    progress_mod.save_chapter_progress(story_id, part_id, chapter_title, text)
             except Exception as e:
                 console.print(f"\n    [danger]⚠  Chapter [{idx}] gagal:[/danger] {e}")
                 text = "[GAGAL DIUNDUH — coba jalankan ulang]"
@@ -209,5 +225,10 @@ def download_chapters(indexed_parts: list) -> tuple:
             results.append((idx, chapter_title, text))
             progress.advance(task)
             time.sleep(api.DELAY_SECONDS)
+
+    if resumed_count:
+        console.print(
+            f"[muted]↻ {resumed_count} chapter dipakai dari progress sebelumnya (tidak diunduh ulang).[/muted]"
+        )
 
     return results, failed

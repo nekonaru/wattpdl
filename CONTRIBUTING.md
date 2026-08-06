@@ -9,10 +9,19 @@ wattpdl.py    # entry point, orkestrasi alur program (main())
 api.py        # komunikasi ke Wattpad public API (fetch info & teks chapter)
 writers.py    # konversi teks & penulisan file .txt/.docx/.zip
 cli.py        # tampilan terminal (rich), interaksi dengan user
+cli_args.py   # parsing & validasi argumen command line (mode non-interaktif)
+config.py     # simpan preferensi user (folder simpan, format) di ~/.wattpdl/config.json
+progress.py   # cache chapter yang berhasil diunduh, untuk fitur resume
 tests/        # unit test (pytest)
 ```
 
-Aturan sederhana: `api.py` tidak boleh tahu soal tampilan (`rich`), dan `writers.py` tidak boleh melakukan request jaringan. Kalau fitur baru butuh keduanya, taruh orkestrasinya di `wattpdl.py` atau `cli.py`.
+Aturan sederhana:
+- `api.py` tidak boleh tahu soal tampilan (`rich`)
+- `writers.py` tidak boleh melakukan request jaringan
+- `config.py` dan `progress.py` tidak boleh tahu soal CLI, `rich`, atau jaringan — murni baca-tulis JSON
+- `cli_args.py` tidak boleh punya logika bisnis, hanya parsing & validasi argumen
+
+Kalau fitur baru butuh gabungan beberapa modul, taruh orkestrasinya di `wattpdl.py`.
 
 ## Setup Lokal
 

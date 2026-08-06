@@ -42,6 +42,9 @@
 | 🗂 **Nama file aman** | Karakter ilegal otomatis dihapus dari nama file |
 | 🔗 **Link sumber tersimpan** | URL cerita dicantumkan di header file hasil |
 | ⚡ **Tanpa login** | Pakai endpoint publik Wattpad, jadi tidak butuh akun |
+| ↻ **Resume otomatis** | Kalau proses terhenti di tengah jalan, jalankan ulang cerita yang sama — chapter yang sudah berhasil tidak diunduh ulang |
+| ⚙️ **Ingat preferensi** | Folder simpan & format file terakhir otomatis dipakai lagi di sesi berikutnya |
+| 🤖 **Mode non-interaktif** | Bisa dijalankan lewat argumen command line untuk scripting/otomatisasi, tanpa perlu jawab prompt |
 
 ## 📦 Requirements
 
@@ -198,6 +201,55 @@ Tekan **Enter** untuk simpan di `Downloads`, atau ketik path kustom seperti:
 ╚═══════════════════════════════════════════════════╝
 ```
 
+## ↻ Resume Otomatis
+
+Kalau proses unduh terhenti di tengah jalan (koneksi putus, terminal ditutup, laptop mati), setiap chapter yang **sudah berhasil** diunduh tersimpan otomatis di `~/.wattpdl/progress/<id_cerita>.json`.
+
+Jalankan lagi dengan cerita yang sama (ID/link sama), dan WattPDL akan:
+- Melewati chapter yang sudah berhasil (dipakai dari cache, tidak fetch ulang)
+- Hanya mengunduh chapter yang belum berhasil / gagal sebelumnya
+
+File progress otomatis dihapus setelah semua chapter berhasil diunduh dalam satu sesi. Kalau mau paksa unduh ulang dari awal, hapus manual folder `~/.wattpdl/progress/`.
+
+## ⚙️ Preferensi Tersimpan
+
+Folder simpan dan format file terakhir yang kamu pilih otomatis tersimpan di `~/.wattpdl/config.json`, dan dipakai lagi sebagai default di sesi berikutnya — gak perlu isi ulang tiap kali jalanin script.
+
+## 🤖 Mode Non-Interaktif (Scripting/Otomatisasi)
+
+Selain mode tanya-jawab, WattPDL juga bisa dijalankan lewat argumen command line — cocok buat dijadwalkan (cron/Task Scheduler) atau dipanggil dari script lain.
+
+```bash
+python wattpdl.py --id 398440633 --mode 1 --format docx
+```
+
+**Argumen yang tersedia:**
+
+| Argumen | Keterangan |
+|---|---|
+| `--id` | ID atau link cerita Wattpad. Mengisi ini mengaktifkan mode non-interaktif. |
+| `--mode {1,2,3,4}` | 1 = semua jadi 1 file, 2 = semua terpisah `.zip`, 3 = pilih beberapa chapter, 4 = pilih 1 chapter |
+| `--format {txt,docx}` | Format file output. Default: dari config tersimpan, atau `txt` |
+| `--chapters` | Nomor chapter untuk `--mode 3`, contoh: `1,3,5-8` |
+| `--chapter` | Nomor chapter untuk `--mode 4`, contoh: `5` |
+| `--output-dir` | Folder penyimpanan custom. Default: dari config tersimpan, atau folder `Downloads` |
+
+**Contoh lain:**
+
+```bash
+# Unduh semua chapter sebagai .zip terpisah
+python wattpdl.py --id 398440633 --mode 2 --format txt
+
+# Unduh chapter 1, 3, dan 5-8 saja, jadi 1 file gabungan
+python wattpdl.py --id 398440633 --mode 3 --chapters 1,3,5-8 --format docx
+
+# Unduh chapter 10 saja, simpan ke folder custom
+python wattpdl.py --id 398440633 --mode 4 --chapter 10 --output-dir "D:\Cerita Wattpad"
+
+# Lihat semua opsi
+python wattpdl.py --help
+```
+
 ## 📂 Struktur Output
 
 Nama dan bentuk file yang dihasilkan tergantung mode & format yang kamu pilih:
@@ -281,6 +333,9 @@ wattpdl/
 ├── api.py                # komunikasi ke Wattpad public API
 ├── writers.py            # konversi teks & penulisan file .txt/.docx/.zip
 ├── cli.py                # tampilan terminal (rich), interaksi dengan user
+├── cli_args.py           # parsing argumen untuk mode non-interaktif
+├── config.py             # simpan preferensi user (folder simpan, format)
+├── progress.py           # cache progress unduhan untuk fitur resume
 ├── requirements.txt      # daftar dependency
 ├── pyproject.toml        # konfigurasi ruff (linting)
 ├── tests/
@@ -298,7 +353,9 @@ wattpdl/
 - `api.py` — tidak tahu apa-apa soal tampilan (`rich`), murni fetch data
 - `writers.py` — tidak melakukan request jaringan, murni konversi & tulis file
 - `cli.py` — semua interaksi dengan user & tampilan progress bar
-- `wattpdl.py` — menyatukan ketiganya, tanpa logika bisnis sendiri
+- `cli_args.py` — parsing & validasi argumen command line, tidak ada logika bisnis
+- `config.py` / `progress.py` — baca-tulis file JSON di `~/.wattpdl/`, tidak tahu soal CLI atau jaringan
+- `wattpdl.py` — menyatukan semuanya, tanpa logika bisnis sendiri
 
 ## 🧪 Testing
 

@@ -9,6 +9,9 @@ import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
+import cli_args
+import config as config_mod
+import progress as progress_mod
 from api import extract_story_id
 from cli import format_duration, parse_chapter_selection
 from writers import html_to_text, safe_filename
@@ -118,3 +121,128 @@ class TestFormatDuration:
 
     def test_zero(self):
         assert format_duration(0) == "0d"
+
+
+class TestConfig:
+    @pytest.fixture(autouse=True)
+    def isolate_config(self, tmp_path, monkeypatch):
+        # Jangan pernah baca/tulis ke config asli user saat testing
+        monkeypatch.setattr(config_mod, "CONFIG_DIR", tmp_path / ".wattpdl")
+        monkeypatch.setattr(config_mod, "CONFIG_FILE", tmp_path / ".wattpdl" / "config.json")
+
+    def test_load_config_returns_default_when_missing(self):
+        cfg = config_mod.load_config()
+        assert cfg == config_mod.DEFAULT_CONFIG
+
+    def test_save_and_load_roundtrip(self):
+        config_mod.save_config(save_dir="/tmp/downloads", file_format="2")
+        cfg = config_mod.load_config()
+        assert cfg["save_dir"] == "/tmp/downloads"
+        assert cfg["file_format"] == "2"
+
+    def test_save_config_merges_not_replaces(self):
+        config_mod.save_config(save_dir="/tmp/downloads")
+        config_mod.save_config(file_format="2")
+        cfg = config_mod.load_config()
+        assert cfg["save_dir"] == "/tmp/downloads"
+        assert cfg["file_format"] == "2"
+
+    def test_load_config_survives_corrupt_file(self):
+        config_mod.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        config_mod.CONFIG_FILE.write_text("bukan json valid {{{", encoding="utf-8")
+        cfg = config_mod.load_config()
+        assert cfg == config_mod.DEFAULT_CONFIG
+
+    def test_unknown_keys_are_ignored(self):
+        config_mod.save_config(save_dir="/tmp/x", key_aneh="harusnya_diabaikan")
+        cfg = config_mod.load_config()
+        assert "key_aneh" not in cfg
+
+
+class TestProgress:
+    @pytest.fixture(autouse=True)
+    def isolate_progress(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(progress_mod, "PROGRESS_DIR", tmp_path / "progress")
+
+    def test_load_progress_empty_when_missing(self):
+        assert progress_mod.load_progress("12345") == {}
+
+    def test_save_and_load_chapter(self):
+        progress_mod.save_chapter_progress("12345", 111, "Chapter 1", "Halo dunia")
+        data = progress_mod.load_progress("12345")
+        assert data["111"]["title"] == "Chapter 1"
+        assert data["111"]["text"] == "Halo dunia"
+
+    def test_multiple_chapters_accumulate(self):
+        progress_mod.save_chapter_progress("12345", 111, "Ch 1", "Teks 1")
+        progress_mod.save_chapter_progress("12345", 222, "Ch 2", "Teks 2")
+        data = progress_mod.load_progress("12345")
+        assert set(data.keys()) == {"111", "222"}
+
+    def test_different_stories_are_isolated(self):
+        progress_mod.save_chapter_progress("story-a", 1, "Ch 1", "A")
+        progress_mod.save_chapter_progress("story-b", 1, "Ch 1", "B")
+        assert progress_mod.load_progress("story-a")["1"]["text"] == "A"
+        assert progress_mod.load_progress("story-b")["1"]["text"] == "B"
+
+    def test_clear_progress_removes_file(self):
+        progress_mod.save_chapter_progress("12345", 111, "Ch 1", "Teks")
+        progress_mod.clear_progress("12345")
+        assert progress_mod.load_progress("12345") == {}
+
+    def test_clear_progress_on_nonexistent_is_safe(self):
+        progress_mod.clear_progress("tidak-pernah-ada")  # tidak boleh raise
+
+
+class TestCliArgs:
+    def test_default_is_interactive_mode(self):
+        args = cli_args.parse_args([])
+        assert args.id is None
+
+    def test_parses_non_interactive_args(self):
+        args = cli_args.parse_args([
+            "--id", "398440633", "--mode", "1", "--format", "docx",
+            "--output-dir", "/tmp/out",
+        ])
+        assert args.id == "398440633"
+        assert args.mode == "1"
+        assert args.format == "docx"
+        assert args.output_dir == "/tmp/out"
+
+    def test_parses_chapters_for_mode_3(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "3", "--chapters", "1,3,5-8"])
+        assert args.chapters == "1,3,5-8"
+
+    def test_parses_chapter_for_mode_4(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "4", "--chapter", "5"])
+        assert args.chapter == 5
+
+    def test_invalid_mode_rejected(self):
+        with pytest.raises(SystemExit):
+            cli_args.parse_args(["--id", "1", "--mode", "9"])
+
+    def test_invalid_format_rejected(self):
+        with pytest.raises(SystemExit):
+            cli_args.parse_args(["--id", "1", "--format", "pdf"])
+
+    def test_validate_requires_mode(self):
+        args = cli_args.parse_args(["--id", "1"])
+        with pytest.raises(ValueError):
+            cli_args.validate_non_interactive_args(args)
+
+    def test_validate_requires_chapters_for_mode_3(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "3"])
+        with pytest.raises(ValueError):
+            cli_args.validate_non_interactive_args(args)
+
+    def test_validate_requires_chapter_for_mode_4(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "4"])
+        with pytest.raises(ValueError):
+            cli_args.validate_non_interactive_args(args)
+
+    def test_validate_passes_for_mode_1(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1"])
+        cli_args.validate_non_interactive_args(args)  # tidak boleh raise
+
+    def test_format_to_code_mapping(self):
+        assert cli_args.FORMAT_TO_CODE == {"txt": "1", "docx": "2"}
