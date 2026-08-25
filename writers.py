@@ -42,19 +42,6 @@ def check_docx_available(console=None) -> None:
         sys.exit(1)
 
 
-def check_epub_available(console=None) -> None:
-    """Pastikan library EbookLib terinstall sebelum dipakai."""
-    try:
-        import ebooklib  # noqa: F401
-    except ImportError:
-        if console:
-            console.print("\n[danger]❌  Library 'EbookLib' belum terinstall.[/danger]")
-            console.print("    [muted]Jalankan:[/muted] [accent]pip install EbookLib[/accent]")
-        else:
-            print("Library 'EbookLib' belum terinstall. Jalankan: pip install EbookLib")
-        sys.exit(1)
-
-
 def write_combined_txt(path: pathlib.Path, title: str, author: str, story_id: str, results: list) -> None:
     """Tulis semua chapter yang diberikan ke satu file .txt."""
     with open(path, "w", encoding="utf-8") as f:
@@ -134,105 +121,6 @@ def write_separate_docx_zip(path: pathlib.Path, title: str, author: str, story_i
             _write_paragraphs(d, text)
             fname = tmp_path / f"{idx:03d}_{safe_filename(chapter_title)}.docx"
             d.save(str(fname))
-            chapter_files.append(fname)
-
-        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for f in chapter_files:
-                zf.write(f, arcname=f.name)
-
-
-def _text_to_epub_html(text: str) -> str:
-    """Ubah teks chapter (paragraf dipisah \\n\\n, baris dipisah \\n) jadi HTML aman untuk EPUB."""
-    paragraphs = []
-    for para in text.split("\n\n"):
-        para = para.strip()
-        if not para:
-            continue
-        lines = [html.escape(line) for line in para.split("\n")]
-        paragraphs.append(f"<p>{'<br/>'.join(lines)}</p>")
-    return "\n".join(paragraphs)
-
-
-def _build_epub_book(title: str, author: str, story_id: str, identifier_suffix: str = None):
-    """
-    Buat objek EpubBook kosong dengan metadata standar wattpdl.
-    identifier_suffix: opsional, dipakai untuk membuat identifier EPUB unik per file
-    (mis. per chapter) — tanpa ini, semua EPUB dari cerita yang sama akan punya
-    identifier persis sama, yang melanggar spec EPUB dan bisa bikin sebagian
-    e-reader (Calibre, Kobo) bentrok/menimpa entri satu sama lain.
-    """
-    from ebooklib import epub
-
-    identifier = f"wattpdl-{story_id}" if identifier_suffix is None else f"wattpdl-{story_id}-{identifier_suffix}"
-    book = epub.EpubBook()
-    book.set_identifier(identifier)
-    book.set_title(title)
-    book.set_language("id")
-    book.add_author(author)
-    return book, epub
-
-
-def write_combined_epub(path: pathlib.Path, title: str, author: str, story_id: str, results: list) -> None:
-    """Tulis semua chapter yang diberikan ke satu file .epub (satu buku, banyak bab)."""
-    book, epub = _build_epub_book(title, author, story_id)
-
-    intro = epub.EpubHtml(title="Info", file_name="000_info.xhtml", lang="id")
-    intro.content = (
-        f"<h1>{html.escape(title)}</h1>"
-        f"<p>oleh {html.escape(author)}</p>"
-        f"<p>Sumber: https://www.wattpad.com/story/{story_id}</p>"
-    )
-    book.add_item(intro)
-
-    epub_chapters = [intro]
-    for idx, chapter_title, text in results:
-        c = epub.EpubHtml(title=chapter_title, file_name=f"chap_{idx:03d}.xhtml", lang="id")
-        c.content = f"<h1>{html.escape(chapter_title)}</h1>{_text_to_epub_html(text)}"
-        book.add_item(c)
-        epub_chapters.append(c)
-
-    book.toc = tuple(epub_chapters)
-    book.add_item(epub.EpubNcx())
-    book.add_item(epub.EpubNav())
-    book.spine = ["nav"] + epub_chapters
-
-    epub.write_epub(str(path), book)
-
-
-def write_separate_epub_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list) -> None:
-    """Tulis tiap chapter sebagai file .epub terpisah (satu bab per buku), dikemas dalam satu .zip."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_path = pathlib.Path(tmpdir)
-
-        info_book, epub = _build_epub_book(title, author, story_id, identifier_suffix="info")
-        info_page = epub.EpubHtml(title="Info", file_name="info.xhtml", lang="id")
-        info_page.content = (
-            f"<h1>{html.escape(title)}</h1>"
-            f"<p>oleh {html.escape(author)}</p>"
-            f"<p>Sumber: https://www.wattpad.com/story/{story_id}</p>"
-        )
-        info_book.add_item(info_page)
-        info_book.toc = (info_page,)
-        info_book.add_item(epub.EpubNcx())
-        info_book.add_item(epub.EpubNav())
-        info_book.spine = ["nav", info_page]
-        info_file = tmp_path / "000_info.epub"
-        epub.write_epub(str(info_file), info_book)
-
-        chapter_files = [info_file]
-        for idx, chapter_title, text in results:
-            chap_book, _ = _build_epub_book(
-                f"{title} - {chapter_title}", author, story_id, identifier_suffix=f"ch{idx}"
-            )
-            page = epub.EpubHtml(title=chapter_title, file_name="chapter.xhtml", lang="id")
-            page.content = f"<h1>{html.escape(chapter_title)}</h1>{_text_to_epub_html(text)}"
-            chap_book.add_item(page)
-            chap_book.toc = (page,)
-            chap_book.add_item(epub.EpubNcx())
-            chap_book.add_item(epub.EpubNav())
-            chap_book.spine = ["nav", page]
-            fname = tmp_path / f"{idx:03d}_{safe_filename(chapter_title)}.epub"
-            epub.write_epub(str(fname), chap_book)
             chapter_files.append(fname)
 
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:

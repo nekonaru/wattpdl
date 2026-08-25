@@ -17,10 +17,13 @@ from rich.align import Align
 from rich.panel import Panel
 from rich.table import Table
 
-from . import api, cli, cli_args, writers
-from . import config as config_mod
-from . import progress as progress_mod
-from .cli import console, step_rule
+import api
+import cli
+import cli_args
+import config as config_mod
+import progress as progress_mod
+import writers
+from cli import console, step_rule
 
 
 def resolve_save_dir(custom_path: str, config: dict) -> pathlib.Path:
@@ -36,12 +39,7 @@ def resolve_save_dir(custom_path: str, config: dict) -> pathlib.Path:
         save_dir.mkdir(parents=True, exist_ok=True)
     except OSError as e:
         console.print(f"[danger]❌  Folder tidak bisa dibuat:[/danger] {e}")
-        try:
-            fallback = cli.get_default_download_dir()
-        except OSError as e2:
-            console.print(f"[danger]❌  Folder default juga tidak bisa dibuat:[/danger] {e2}")
-            console.print("    [muted]Coba jalankan ulang dengan folder simpan lain yang kamu punya izin tulis di sana.[/muted]")
-            sys.exit(1)
+        fallback = cli.get_default_download_dir()
         console.print(f"    [muted]Menggunakan folder default: {fallback}[/muted]")
         save_dir = fallback
     return save_dir
@@ -75,7 +73,7 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
     """Alur unduh bersama untuk mode interaktif maupun non-interaktif."""
     indexed_parts = resolve_chapters(mode, parts, chapters_arg, chapter_arg)
 
-    ext = {"2": "docx", "3": "epub"}.get(file_format, "txt")
+    ext = "docx" if file_format == "2" else "txt"
     base_name = writers.safe_filename(title)
 
     if mode == "1":
@@ -99,15 +97,11 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
     if mode == "2":
         if file_format == "2":
             writers.write_separate_docx_zip(full_path, title, author, story_id, results)
-        elif file_format == "3":
-            writers.write_separate_epub_zip(full_path, title, author, story_id, results)
         else:
             writers.write_separate_zip(full_path, title, author, story_id, results)
     else:
         if file_format == "2":
             writers.write_combined_docx(full_path, title, author, story_id, results)
-        elif file_format == "3":
-            writers.write_combined_epub(full_path, title, author, story_id, results)
         else:
             writers.write_combined_txt(full_path, title, author, story_id, results)
 
@@ -158,9 +152,9 @@ def fetch_story_or_exit(story_id: str):
     with console.status(f"[accent]Mengambil info cerita (ID: {story_id})…[/accent]", spinner="dots"):
         try:
             title, author, parts = api.get_story_info(story_id)
-        except requests.RequestException as e:
+        except requests.HTTPError as e:
             console.print(f"[danger]❌  Gagal mengakses API Wattpad:[/danger] {e}")
-            console.print("    [muted]Pastikan koneksi internet stabil, dan ID/link benar serta cerita tidak di-private.[/muted]")
+            console.print("    [muted]Pastikan ID/link benar dan cerita tidak di-private.[/muted]")
             sys.exit(1)
 
     if not parts:
@@ -170,7 +164,6 @@ def fetch_story_or_exit(story_id: str):
 
 
 def run_non_interactive(args):
-    cli.reset_steps()
     try:
         cli_args.validate_non_interactive_args(args)
     except ValueError as e:
@@ -198,8 +191,6 @@ def run_non_interactive(args):
     file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
     if file_format == "2":
         writers.check_docx_available(console)
-    elif file_format == "3":
-        writers.check_epub_available(console)
 
     save_dir = resolve_save_dir(args.output_dir, config)
 
@@ -210,7 +201,6 @@ def run_non_interactive(args):
 
 
 def run_interactive():
-    cli.reset_steps()
     console.print()
     console.print(Align.center(cli.LOGO))
     console.print(
@@ -257,19 +247,16 @@ def run_interactive():
     format_table.add_column(style="value")
     format_table.add_row("1", "Teks polos (.txt)")
     format_table.add_row("2", "Dokumen Word (.docx)")
-    format_table.add_row("3", "Ebook (.epub)")
     console.print()
     console.print(format_table)
 
     file_format = cli.Prompt.ask(
         "\n[value]Pilih format file[/value]",
-        choices=["1", "2", "3"],
+        choices=["1", "2"],
         default=config.get("file_format", "1"),
     )
     if file_format == "2":
         writers.check_docx_available(console)
-    elif file_format == "3":
-        writers.check_epub_available(console)
 
     step_rule("Folder Penyimpanan")
     default_dir = pathlib.Path(config["save_dir"]) if config.get("save_dir") else cli.get_default_download_dir()

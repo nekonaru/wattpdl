@@ -11,7 +11,7 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULT_CONFIG = {
     "save_dir": None,     # path folder simpan terakhir, None = pakai folder Downloads
-    "file_format": "1",   # "1" = .txt, "2" = .docx, "3" = .epub
+    "file_format": "1",   # "1" = .txt, "2" = .docx
 }
 
 

@@ -1,18 +1,8 @@
 <div align="center">
 
-```
-                         ██╗    ██╗ █████╗ ████████╗████████╗██████╗ ██████╗ ██╗     
-                         ██║    ██║██╔══██╗╚══██╔══╝╚══██╔══╝██╔══██╗██╔══██╗██║     
-                         ██║ █╗ ██║███████║   ██║      ██║   ██████╔╝██║  ██║██║     
-                         ██║███╗██║██╔══██║   ██║      ██║   ██╔═══╝ ██║  ██║██║     
-                         ╚███╔███╔╝██║  ██║   ██║      ██║   ██║     ██████╔╝███████╗
-                         ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚═════╝ ╚══════╝
-```
+# 📖 WattPDL — Wattpad Story Downloader
 
-### 📖 Wattpad Story Downloader
 **Simpan cerita favoritmu jadi file `.txt`, `.docx`, atau `.epub`, lengkap atau per chapter, secara offline.**
-
-<br>
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![PyPI](https://img.shields.io/pypi/v/wattpdl?style=flat-square&color=blue)

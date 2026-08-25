@@ -34,19 +34,6 @@ def extract_story_id(user_input: str) -> str:
         return match.group(1)
     if user_input.isdigit():
         return user_input
-
-    # Link share/mobile per-chapter Wattpad (mis. wattpad.com/1234567-judul-part)
-    # tidak mengandung "story/" dan angkanya adalah ID chapter (part), bukan ID cerita —
-    # jadi tidak bisa langsung dipakai di sini. Beri pesan yang jelas alih-alih pesan generik.
-    chapter_link = re.search(r"wattpad\.com/(\d+)-", user_input)
-    if chapter_link:
-        raise ValueError(
-            "Link ini mengarah ke satu chapter (part), bukan ke halaman cerita.\n"
-            "Buka chapter tersebut di Wattpad, lalu pakai link/judul cerita di bagian atas "
-            "halaman (mengandung '/story/'), atau salin ID cerita dari sana.\n"
-            "Contoh link cerita : https://www.wattpad.com/story/398440633-judul-cerita"
-        )
-
     raise ValueError(
         "Link atau ID cerita tidak dikenali.\n"
         "Contoh link : https://www.wattpad.com/story/398440633-judul-cerita\n"
@@ -73,9 +60,6 @@ def get_chapter_html(part_id: int, retries: int = MAX_RETRIES, on_retry=None) ->
     tiap kali percobaan gagal — dipakai CLI untuk menampilkan pesan warning
     tanpa modul ini perlu tahu soal `rich`/console.
     """
-    if retries < 1:
-        raise ValueError("retries harus >= 1")
-
     url = CHAPTER_TEXT_URL.format(part_id=part_id)
     for attempt in range(1, retries + 1):
         try:
@@ -89,3 +73,4 @@ def get_chapter_html(part_id: int, retries: int = MAX_RETRIES, on_retry=None) ->
             if on_retry:
                 on_retry(attempt, retries, wait, e)
             time.sleep(wait)
+    return ""

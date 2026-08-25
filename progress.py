@@ -36,7 +36,7 @@ def save_chapter_progress(story_id: str, part_id, title: str, text: str) -> None
     data = load_progress(story_id)
     data[str(part_id)] = {"title": title, "text": text}
     PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
-    _progress_path(story_id).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    _progress_path(story_id).write_text(json.dumps(data), encoding="utf-8")
 
 
 def clear_progress(story_id: str) -> None:

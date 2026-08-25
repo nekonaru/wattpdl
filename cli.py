@@ -20,7 +20,7 @@ from rich.prompt import Prompt
 from rich.rule import Rule
 from rich.theme import Theme
 
-from . import api
+import api
 
 THEME = Theme({
     "primary":   "bold cyan",
@@ -45,13 +45,6 @@ LOGO = r"""
 
 _step_counter = {"n": 0}
 _CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
-
-
-def reset_steps() -> None:
-    """Reset nomor tahap ke awal. Dipanggil tiap sesi (interaktif/non-interaktif) baru dimulai,
-    supaya penomoran tidak terus menumpuk kalau app dipakai berkali-kali dalam satu proses Python
-    (misalnya saat test, atau dipanggil berulang lewat import)."""
-    _step_counter["n"] = 0
 
 
 def step_rule(title: str) -> None:
@@ -175,8 +168,8 @@ def download_chapters(indexed_parts: list, story_id: str = None) -> tuple:
     Return: (results, failed_chapters)
       results = list of (nomor_chapter, judul_chapter, teks)
     """
-    from . import progress as progress_mod
-    from .writers import html_to_text
+    import progress as progress_mod
+    from writers import html_to_text
 
     results = []
     failed = []

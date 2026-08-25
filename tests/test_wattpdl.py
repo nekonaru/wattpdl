@@ -7,11 +7,14 @@ import pathlib
 import tempfile
 
 import pytest
+import requests
 
+from wattpdl import app as app_mod
+from wattpdl import cli as cli_mod
 from wattpdl import cli_args
 from wattpdl import config as config_mod
 from wattpdl import progress as progress_mod
-from wattpdl.api import extract_story_id
+from wattpdl.api import extract_story_id, get_chapter_html
 from wattpdl.cli import format_duration, parse_chapter_selection
 from wattpdl.writers import html_to_text, safe_filename, write_combined_epub, write_separate_epub_zip
 
@@ -34,6 +37,12 @@ class TestExtractStoryId:
     def test_empty_input_raises(self):
         with pytest.raises(ValueError):
             extract_story_id("")
+
+    def test_chapter_link_raises_specific_message(self):
+        # URL per-chapter (format mobile/share, tanpa "story/") harus dikenali
+        # dan dikasih pesan yang jelas, bukan pesan generik "tidak dikenali".
+        with pytest.raises(ValueError, match="chapter"):
+            extract_story_id("https://www.wattpad.com/1234567-judul-part")
 
 
 class TestSafeFilename:
@@ -291,3 +300,83 @@ class TestEpubWriters:
             assert any(n.endswith("_Chapter_1_Awal.epub") for n in names)
             assert any(n.endswith("_Chapter_2_Tengah.epub") for n in names)
             assert "000_info.epub" in names
+
+    def test_separate_epub_zip_has_unique_identifiers(self, tmp_path, sample_results):
+        # Bug 2: identifier EPUB dulu identik untuk semua file per-chapter.
+        # Sekarang harus unik per file (termasuk file info).
+        import zipfile
+
+        from ebooklib import epub
+
+        out = tmp_path / "cerita_terpisah.zip"
+        write_separate_epub_zip(out, "Judul", "Penulis", "999", sample_results)
+
+        identifiers = []
+        with zipfile.ZipFile(out) as zf:
+            for name in zf.namelist():
+                extracted = tmp_path / name
+                extracted.write_bytes(zf.read(name))
+                book = epub.read_epub(str(extracted))
+                identifiers.append(book.get_metadata("DC", "identifier")[0][0])
+
+        assert len(identifiers) == len(set(identifiers)), f"Identifier tidak unik: {identifiers}"
+
+
+class TestGetChapterHtml:
+    def test_retries_zero_raises_value_error(self):
+        # Bug 3: sebelumnya retries=0 diam-diam mengembalikan string kosong.
+        with pytest.raises(ValueError, match="retries"):
+            get_chapter_html(123, retries=0)
+
+    def test_negative_retries_raises_value_error(self):
+        with pytest.raises(ValueError, match="retries"):
+            get_chapter_html(123, retries=-1)
+
+
+class TestFetchStoryOrExit:
+    def test_connection_error_exits_with_friendly_message(self, monkeypatch):
+        # Bug 1: dulu hanya requests.HTTPError yang ditangkap, ConnectionError/Timeout
+        # akan lolos jadi traceback mentah. Sekarang harus exit rapi (SystemExit),
+        # bukan raise ConnectionError langsung ke pemanggil.
+        def fake_get_story_info(story_id):
+            raise requests.ConnectionError("koneksi putus")
+
+        monkeypatch.setattr(app_mod.api, "get_story_info", fake_get_story_info)
+        with pytest.raises(SystemExit):
+            app_mod.fetch_story_or_exit("12345")
+
+    def test_timeout_exits_with_friendly_message(self, monkeypatch):
+        def fake_get_story_info(story_id):
+            raise requests.Timeout("waktu habis")
+
+        monkeypatch.setattr(app_mod.api, "get_story_info", fake_get_story_info)
+        with pytest.raises(SystemExit):
+            app_mod.fetch_story_or_exit("12345")
+
+
+class TestResolveSaveDir:
+    def test_fallback_oserror_exits_cleanly(self, monkeypatch, tmp_path):
+        # Bug 4: fallback ke get_default_download_dir() dulu bisa raise OSError
+        # tanpa tertangkap. Sekarang harus exit rapi (SystemExit), bukan crash mentah.
+        def fail_mkdir(self, parents=False, exist_ok=False):
+            raise OSError("folder tidak writable")
+
+        def fail_default_dir():
+            raise OSError("home dir tidak writable")
+
+        monkeypatch.setattr(pathlib.Path, "mkdir", fail_mkdir)
+        monkeypatch.setattr(app_mod.cli, "get_default_download_dir", fail_default_dir)
+
+        with pytest.raises(SystemExit):
+            app_mod.resolve_save_dir(str(tmp_path / "subfolder"), {})
+
+
+class TestResetSteps:
+    def test_reset_steps_resets_counter(self):
+        cli_mod.reset_steps()
+        cli_mod.step_rule("Langkah Satu")
+        cli_mod.step_rule("Langkah Dua")
+        assert cli_mod._step_counter["n"] == 2
+
+        cli_mod.reset_steps()
+        assert cli_mod._step_counter["n"] == 0
