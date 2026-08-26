@@ -5,6 +5,7 @@ Berisi semua fungsi yang mengambil data mentah dari internet
 """
 import re
 import time
+from typing import Optional
 
 import requests
 
@@ -80,7 +81,7 @@ def get_story_info(story_id: str) -> tuple[str, str, list, dict]:
     return title, author, parts, meta
 
 
-def download_cover_image(cover_url: str) -> bytes | None:
+def download_cover_image(cover_url: str) -> Optional[bytes]:
     """
     Unduh gambar sampul cerita. Dipakai untuk menyisipkan cover di file .docx/.epub.
     Kegagalan di sini tidak boleh menghentikan proses unduh cerita — cover cuma

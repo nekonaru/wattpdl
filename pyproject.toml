@@ -58,9 +58,12 @@ select = [
     "I",   # isort (urutan import)
     "UP",  # pyupgrade
     "B",   # flake8-bugbear
+    "FA",  # flake8-future-annotations — tangkap sintaks PEP 604 (`X | Y`) yang
+           # tidak kompatibel dengan target-version py39 (baru didukung dari 3.10)
 ]
 ignore = [
-    "E501",  # baris panjang ditoleransi untuk string tabel/UI rich
+    "E501",   # baris panjang ditoleransi untuk string tabel/UI rich
+    "FA100",  # saran modernisasi Optional[X] -> X | None; bukan bug, biarkan Optional eksplisit
 ]
 
 [tool.ruff.lint.per-file-ignores]
