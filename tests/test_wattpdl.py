@@ -107,6 +107,24 @@ class TestParseChapterSelection:
         with pytest.raises(ValueError):
             parse_chapter_selection("50,60", total=10)
 
+    def test_huge_range_does_not_hang(self):
+        # Bug: dulu range(start, end+1) dibuat penuh SEBELUM difilter ke [1, total],
+        # jadi rentang seperti "1-500000000" bikin CLI hang lama walau cerita cuma
+        # 10 chapter. Sekarang harus dipangkas dulu, jadi selesai hampir instan
+        # berapa pun besar angka yang diketik user.
+        import time
+
+        start = time.time()
+        result = parse_chapter_selection("1-999999999999999", total=10)
+        elapsed = time.time() - start
+
+        assert result == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        assert elapsed < 1.0, f"parse_chapter_selection terlalu lambat: {elapsed:.2f}s"
+
+    def test_huge_range_partially_overlapping_total(self):
+        # Batas bawah normal, batas atas raksasa -> tetap harus dipangkas ke total.
+        assert parse_chapter_selection("8-999999999999999", total=10) == [8, 9, 10]
+
 
 class TestHtmlToText:
     def test_strips_paragraph_tags(self):

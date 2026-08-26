@@ -125,7 +125,14 @@ def parse_chapter_selection(raw: str, total: int) -> list:
             start, end = int(start_s), int(end_s)
             if start > end:
                 start, end = end, start
-            selected.update(n for n in range(start, end + 1) if 1 <= n <= total)
+            # Pangkas dulu ke rentang valid [1, total] SEBELUM bikin range().
+            # Kalau tidak, range(start, end+1) akan mengiterasi tiap angka dari
+            # start ke end walau nantinya difilter — untuk angka besar (mis. salah
+            # ketik kelebihan nol, atau lewat --chapters di script otomatisasi)
+            # ini bisa bikin CLI hang lama padahal ceritanya cuma beberapa chapter.
+            lo, hi = max(start, 1), min(end, total)
+            if lo <= hi:
+                selected.update(range(lo, hi + 1))
         else:
             if not chunk.isdigit():
                 raise ValueError(f"'{chunk}' bukan angka yang valid.")
