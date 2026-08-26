@@ -12,7 +12,7 @@ MODE_HELP = (
     "4 = pilih 1 chapter saja (perlu --chapter)"
 )
 
-FORMAT_TO_CODE = {"txt": "1", "docx": "2", "epub": "3"}
+FORMAT_TO_CODE = {"txt": "1", "docx": "2", "epub": "3", "md": "4"}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--mode", choices=["1", "2", "3", "4"], help=MODE_HELP)
     parser.add_argument(
-        "--format", choices=["txt", "docx", "epub"],
+        "--format", choices=["txt", "docx", "epub", "md"],
         help="Format file output. Default: dari config tersimpan, atau txt kalau belum ada.",
     )
     parser.add_argument(
@@ -44,6 +44,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-dir", metavar="PATH",
         help="Folder penyimpanan. Default: dari config tersimpan, atau folder Downloads.",
+    )
+    parser.add_argument(
+        "--skip-existing", action="store_true",
+        help="Lewati unduhan kalau file output tujuan sudah ada, alih-alih menimpanya.",
+    )
+    parser.add_argument(
+        "--no-cover", action="store_true",
+        help="Jangan sisipkan gambar sampul cerita ke file .docx/.epub.",
     )
     return parser
 

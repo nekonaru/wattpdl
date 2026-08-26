@@ -47,6 +47,13 @@ def resolve_save_dir(custom_path: str, config: dict) -> pathlib.Path:
     return save_dir
 
 
+def should_skip_existing(full_path: pathlib.Path, skip_existing: bool) -> bool:
+    """True kalau file output sudah ada dan mode skip-existing aktif —
+    dipakai mode non-interaktif supaya tidak menimpa/mengunduh ulang tanpa perlu.
+    Dipisah jadi fungsi murni supaya gampang ditest tanpa perlu mock filesystem penuh."""
+    return skip_existing and full_path.exists()
+
+
 def resolve_chapters(mode: str, parts: list, chapters_arg: str = None, chapter_arg: int = None) -> list:
     """Tentukan chapter yang diunduh, dari argumen (non-interaktif) atau prompt (interaktif)."""
     if mode == "3":
@@ -71,11 +78,12 @@ def resolve_chapters(mode: str, parts: list, chapters_arg: str = None, chapter_a
 
 
 def run_download(story_id, title, author, parts, mode, file_format, save_dir,
-                  chapters_arg=None, chapter_arg=None):
+                  chapters_arg=None, chapter_arg=None, meta=None, cover_bytes=None,
+                  skip_existing=False, interactive=False):
     """Alur unduh bersama untuk mode interaktif maupun non-interaktif."""
     indexed_parts = resolve_chapters(mode, parts, chapters_arg, chapter_arg)
 
-    ext = {"2": "docx", "3": "epub"}.get(file_format, "txt")
+    ext = {"2": "docx", "3": "epub", "4": "md"}.get(file_format, "txt")
     base_name = writers.safe_filename(title)
 
     if mode == "1":
@@ -89,6 +97,18 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         chap_title = writers.safe_filename(chap_part.get("title", f"Chapter {chap_no}"))
         full_path = save_dir / f"{base_name}_Ch{chap_no:03d}_{chap_title}.{ext}"
 
+    if full_path.exists():
+        if interactive:
+            if not cli.confirm_overwrite(full_path):
+                console.print("[muted]Dilewati — file yang sudah ada tidak diubah.[/muted]\n")
+                return
+        elif should_skip_existing(full_path, skip_existing):
+            console.print(
+                f"[muted]⏭  Dilewati — file sudah ada:[/muted] [accent]{full_path}[/accent]\n"
+                "    [muted](hapus --skip-existing kalau mau menimpanya)[/muted]"
+            )
+            return
+
     console.print(f"\n[value]💾 File akan disimpan di:[/value] [accent]{full_path}[/accent]")
 
     step_rule("Mengunduh Chapter")
@@ -98,16 +118,24 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
 
     if mode == "2":
         if file_format == "2":
-            writers.write_separate_docx_zip(full_path, title, author, story_id, results)
+            writers.write_separate_docx_zip(full_path, title, author, story_id, results,
+                                             meta=meta, cover_bytes=cover_bytes)
         elif file_format == "3":
-            writers.write_separate_epub_zip(full_path, title, author, story_id, results)
+            writers.write_separate_epub_zip(full_path, title, author, story_id, results,
+                                             meta=meta, cover_bytes=cover_bytes)
+        elif file_format == "4":
+            writers.write_separate_md_zip(full_path, title, author, story_id, results, meta=meta)
         else:
             writers.write_separate_zip(full_path, title, author, story_id, results)
     else:
         if file_format == "2":
-            writers.write_combined_docx(full_path, title, author, story_id, results)
+            writers.write_combined_docx(full_path, title, author, story_id, results,
+                                         meta=meta, cover_bytes=cover_bytes)
         elif file_format == "3":
-            writers.write_combined_epub(full_path, title, author, story_id, results)
+            writers.write_combined_epub(full_path, title, author, story_id, results,
+                                         meta=meta, cover_bytes=cover_bytes)
+        elif file_format == "4":
+            writers.write_combined_md(full_path, title, author, story_id, results, meta=meta)
         else:
             writers.write_combined_txt(full_path, title, author, story_id, results)
 
@@ -157,7 +185,7 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
 def fetch_story_or_exit(story_id: str):
     with console.status(f"[accent]Mengambil info cerita (ID: {story_id})…[/accent]", spinner="dots"):
         try:
-            title, author, parts = api.get_story_info(story_id)
+            title, author, parts, meta = api.get_story_info(story_id)
         except requests.RequestException as e:
             console.print(f"[danger]❌  Gagal mengakses API Wattpad:[/danger] {e}")
             console.print("    [muted]Pastikan koneksi internet stabil, dan ID/link benar serta cerita tidak di-private.[/muted]")
@@ -166,7 +194,7 @@ def fetch_story_or_exit(story_id: str):
     if not parts:
         console.print("[danger]❌  Tidak ada chapter ditemukan. Cek lagi ID/link ceritanya.[/danger]")
         sys.exit(1)
-    return title, author, parts
+    return title, author, parts, meta
 
 
 def run_non_interactive(args):
@@ -184,7 +212,7 @@ def run_non_interactive(args):
         sys.exit(1)
 
     config = config_mod.load_config()
-    title, author, parts = fetch_story_or_exit(story_id)
+    title, author, parts, meta = fetch_story_or_exit(story_id)
 
     step_rule("Info Cerita")
     info_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
@@ -203,9 +231,14 @@ def run_non_interactive(args):
 
     save_dir = resolve_save_dir(args.output_dir, config)
 
+    cover_bytes = None
+    if not args.no_cover and file_format in ("2", "3") and meta.get("cover_url"):
+        cover_bytes = api.download_cover_image(meta["cover_url"])
+
     run_download(
         story_id, title, author, parts, args.mode, file_format, save_dir,
         chapters_arg=args.chapters, chapter_arg=args.chapter,
+        meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
     )
 
 
@@ -229,7 +262,7 @@ def run_interactive():
         console.print(f"\n[danger]❌  {e}[/danger]")
         sys.exit(1)
 
-    title, author, parts = fetch_story_or_exit(story_id)
+    title, author, parts, meta = fetch_story_or_exit(story_id)
 
     step_rule("Info Cerita")
     info_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
@@ -258,18 +291,23 @@ def run_interactive():
     format_table.add_row("1", "Teks polos (.txt)")
     format_table.add_row("2", "Dokumen Word (.docx)")
     format_table.add_row("3", "Ebook (.epub)")
+    format_table.add_row("4", "Markdown (.md)")
     console.print()
     console.print(format_table)
 
     file_format = cli.Prompt.ask(
         "\n[value]Pilih format file[/value]",
-        choices=["1", "2", "3"],
+        choices=["1", "2", "3", "4"],
         default=config.get("file_format", "1"),
     )
     if file_format == "2":
         writers.check_docx_available(console)
     elif file_format == "3":
         writers.check_epub_available(console)
+
+    cover_bytes = None
+    if file_format in ("2", "3") and meta.get("cover_url"):
+        cover_bytes = api.download_cover_image(meta["cover_url"])
 
     step_rule("Folder Penyimpanan")
     default_dir = pathlib.Path(config["save_dir"]) if config.get("save_dir") else cli.get_default_download_dir()
@@ -281,7 +319,8 @@ def run_interactive():
     ).strip()
     save_dir = resolve_save_dir(custom, config)
 
-    run_download(story_id, title, author, parts, mode, file_format, save_dir)
+    run_download(story_id, title, author, parts, mode, file_format, save_dir,
+                 meta=meta, cover_bytes=cover_bytes, interactive=True)
 
 
 def main():

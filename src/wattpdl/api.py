@@ -18,7 +18,8 @@ HEADERS = {
 
 STORY_INFO_URL = (
     "https://www.wattpad.com/api/v3/stories/{story_id}"
-    "?fields=id,title,user(name),numParts,parts(id,title)"
+    "?fields=id,title,description,cover,tags,createDate,"
+    "user(name),numParts,parts(id,title)"
 )
 CHAPTER_TEXT_URL = "https://www.wattpad.com/apiv2/storytext?id={part_id}"
 
@@ -54,8 +55,15 @@ def extract_story_id(user_input: str) -> str:
     )
 
 
-def get_story_info(story_id: str) -> tuple[str, str, list]:
-    """Ambil metadata cerita: judul, penulis, dan daftar chapter."""
+def get_story_info(story_id: str) -> tuple[str, str, list, dict]:
+    """
+    Ambil metadata cerita: judul, penulis, daftar chapter, dan metadata tambahan.
+    Metadata tambahan (dict `meta`) dipakai untuk memperkaya file .docx/.epub:
+      - cover_url    : URL gambar sampul cerita (atau None kalau tidak ada)
+      - description  : sinopsis/deskripsi cerita
+      - tags         : list genre/tag cerita
+      - create_date  : tanggal cerita pertama dibuat, apa adanya dari API
+    """
     url = STORY_INFO_URL.format(story_id=story_id)
     resp = requests.get(url, headers=HEADERS, timeout=20)
     resp.raise_for_status()
@@ -63,7 +71,30 @@ def get_story_info(story_id: str) -> tuple[str, str, list]:
     title = data.get("title", f"story_{story_id}")
     author = data.get("user", {}).get("name", "unknown")
     parts = data.get("parts", [])
-    return title, author, parts
+    meta = {
+        "cover_url": data.get("cover") or None,
+        "description": (data.get("description") or "").strip(),
+        "tags": [t for t in (data.get("tags") or []) if t],
+        "create_date": data.get("createDate", ""),
+    }
+    return title, author, parts, meta
+
+
+def download_cover_image(cover_url: str) -> bytes | None:
+    """
+    Unduh gambar sampul cerita. Dipakai untuk menyisipkan cover di file .docx/.epub.
+    Kegagalan di sini tidak boleh menghentikan proses unduh cerita — cover cuma
+    pemanis, bukan bagian penting — jadi selalu kembalikan None saat gagal,
+    tidak raise exception.
+    """
+    if not cover_url:
+        return None
+    try:
+        resp = requests.get(cover_url, headers=HEADERS, timeout=20)
+        resp.raise_for_status()
+        return resp.content
+    except requests.RequestException:
+        return None
 
 
 def get_chapter_html(part_id: int, retries: int = MAX_RETRIES, on_retry=None) -> str:

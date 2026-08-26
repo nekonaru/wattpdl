@@ -2,7 +2,7 @@
 
 # 📖 WattPDL — Wattpad Story Downloader
 
-**Simpan cerita favoritmu jadi file `.txt`, `.docx`, atau `.epub`, lengkap atau per chapter, secara offline.**
+**Simpan cerita favoritmu jadi file `.txt`, `.docx`, `.epub`, atau `.md`, lengkap atau per chapter, secara offline.**
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![PyPI](https://img.shields.io/pypi/v/wattpdl?style=flat-square&color=blue)
@@ -15,7 +15,7 @@
 
 ## ✨ Tentang Project
 
-**WattPDL** adalah script Python ringan yang mengunduh chapter dari cerita Wattpad pilihanmu, lalu menyimpannya sebagai file `.txt` polos, dokumen Word `.docx`, atau ebook `.epub` yang bersih dan rapi. Kamu bisa unduh seluruh cerita jadi satu file, semua chapter terpisah dalam satu `.zip`, atau cukup chapter tertentu yang kamu pilih sendiri. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
+**WattPDL** adalah script Python ringan yang mengunduh chapter dari cerita Wattpad pilihanmu, lalu menyimpannya sebagai file `.txt` polos, dokumen Word `.docx`, ebook `.epub`, atau Markdown `.md` yang bersih dan rapi. Kamu bisa unduh seluruh cerita jadi satu file, semua chapter terpisah dalam satu `.zip`, atau cukup chapter tertentu yang kamu pilih sendiri — lengkap dengan cover cerita yang otomatis disisipkan ke `.docx`/`.epub`. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
 
 > _"Karena cerita yang bagus layak dibaca kapan saja, bahkan tanpa internet."_
 
@@ -25,7 +25,10 @@
 |-------|------------|
 | 🎨 **Tampilan CLI rapi** | Panel, tabel info cerita, dan warna berkat library `rich` |
 | 🧩 **4 mode unduh** | Semua jadi 1 file, semua terpisah dalam `.zip`, pilih beberapa chapter, atau cukup 1 chapter |
-| 📄 **3 pilihan format** | Simpan sebagai `.txt` polos, dokumen Word `.docx`, atau ebook `.epub` |
+| 📄 **4 pilihan format** | Simpan sebagai `.txt` polos, dokumen Word `.docx`, ebook `.epub`, atau Markdown `.md` |
+| 🖼️ **Cover otomatis** | Gambar sampul cerita disisipkan ke file `.docx`/`.epub` (bisa dimatikan lewat `--no-cover`) |
+| 📚 **Metadata EPUB lengkap** | Genre/tag, deskripsi cerita, dan tanggal terbit ikut tersimpan sebagai metadata buku |
+| ⏭️ **Skip file yang sudah ada** | Lewati unduhan kalau file output sudah ada di folder tujuan, tidak menimpa tanpa sengaja |
 | 📁 **Pilih folder simpan** | Default ke folder `Downloads` sistem, bisa dikustomisasi |
 | 🔄 **Auto-retry** | Chapter gagal dicoba ulang hingga 3× sebelum dilewati |
 | 📊 **Progress bar animasi** | Spinner, persentase, jumlah chapter, dan estimasi waktu tersisa |
@@ -178,8 +181,9 @@ Pilih mode [1/2/3/4] (1):
   1  Teks polos (.txt)
   2  Dokumen Word (.docx)
   3  Ebook (.epub)
+  4  Markdown (.md)
 
-Pilih format file [1/2/3] (1):
+Pilih format file [1/2/3/4] (1):
 ```
 
 **Pilih folder penyimpanan:**
@@ -215,6 +219,8 @@ Jalankan lagi dengan cerita yang sama (ID/link sama), dan WattPDL akan:
 
 File progress otomatis dihapus setelah semua chapter berhasil diunduh dalam satu sesi. Kalau mau paksa unduh ulang dari awal, hapus manual folder `~/.wattpdl/progress/`.
 
+> **Beda dengan `--skip-existing`:** resume di atas bekerja di level *chapter* (melanjutkan unduhan yang terhenti di tengah jalan). Sedangkan `--skip-existing` bekerja di level *file output* — kalau file akhirnya (misal `Judul_Cerita.epub`) sudah ada di folder tujuan, seluruh proses unduh dilewati sama sekali, cocok dipakai bareng `cron`/Task Scheduler supaya tidak mengunduh ulang cerita yang sudah pernah selesai diunduh.
+
 ## ⚙️ Preferensi Tersimpan
 
 Folder simpan dan format file terakhir yang kamu pilih otomatis tersimpan di `~/.wattpdl/config.json`, dan dipakai lagi sebagai default di sesi berikutnya — gak perlu isi ulang tiap kali jalanin script.
@@ -233,10 +239,12 @@ wattpdl --id 398440633 --mode 1 --format docx
 |---|---|
 | `--id` | ID atau link cerita Wattpad. Mengisi ini mengaktifkan mode non-interaktif. |
 | `--mode {1,2,3,4}` | 1 = semua jadi 1 file, 2 = semua terpisah `.zip`, 3 = pilih beberapa chapter, 4 = pilih 1 chapter |
-| `--format {txt,docx,epub}` | Format file output. Default: dari config tersimpan, atau `txt` |
+| `--format {txt,docx,epub,md}` | Format file output. Default: dari config tersimpan, atau `txt` |
 | `--chapters` | Nomor chapter untuk `--mode 3`, contoh: `1,3,5-8` |
 | `--chapter` | Nomor chapter untuk `--mode 4`, contoh: `5` |
 | `--output-dir` | Folder penyimpanan custom. Default: dari config tersimpan, atau folder `Downloads` |
+| `--skip-existing` | Lewati unduhan kalau file output tujuan sudah ada, alih-alih menimpanya |
+| `--no-cover` | Jangan sisipkan gambar sampul cerita ke file `.docx`/`.epub` |
 
 **Contoh lain:**
 
@@ -253,6 +261,9 @@ wattpdl --id 398440633 --mode 4 --chapter 10 --output-dir "D:\Cerita Wattpad"
 # Unduh semua chapter jadi 1 ebook .epub
 wattpdl --id 398440633 --mode 1 --format epub
 
+# Unduh sebagai Markdown, lewati kalau filenya sudah ada (cocok untuk dijadwalkan)
+wattpdl --id 398440633 --mode 1 --format md --skip-existing
+
 # Lihat semua opsi
 wattpdl --help
 ```
@@ -261,12 +272,12 @@ wattpdl --help
 
 Nama dan bentuk file yang dihasilkan tergantung mode & format yang kamu pilih:
 
-| Mode | Format `.txt` | Format `.docx` | Format `.epub` |
-|------|----------------|-----------------|------------------|
-| 1 - Semua, gabungan | `Judul_Cerita.txt` | `Judul_Cerita.docx` | `Judul_Cerita.epub` |
-| 2 - Semua, terpisah | `Judul_Cerita.zip` (isi: `.txt` per chapter) | `Judul_Cerita.zip` (isi: `.docx` per chapter) | `Judul_Cerita.zip` (isi: `.epub` per chapter) |
-| 3 - Beberapa chapter | `Judul_Cerita_pilihan.txt` | `Judul_Cerita_pilihan.docx` | `Judul_Cerita_pilihan.epub` |
-| 4 - Satu chapter | `Judul_Cerita_Ch003_Nama_Chapter.txt` | `Judul_Cerita_Ch003_Nama_Chapter.docx` | `Judul_Cerita_Ch003_Nama_Chapter.epub` |
+| Mode | Format `.txt` | Format `.docx` | Format `.epub` | Format `.md` |
+|------|----------------|-----------------|------------------|---------------|
+| 1 - Semua, gabungan | `Judul_Cerita.txt` | `Judul_Cerita.docx` | `Judul_Cerita.epub` | `Judul_Cerita.md` |
+| 2 - Semua, terpisah | `Judul_Cerita.zip` (isi: `.txt` per chapter) | `Judul_Cerita.zip` (isi: `.docx` per chapter) | `Judul_Cerita.zip` (isi: `.epub` per chapter) | `Judul_Cerita.zip` (isi: `.md` per chapter) |
+| 3 - Beberapa chapter | `Judul_Cerita_pilihan.txt` | `Judul_Cerita_pilihan.docx` | `Judul_Cerita_pilihan.epub` | `Judul_Cerita_pilihan.md` |
+| 4 - Satu chapter | `Judul_Cerita_Ch003_Nama_Chapter.txt` | `Judul_Cerita_Ch003_Nama_Chapter.docx` | `Judul_Cerita_Ch003_Nama_Chapter.epub` | `Judul_Cerita_Ch003_Nama_Chapter.md` |
 
 **Isi file gabungan (mode 1 & 3):** judul cerita, penulis, dan sumber di bagian atas, lalu tiap chapter dipisah dengan penanda `#####`.
 
@@ -289,6 +300,10 @@ Isi teks chapter 2...
 Di versi `.docx`, judul cerita jadi heading utama dan tiap chapter otomatis jadi Heading 1 dengan halaman baru, tinggal buka di Word atau Google Docs dan langsung enak dibaca.
 
 Di versi `.epub`, cerita jadi ebook standar dengan daftar isi (table of contents) otomatis per chapter — tinggal buka di aplikasi pembaca ebook favoritmu (Google Play Books, Apple Books, Calibre, dll).
+
+Di versi `.md`, cerita ditulis pakai heading Markdown standar (`#` untuk judul, `##` per chapter) — enak dibuka di editor apa pun atau di-render langsung di GitHub/Obsidian/Notion.
+
+Kalau cerita punya cover, gambarnya otomatis disisipkan di halaman/paragraf pertama file `.docx`/`.epub` (kecuali dijalankan dengan `--no-cover`). Genre/tag, deskripsi, dan tanggal terbit cerita juga ikut tersimpan sebagai metadata resmi di file `.epub` — biasa muncul di halaman detail buku pada aplikasi pembaca ebook.
 
 **Isi zip (mode 2):** satu file per chapter, bernomor urut sesuai posisi di cerita, plus `000_info.txt`/`000_info.docx`/`000_info.epub` berisi judul, penulis, dan sumber. Ekstensi file di dalam zip mengikuti format yang dipilih saat menjalankan script (`.txt`, `.docx`, atau `.epub`):
 

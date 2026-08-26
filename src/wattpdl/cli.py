@@ -16,7 +16,7 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from rich.prompt import Prompt
+from rich.prompt import Confirm, Prompt
 from rich.rule import Rule
 from rich.theme import Theme
 
@@ -77,6 +77,13 @@ def get_default_download_dir() -> pathlib.Path:
     downloads = pathlib.Path.home() / "Downloads"
     downloads.mkdir(parents=True, exist_ok=True)
     return downloads
+
+
+def confirm_overwrite(path: pathlib.Path) -> bool:
+    """Tanya user apakah file yang sudah ada di folder tujuan boleh ditimpa.
+    Kembalikan True kalau boleh lanjut (timpa), False kalau mau di-skip."""
+    console.print(f"\n[warning]⚠  File sudah ada:[/warning] [accent]{path}[/accent]")
+    return Confirm.ask("[value]Timpa file ini?[/value]", default=False)
 
 
 def format_duration(seconds: float) -> str:

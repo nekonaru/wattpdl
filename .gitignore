@@ -16,9 +16,16 @@ env/
 .env
 *.env
 
+# ── Testing / coverage ──────────────────────────
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
 # ── Hasil unduhan wattpdl (jangan ikut ke-commit) ──
 *.txt
 *.docx
+*.epub
 *.zip
 !requirements.txt
 

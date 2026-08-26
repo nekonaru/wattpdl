@@ -8,7 +8,9 @@ import tempfile
 
 import pytest
 import requests
+import responses as responses_lib
 
+from wattpdl import api as api_mod
 from wattpdl import app as app_mod
 from wattpdl import cli as cli_mod
 from wattpdl import cli_args
@@ -16,7 +18,14 @@ from wattpdl import config as config_mod
 from wattpdl import progress as progress_mod
 from wattpdl.api import extract_story_id, get_chapter_html
 from wattpdl.cli import format_duration, parse_chapter_selection
-from wattpdl.writers import html_to_text, safe_filename, write_combined_epub, write_separate_epub_zip
+from wattpdl.writers import (
+    html_to_text,
+    safe_filename,
+    write_combined_epub,
+    write_combined_md,
+    write_separate_epub_zip,
+    write_separate_md_zip,
+)
 
 
 class TestExtractStoryId:
@@ -253,7 +262,7 @@ class TestCliArgs:
         cli_args.validate_non_interactive_args(args)  # tidak boleh raise
 
     def test_format_to_code_mapping(self):
-        assert cli_args.FORMAT_TO_CODE == {"txt": "1", "docx": "2", "epub": "3"}
+        assert cli_args.FORMAT_TO_CODE == {"txt": "1", "docx": "2", "epub": "3", "md": "4"}
 
 
 class TestEpubWriters:
@@ -380,3 +389,217 @@ class TestResetSteps:
 
         cli_mod.reset_steps()
         assert cli_mod._step_counter["n"] == 0
+
+
+class TestMarkdownWriter:
+    """Fitur baru: format .md sebagai pilihan ke-4."""
+
+    @pytest.fixture
+    def sample_results(self):
+        return [
+            (1, "Chapter Awal", "Paragraf pertama.\n\nParagraf kedua."),
+            (2, "Chapter Tengah", "Isi chapter dua."),
+        ]
+
+    def test_combined_md_contains_title_and_chapters(self, tmp_path, sample_results):
+        out = tmp_path / "cerita.md"
+        write_combined_md(out, "Judul Cerita", "Penulis A", "999", sample_results,
+                           meta={"tags": ["Romance", "Drama"], "description": "Sinopsis singkat."})
+
+        content = out.read_text(encoding="utf-8")
+        assert "# Judul Cerita" in content
+        assert "Penulis A" in content
+        assert "Romance, Drama" in content
+        assert "Sinopsis singkat." in content
+        assert "## Chapter Awal" in content
+        assert "## Chapter Tengah" in content
+        assert "Paragraf pertama." in content
+
+    def test_combined_md_without_meta_does_not_crash(self, tmp_path, sample_results):
+        out = tmp_path / "cerita.md"
+        write_combined_md(out, "Judul", "Penulis", "999", sample_results)
+        assert out.exists()
+
+    def test_separate_md_zip_has_one_file_per_chapter_plus_info(self, tmp_path, sample_results):
+        import zipfile
+
+        out = tmp_path / "cerita.zip"
+        write_separate_md_zip(out, "Judul", "Penulis", "999", sample_results)
+
+        with zipfile.ZipFile(out) as zf:
+            names = zf.namelist()
+            assert "000_info.md" in names
+            assert any(n.endswith("_Chapter_Awal.md") for n in names)
+            assert any(n.endswith("_Chapter_Tengah.md") for n in names)
+
+
+class TestSkipExisting:
+    """Fitur baru: lewati unduhan kalau file output sudah ada."""
+
+    def test_skips_when_file_exists_and_flag_on(self, tmp_path):
+        existing = tmp_path / "sudah_ada.txt"
+        existing.write_text("isi lama")
+        assert app_mod.should_skip_existing(existing, skip_existing=True) is True
+
+    def test_does_not_skip_when_flag_off(self, tmp_path):
+        existing = tmp_path / "sudah_ada.txt"
+        existing.write_text("isi lama")
+        assert app_mod.should_skip_existing(existing, skip_existing=False) is False
+
+    def test_does_not_skip_when_file_missing(self, tmp_path):
+        missing = tmp_path / "belum_ada.txt"
+        assert app_mod.should_skip_existing(missing, skip_existing=True) is False
+
+
+class TestCoverImage:
+    """Fitur baru: unduh cover cerita untuk disisipkan ke .docx/.epub."""
+
+    def test_download_cover_image_returns_none_without_url(self):
+        assert api_mod.download_cover_image(None) is None
+        assert api_mod.download_cover_image("") is None
+
+    def test_download_cover_image_returns_none_on_request_failure(self, monkeypatch):
+        def fake_get(*args, **kwargs):
+            raise requests.ConnectionError("gagal konek")
+
+        monkeypatch.setattr(api_mod.requests, "get", fake_get)
+        # Kegagalan unduh cover TIDAK boleh menghentikan proses (cover cuma pemanis).
+        assert api_mod.download_cover_image("https://example.com/cover.jpg") is None
+
+    @responses_lib.activate
+    def test_download_cover_image_returns_bytes_on_success(self):
+        responses_lib.add(
+            responses_lib.GET, "https://example.com/cover.jpg",
+            body=b"\xff\xd8\xff\xe0FAKEJPEGDATA", status=200,
+        )
+        result = api_mod.download_cover_image("https://example.com/cover.jpg")
+        assert result == b"\xff\xd8\xff\xe0FAKEJPEGDATA"
+
+    def test_epub_cover_insert_failure_does_not_raise(self):
+        from wattpdl.writers import _build_epub_book, _set_epub_cover
+
+        book, epub = _build_epub_book("Judul", "Penulis", "999")
+        # Byte acak yang bukan gambar valid — pastikan tidak melempar exception,
+        # karena kegagalan sisip cover tidak boleh menggagalkan seluruh file.
+        _set_epub_cover(book, epub, b"bukan-gambar-valid")
+
+
+class TestEpubMetadata:
+    """Fitur baru: metadata EPUB lebih lengkap (genre/tags, deskripsi, tanggal terbit)."""
+
+    def test_combined_epub_includes_description_and_tags_and_date(self, tmp_path):
+        out = tmp_path / "cerita.epub"
+        meta = {
+            "description": "Ini sinopsis cerita.",
+            "tags": ["Fantasy", "Adventure"],
+            "create_date": "2020-01-01",
+        }
+        write_combined_epub(out, "Judul", "Penulis", "999",
+                             [(1, "Bab 1", "Isi bab satu.")], meta=meta)
+
+        from ebooklib import epub
+
+        book = epub.read_epub(str(out))
+        descriptions = [v for v, _ in book.get_metadata("DC", "description")]
+        subjects = [v for v, _ in book.get_metadata("DC", "subject")]
+        dates = [v for v, _ in book.get_metadata("DC", "date")]
+
+        assert descriptions == ["Ini sinopsis cerita."]
+        assert subjects == ["Fantasy", "Adventure"]
+        assert dates == ["2020-01-01"]
+
+    def test_combined_epub_without_meta_has_no_extra_metadata(self, tmp_path):
+        out = tmp_path / "cerita.epub"
+        write_combined_epub(out, "Judul", "Penulis", "999", [(1, "Bab 1", "Isi.")])
+
+        from ebooklib import epub
+
+        book = epub.read_epub(str(out))
+        assert book.get_metadata("DC", "description") == []
+        assert book.get_metadata("DC", "subject") == []
+
+    def test_separate_epub_zip_info_book_has_metadata(self, tmp_path):
+        import zipfile
+
+        from ebooklib import epub
+
+        out = tmp_path / "cerita.zip"
+        meta = {"description": "Sinopsis.", "tags": ["Horror"]}
+        write_separate_epub_zip(out, "Judul", "Penulis", "999",
+                                 [(1, "Bab 1", "Isi bab satu.")], meta=meta)
+
+        with zipfile.ZipFile(out) as zf:
+            info_bytes = zf.read("000_info.epub")
+            info_path = tmp_path / "000_info.epub"
+            info_path.write_bytes(info_bytes)
+            book = epub.read_epub(str(info_path))
+            descriptions = [v for v, _ in book.get_metadata("DC", "description")]
+            assert descriptions == ["Sinopsis."]
+
+
+class TestIntegrationMockHttp:
+    """
+    Integration test yang mem-mock HTTP di level `requests` (pakai `responses`),
+    bukan cuma unit test fungsi murni — memastikan pipeline API -> writer
+    utuh berjalan seperti pemakaian nyata.
+    """
+
+    @responses_lib.activate
+    def test_full_pipeline_story_info_to_chapter_download(self):
+        story_json = {
+            "title": "Cerita Uji Coba",
+            "description": "Deskripsi cerita uji coba.",
+            "cover": "https://example.com/cover.jpg",
+            "tags": ["Fantasy"],
+            "createDate": "2021-05-01",
+            "user": {"name": "Penulis Uji"},
+            "numParts": 2,
+            "parts": [
+                {"id": 111, "title": "Bab Satu"},
+                {"id": 222, "title": "Bab Dua"},
+            ],
+        }
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.STORY_INFO_URL.format(story_id="999"),
+            json=story_json, status=200,
+        )
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.CHAPTER_TEXT_URL.format(part_id=111),
+            body="<p>Ini isi bab satu.</p>", status=200,
+        )
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.CHAPTER_TEXT_URL.format(part_id=222),
+            body="<p>Ini isi bab dua.</p>", status=200,
+        )
+        responses_lib.add(
+            responses_lib.GET, "https://example.com/cover.jpg",
+            body=b"FAKEJPEGBYTES", status=200,
+        )
+
+        title, author, parts, meta = api_mod.get_story_info("999")
+        assert title == "Cerita Uji Coba"
+        assert author == "Penulis Uji"
+        assert len(parts) == 2
+        assert meta["description"] == "Deskripsi cerita uji coba."
+        assert meta["tags"] == ["Fantasy"]
+
+        cover_bytes = api_mod.download_cover_image(meta["cover_url"])
+        assert cover_bytes == b"FAKEJPEGBYTES"
+
+        html1 = api_mod.get_chapter_html(parts[0]["id"])
+        html2 = api_mod.get_chapter_html(parts[1]["id"])
+        assert html_to_text(html1) == "Ini isi bab satu."
+        assert html_to_text(html2) == "Ini isi bab dua."
+
+    @responses_lib.activate
+    def test_full_pipeline_handles_api_error_gracefully(self):
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.STORY_INFO_URL.format(story_id="404"),
+            status=404,
+        )
+        with pytest.raises(requests.HTTPError):
+            api_mod.get_story_info("404")
