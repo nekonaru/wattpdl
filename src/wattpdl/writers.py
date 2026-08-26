@@ -21,11 +21,20 @@ def html_to_text(raw_html: str) -> str:
     return text.strip()
 
 
-def safe_filename(name: str) -> str:
-    """Buat nama file yang aman untuk semua sistem operasi."""
+def safe_filename(name: str, max_length: int = 100) -> str:
+    """Buat nama file yang aman untuk semua sistem operasi.
+
+    Judul cerita/chapter Wattpad kadang sangat panjang (umum untuk judul
+    bergaya panjang/"clickbait"). Dipotong ke `max_length` supaya nama file
+    akhir (yang di beberapa tempat menggabungkan judul cerita + judul chapter,
+    lihat mode 4 di app.py) tidak melebihi batas panjang nama file sistem
+    operasi (mis. 255 byte di Linux/macOS) dan menyebabkan OSError
+    "File name too long" yang tidak tertangani saat menyimpan.
+    """
     name = re.sub(r'[<>:"/\\|?*]', "", name)
     name = re.sub(r"[^\w\s\-]", "", name).strip()
     name = re.sub(r"\s+", "_", name)
+    name = name[:max_length].rstrip("_")
     return name or "cerita_wattpad"
 
 

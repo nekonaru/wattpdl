@@ -71,6 +71,26 @@ class TestSafeFilename:
         # Judul berbahasa Indonesia dengan huruf biasa harus tetap utuh
         assert safe_filename("Cerita Cinta Sederhana") == "Cerita_Cinta_Sederhana"
 
+    def test_very_long_title_is_truncated(self):
+        # Bug: judul cerita/chapter Wattpad kadang sangat panjang (umum untuk
+        # judul bergaya panjang). Tanpa dipotong, nama file gabungan (mis. mode 4
+        # yang menggabungkan judul cerita + judul chapter) bisa melebihi batas
+        # panjang nama file OS dan menyebabkan OSError "File name too long"
+        # yang tidak tertangani saat menyimpan.
+        long_title = "Kata " * 100  # 500 karakter
+        result = safe_filename(long_title)
+        assert len(result) <= 100
+        assert not result.endswith("_")
+
+    def test_truncated_title_still_usable_combined(self, tmp_path):
+        # Simulasikan nama file gabungan seperti di mode 4 (judul cerita + judul
+        # chapter) tetap harus bisa ditulis ke disk tanpa OSError.
+        story_title = safe_filename("Kisah " * 60)
+        chapter_title = safe_filename("Bab " * 60)
+        full_path = tmp_path / f"{story_title}_Ch001_{chapter_title}.txt"
+        full_path.write_text("isi")
+        assert full_path.exists()
+
 
 class TestParseChapterSelection:
     def test_single_numbers(self):

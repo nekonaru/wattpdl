@@ -97,7 +97,19 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         chap_title = writers.safe_filename(chap_part.get("title", f"Chapter {chap_no}"))
         full_path = save_dir / f"{base_name}_Ch{chap_no:03d}_{chap_title}.{ext}"
 
-    if full_path.exists():
+    try:
+        path_exists = full_path.exists()
+    except OSError as e:
+        # Bisa kejadian kalau nama file gabungan (judul cerita + judul chapter
+        # untuk mode 4, atau folder tujuan yang dipilih user sudah panjang)
+        # tetap melebihi batas panjang path sistem operasi walau sudah dipotong
+        # oleh safe_filename(). Tampilkan pesan rapi, jangan biarkan traceback mentah.
+        console.print(f"\n[danger]❌  Nama file/path tidak valid atau terlalu panjang:[/danger] {e}")
+        console.print(f"    [muted]Path yang dicoba: {full_path}[/muted]")
+        console.print("    [muted]Coba pilih folder simpan dengan path yang lebih pendek.[/muted]")
+        sys.exit(1)
+
+    if path_exists:
         if interactive:
             if not cli.confirm_overwrite(full_path):
                 console.print("[muted]Dilewati — file yang sudah ada tidak diubah.[/muted]\n")
@@ -116,28 +128,41 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
     results, failed_chapters = cli.download_chapters(indexed_parts, story_id=story_id)
     elapsed = cli.format_duration(time.time() - start_time)
 
-    if mode == "2":
-        if file_format == "2":
-            writers.write_separate_docx_zip(full_path, title, author, story_id, results,
-                                             meta=meta, cover_bytes=cover_bytes)
-        elif file_format == "3":
-            writers.write_separate_epub_zip(full_path, title, author, story_id, results,
-                                             meta=meta, cover_bytes=cover_bytes)
-        elif file_format == "4":
-            writers.write_separate_md_zip(full_path, title, author, story_id, results, meta=meta)
+    try:
+        if mode == "2":
+            if file_format == "2":
+                writers.write_separate_docx_zip(full_path, title, author, story_id, results,
+                                                 meta=meta, cover_bytes=cover_bytes)
+            elif file_format == "3":
+                writers.write_separate_epub_zip(full_path, title, author, story_id, results,
+                                                 meta=meta, cover_bytes=cover_bytes)
+            elif file_format == "4":
+                writers.write_separate_md_zip(full_path, title, author, story_id, results, meta=meta)
+            else:
+                writers.write_separate_zip(full_path, title, author, story_id, results)
         else:
-            writers.write_separate_zip(full_path, title, author, story_id, results)
-    else:
-        if file_format == "2":
-            writers.write_combined_docx(full_path, title, author, story_id, results,
-                                         meta=meta, cover_bytes=cover_bytes)
-        elif file_format == "3":
-            writers.write_combined_epub(full_path, title, author, story_id, results,
-                                         meta=meta, cover_bytes=cover_bytes)
-        elif file_format == "4":
-            writers.write_combined_md(full_path, title, author, story_id, results, meta=meta)
-        else:
-            writers.write_combined_txt(full_path, title, author, story_id, results)
+            if file_format == "2":
+                writers.write_combined_docx(full_path, title, author, story_id, results,
+                                             meta=meta, cover_bytes=cover_bytes)
+            elif file_format == "3":
+                writers.write_combined_epub(full_path, title, author, story_id, results,
+                                             meta=meta, cover_bytes=cover_bytes)
+            elif file_format == "4":
+                writers.write_combined_md(full_path, title, author, story_id, results, meta=meta)
+            else:
+                writers.write_combined_txt(full_path, title, author, story_id, results)
+    except OSError as e:
+        # Chapter sudah terlanjur diunduh (dan progress-nya sudah tersimpan lewat
+        # progress.py) — jangan sampai kegagalan MENULIS file di detik terakhir
+        # (path terlalu panjang, disk penuh, tidak ada izin tulis, dst.) muncul
+        # sebagai traceback mentah. Beri tahu user progress tidak hilang.
+        console.print(f"\n[danger]❌  Gagal menulis file output:[/danger] {e}")
+        console.print(f"    [muted]Path yang dicoba: {full_path}[/muted]")
+        console.print(
+            "    [muted]Chapter yang sudah berhasil diunduh tetap tersimpan di progress — "
+            "jalankan ulang setelah masalah di atas diperbaiki.[/muted]"
+        )
+        sys.exit(1)
 
     step_rule("Ringkasan")
     summary = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
