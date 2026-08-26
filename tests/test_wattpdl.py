@@ -91,6 +91,23 @@ class TestSafeFilename:
         full_path.write_text("isi")
         assert full_path.exists()
 
+    def test_avoids_windows_reserved_device_names(self):
+        # Bug: judul chapter satu kata seperti "Con", "Aux", "Nul", "Com1" dst.
+        # kebetulan sama dengan nama device reserved Windows. Kalau tidak
+        # diubah, file dengan nama itu tidak akan pernah bisa dibuat di
+        # Windows sama sekali (apa pun ekstensinya), padahal ini judul chapter
+        # yang sah dan bisa saja muncul di dunia nyata.
+        for reserved in ["CON", "con", "Aux", "PRN", "Nul", "COM1", "lpt9"]:
+            result = safe_filename(reserved)
+            assert result.upper() not in {
+                "CON", "PRN", "AUX", "NUL",
+                *(f"COM{i}" for i in range(1, 10)),
+                *(f"LPT{i}" for i in range(1, 10)),
+            }
+        # Judul biasa yang cuma KEBETULAN mengandung kata itu sebagai bagian
+        # dari kalimat tidak boleh ikut diubah (bukan match penuh).
+        assert safe_filename("Aux Membantu Ayahnya") == "Aux_Membantu_Ayahnya"
+
 
 class TestParseChapterSelection:
     def test_single_numbers(self):

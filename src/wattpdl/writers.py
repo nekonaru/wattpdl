@@ -21,6 +21,13 @@ def html_to_text(raw_html: str) -> str:
     return text.strip()
 
 
+_WINDOWS_RESERVED_NAMES = {
+    "CON", "PRN", "AUX", "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
+
+
 def safe_filename(name: str, max_length: int = 100) -> str:
     """Buat nama file yang aman untuk semua sistem operasi.
 
@@ -30,12 +37,21 @@ def safe_filename(name: str, max_length: int = 100) -> str:
     lihat mode 4 di app.py) tidak melebihi batas panjang nama file sistem
     operasi (mis. 255 byte di Linux/macOS) dan menyebabkan OSError
     "File name too long" yang tidak tertangani saat menyimpan.
+
+    Juga menghindari nama device reserved Windows (CON, AUX, PRN, NUL,
+    COM1-9, LPT1-9) — kalau judul chapter kebetulan cuma satu kata seperti
+    itu (jarang, tapi mungkin), menyimpan file dengan nama itu akan selalu
+    gagal di Windows apa pun ekstensinya.
     """
     name = re.sub(r'[<>:"/\\|?*]', "", name)
     name = re.sub(r"[^\w\s\-]", "", name).strip()
     name = re.sub(r"\s+", "_", name)
     name = name[:max_length].rstrip("_")
-    return name or "cerita_wattpad"
+    if not name:
+        return "cerita_wattpad"
+    if name.upper() in _WINDOWS_RESERVED_NAMES:
+        name = f"_{name}"
+    return name
 
 
 def check_docx_available(console=None) -> None:
