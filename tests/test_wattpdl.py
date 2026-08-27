@@ -3,8 +3,10 @@ Unit test untuk fungsi-fungsi murni (pure function) di package wattpdl.
 Jalankan dengan: pytest
 (path ke src/ sudah diatur lewat [tool.pytest.ini_options] di pyproject.toml)
 """
+import base64
 import pathlib
 import tempfile
+import zipfile
 
 import pytest
 import requests
@@ -13,18 +15,22 @@ import responses as responses_lib
 from wattpdl import api as api_mod
 from wattpdl import app as app_mod
 from wattpdl import cli as cli_mod
-from wattpdl import cli_args
+from wattpdl import cli_args, metacache, updater
 from wattpdl import config as config_mod
+from wattpdl import library as library_mod
 from wattpdl import progress as progress_mod
 from wattpdl.api import extract_story_id, get_chapter_html
 from wattpdl.cli import format_duration, parse_chapter_selection
 from wattpdl.writers import (
     html_to_text,
     safe_filename,
+    write_combined_docx,
     write_combined_epub,
     write_combined_md,
+    write_combined_pdf,
     write_separate_epub_zip,
     write_separate_md_zip,
+    write_separate_pdf_zip,
 )
 
 
@@ -295,7 +301,7 @@ class TestCliArgs:
 
     def test_invalid_format_rejected(self):
         with pytest.raises(SystemExit):
-            cli_args.parse_args(["--id", "1", "--format", "pdf"])
+            cli_args.parse_args(["--id", "1", "--format", "docm"])
 
     def test_validate_requires_mode(self):
         args = cli_args.parse_args(["--id", "1"])
@@ -317,7 +323,7 @@ class TestCliArgs:
         cli_args.validate_non_interactive_args(args)  # tidak boleh raise
 
     def test_format_to_code_mapping(self):
-        assert cli_args.FORMAT_TO_CODE == {"txt": "1", "docx": "2", "epub": "3", "md": "4"}
+        assert cli_args.FORMAT_TO_CODE == {"txt": "1", "docx": "2", "epub": "3", "md": "4", "pdf": "5"}
 
 
 class TestEpubWriters:
@@ -656,5 +662,418 @@ class TestIntegrationMockHttp:
             api_mod.STORY_INFO_URL.format(story_id="404"),
             status=404,
         )
-        with pytest.raises(requests.HTTPError):
+        # Sejak penanganan error spesifik ditambahkan, 404 sekarang jadi
+        # StoryNotFoundError dengan pesan jelas, bukan requests.HTTPError generik.
+        with pytest.raises(api_mod.StoryNotFoundError):
             api_mod.get_story_info("404")
+
+    @responses_lib.activate
+    def test_story_access_error_on_403(self):
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.STORY_INFO_URL.format(story_id="403"),
+            status=403,
+        )
+        with pytest.raises(api_mod.StoryAccessError):
+            api_mod.get_story_info("403")
+
+    @responses_lib.activate
+    def test_other_http_error_still_raised_as_is(self):
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.STORY_INFO_URL.format(story_id="500"),
+            status=500,
+        )
+        with pytest.raises(requests.HTTPError):
+            api_mod.get_story_info("500")
+
+
+class TestAdaptiveRateLimiter:
+    """Fitur baru: jeda antar-chapter otomatis melambat kalau server mulai
+    balikin rate-limit (429) / server sibuk (503) beruntun, lalu pelan-pelan
+    kembali cepat begitu request sukses lagi."""
+
+    def test_starts_at_base_delay(self):
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.5, max_delay=10.0)
+        assert rl.current_delay == 0.5
+
+    def test_delay_increases_on_throttle(self):
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.5, max_delay=10.0)
+        rl.report_throttled()
+        assert rl.current_delay == 1.0
+        rl.report_throttled()
+        assert rl.current_delay == 2.0
+
+    def test_delay_capped_at_max(self):
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.5, max_delay=2.0)
+        for _ in range(10):
+            rl.report_throttled()
+        assert rl.current_delay == 2.0
+
+    def test_delay_recovers_gradually_on_success(self):
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.5, max_delay=10.0)
+        rl.report_throttled()
+        rl.report_throttled()
+        rl.report_throttled()
+        assert rl.current_delay == 4.0
+        rl.report_success()
+        assert rl.current_delay == 2.0  # turun 1 level, bukan langsung ke base_delay
+        rl.report_success()
+        rl.report_success()
+        assert rl.current_delay == 0.5  # kembali normal setelah cukup banyak sukses
+
+    def test_get_chapter_html_reports_429_to_limiter(self):
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.1, max_delay=1.0)
+
+        class FakeResp:
+            status_code = 429
+
+            def raise_for_status(self):
+                err = requests.HTTPError("429 rate limited")
+                err.response = self
+                raise err
+
+        import wattpdl.api as api_module
+
+        call_count = {"n": 0}
+
+        def fake_get(*args, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] < 2:
+                return FakeResp()
+            resp = FakeResp()
+            resp.status_code = 200
+            resp.raise_for_status = lambda: None
+            resp.text = "<p>OK</p>"
+            return resp
+
+        orig_get = api_module.requests.get
+        api_module.requests.get = fake_get
+        try:
+            html = api_mod.get_chapter_html(1, retries=3, rate_limiter=rl)
+            assert html == "<p>OK</p>"
+            # setelah 1x throttled lalu 1x sukses, level naik ke 1 lalu turun lagi ke 0
+            assert rl.current_delay == 0.1
+        finally:
+            api_module.requests.get = orig_get
+
+
+class TestAuthorStories:
+    """Fitur baru: --user, unduh semua/cerita pilihan dari 1 penulis."""
+
+    @responses_lib.activate
+    def test_get_author_stories_parses_list(self):
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.AUTHOR_STORIES_URL.format(username="nekonaru"),
+            json={"stories": [
+                {"id": 1, "title": "Cerita Satu", "numParts": 5, "completed": True},
+                {"id": 2, "title": "Cerita Dua", "numParts": 2, "completed": False},
+            ]},
+            status=200,
+        )
+        stories = api_mod.get_author_stories("nekonaru")
+        assert len(stories) == 2
+        assert stories[0]["id"] == "1"
+        assert stories[0]["title"] == "Cerita Satu"
+        assert stories[0]["completed"] is True
+        assert stories[1]["completed"] is False
+
+    @responses_lib.activate
+    def test_get_author_stories_not_found(self):
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.AUTHOR_STORIES_URL.format(username="tidakada"),
+            status=404,
+        )
+        with pytest.raises(api_mod.StoryNotFoundError):
+            api_mod.get_author_stories("tidakada")
+
+
+class TestExtractChapterImages:
+    """Fitur baru: --include-images, ekstrak URL gambar inline dari HTML chapter."""
+
+    def test_extracts_single_image(self):
+        html = '<p>Teks</p><img src="https://example.com/a.jpg"><p>Lagi</p>'
+        assert api_mod.extract_chapter_images(html) == ["https://example.com/a.jpg"]
+
+    def test_extracts_multiple_images_in_order(self):
+        html = '<img src="a.jpg"><p>x</p><img src="b.png">'
+        assert api_mod.extract_chapter_images(html) == ["a.jpg", "b.png"]
+
+    def test_no_images_returns_empty_list(self):
+        assert api_mod.extract_chapter_images("<p>Tidak ada gambar di sini.</p>") == []
+
+    def test_handles_single_quotes(self):
+        html = "<img src='single-quoted.jpg'>"
+        assert api_mod.extract_chapter_images(html) == ["single-quoted.jpg"]
+
+
+class TestProgressStore:
+    """ProgressStore: baca sekali di awal, simpan ke memori + disk tanpa baca
+    ulang tiap chapter (perbaikan O(n^2) -> O(n) untuk cerita panjang)."""
+
+    @pytest.fixture(autouse=True)
+    def isolate_progress(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(progress_mod, "PROGRESS_DIR", tmp_path / "progress")
+
+    def test_new_store_is_empty(self):
+        store = progress_mod.ProgressStore("12345")
+        assert not store.has(111)
+        assert store.get(111) is None
+
+    def test_mark_done_persists_to_disk(self):
+        store = progress_mod.ProgressStore("12345")
+        store.mark_done(111, "Bab 1", "Isi bab 1")
+        assert store.has(111)
+        assert store.get(111)["text"] == "Isi bab 1"
+        # baca lewat API lama juga harus lihat data yang sama (kompatibel)
+        assert progress_mod.load_progress("12345")["111"]["text"] == "Isi bab 1"
+
+    def test_picks_up_existing_progress_on_init(self):
+        progress_mod.save_chapter_progress("55555", 1, "Ch 1", "sudah ada duluan")
+        store = progress_mod.ProgressStore("55555")
+        assert store.has(1)
+        assert store.get(1)["text"] == "sudah ada duluan"
+
+    def test_clear_removes_from_memory_and_disk(self):
+        store = progress_mod.ProgressStore("99999")
+        store.mark_done(1, "Ch 1", "isi")
+        store.clear()
+        assert not store.has(1)
+        assert progress_mod.load_progress("99999") == {}
+
+
+class TestPdfWriters:
+    """Fitur baru: format .pdf (reportlab)."""
+
+    @pytest.fixture
+    def sample_results(self):
+        return [
+            (1, "Bab Satu", "Paragraf pertama.\nBaris kedua.\n\nParagraf kedua."),
+            (2, "Bab Dua <spesial> & aneh", "Isi bab dua."),
+        ]
+
+    def test_write_combined_pdf_creates_valid_pdf(self, tmp_path, sample_results):
+        out = tmp_path / "gabungan.pdf"
+        write_combined_pdf(out, "Judul Cerita", "Penulis", "1", sample_results)
+        assert out.exists()
+        assert out.read_bytes().startswith(b"%PDF")
+
+    def test_write_combined_pdf_with_cover_and_images(self, tmp_path, sample_results):
+        tiny_png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+            "+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        out = tmp_path / "gambar.pdf"
+        write_combined_pdf(
+            out, "Judul", "Penulis", "1", sample_results,
+            meta={"tags": ["Drama"], "description": "Sinopsis."},
+            cover_bytes=tiny_png, images_by_idx={1: [tiny_png]},
+        )
+        assert out.exists()
+        assert out.stat().st_size > 0
+
+    def test_write_combined_pdf_broken_image_does_not_crash(self, tmp_path, sample_results):
+        # Cover/gambar rusak (bukan gambar valid) tidak boleh menggagalkan seluruh PDF.
+        out = tmp_path / "rusak.pdf"
+        write_combined_pdf(
+            out, "Judul", "Penulis", "1", sample_results,
+            cover_bytes=b"BUKAN GAMBAR VALID", images_by_idx={1: [b"JUGA BUKAN GAMBAR"]},
+        )
+        assert out.exists()
+
+    def test_write_separate_pdf_zip_creates_entries(self, tmp_path, sample_results):
+        out = tmp_path / "terpisah.zip"
+        write_separate_pdf_zip(out, "Judul", "Penulis", "1", sample_results)
+        with zipfile.ZipFile(out) as zf:
+            names = zf.namelist()
+        assert "000_info.pdf" in names
+        assert any("Bab_Satu" in n for n in names)
+        assert any("Bab_Dua" in n for n in names)
+
+
+class TestInlineImagesInDocxEpub:
+    """Fitur baru: --include-images, sisip gambar inline (bukan cover) ke docx/epub."""
+
+    TINY_PNG = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+        "+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )
+
+    def test_docx_combined_with_inline_images(self, tmp_path):
+        out = tmp_path / "t.docx"
+        results = [(1, "Bab 1", "Isi bab satu.")]
+        write_combined_docx(out, "Judul", "Penulis", "1", results,
+                             images_by_idx={1: [self.TINY_PNG]})
+        assert out.exists() and out.stat().st_size > 0
+
+    def test_docx_broken_inline_image_does_not_crash(self, tmp_path):
+        out = tmp_path / "t.docx"
+        results = [(1, "Bab 1", "Isi bab satu.")]
+        write_combined_docx(out, "Judul", "Penulis", "1", results,
+                             images_by_idx={1: [b"bukan gambar"]})
+        assert out.exists()
+
+    def test_epub_combined_with_inline_images(self, tmp_path):
+        out = tmp_path / "t.epub"
+        results = [(1, "Bab 1", "Isi bab satu.")]
+        write_combined_epub(out, "Judul", "Penulis", "1", results,
+                             images_by_idx={1: [self.TINY_PNG]})
+        assert out.exists() and out.stat().st_size > 0
+
+
+class TestUpdater:
+    """Fitur baru: cek versi terbaru di PyPI saat start."""
+
+    @pytest.fixture(autouse=True)
+    def isolate_cache(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(updater, "CACHE_FILE", tmp_path / "update_check.json")
+
+    def test_parse_version_orders_correctly(self):
+        assert updater._parse_version("1.9.0") < updater._parse_version("1.10.0")
+        assert updater._parse_version("1.3.0") == updater._parse_version("1.3.0")
+
+    @responses_lib.activate
+    def test_detects_newer_version(self):
+        responses_lib.add(responses_lib.GET, updater.PYPI_URL,
+                           json={"info": {"version": "99.0.0"}}, status=200)
+        assert updater.check_for_update(force=True) == "99.0.0"
+
+    @responses_lib.activate
+    def test_no_update_when_already_latest(self):
+        responses_lib.add(responses_lib.GET, updater.PYPI_URL,
+                           json={"info": {"version": "0.0.1"}}, status=200)
+        assert updater.check_for_update(force=True) is None
+
+    def test_network_failure_returns_none_not_raise(self):
+        # Sengaja tidak ada mock -> request akan gagal (ConnectionError dari `responses`
+        # karena tidak activated). Tidak boleh raise sampai ke pemanggil.
+        assert updater.check_for_update(force=True) is None
+
+    @responses_lib.activate
+    def test_uses_cache_within_interval(self):
+        responses_lib.add(responses_lib.GET, updater.PYPI_URL,
+                           json={"info": {"version": "5.0.0"}}, status=200)
+        first = updater.check_for_update(force=True)
+        assert first == "5.0.0"
+        # panggilan kedua tanpa force & tanpa mock baru -> harus pakai cache, bukan gagal
+        second = updater.check_for_update(force=False)
+        assert second == "5.0.0"
+
+
+class TestMetaCache:
+    """Fitur baru: cache metadata cerita jangka pendek."""
+
+    @pytest.fixture(autouse=True)
+    def isolate_cache(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(metacache, "CACHE_DIR", tmp_path / "cache")
+
+    def test_miss_when_never_cached(self):
+        assert metacache.get_cached_story("nope") is None
+
+    def test_hit_after_save(self):
+        metacache.save_story_cache("1", "Judul", "Penulis", [{"id": 1}], {"tags": []})
+        result = metacache.get_cached_story("1")
+        assert result is not None
+        title, author, parts, meta = result
+        assert title == "Judul"
+        assert parts == [{"id": 1}]
+
+    def test_expired_cache_is_miss(self, monkeypatch):
+        metacache.save_story_cache("2", "Judul", "Penulis", [], {})
+        # majukan waktu melebihi TTL
+        monkeypatch.setattr(metacache.time, "time", lambda: 1e15)
+        assert metacache.get_cached_story("2") is None
+
+
+class TestLibrary:
+    """Fitur baru: --check-updates, catat cerita yang pernah diunduh penuh."""
+
+    @pytest.fixture(autouse=True)
+    def isolate_library(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(library_mod, "LIBRARY_FILE", tmp_path / "library.json")
+
+    def test_empty_library_by_default(self):
+        assert library_mod.load_library() == {}
+
+    def test_remember_and_load(self):
+        library_mod.remember_story("123", "Judul Cerita", 10)
+        lib = library_mod.load_library()
+        assert lib["123"]["title"] == "Judul Cerita"
+        assert lib["123"]["num_parts"] == 10
+
+    def test_remember_overwrites_existing_entry(self):
+        library_mod.remember_story("123", "Judul Lama", 5)
+        library_mod.remember_story("123", "Judul Baru", 8)
+        lib = library_mod.load_library()
+        assert lib["123"]["num_parts"] == 8
+        assert lib["123"]["title"] == "Judul Baru"
+
+
+class TestCheckUpdatesFlow:
+    """Fitur baru: app.run_check_updates() — laporan chapter baru untuk semua
+    cerita di library, tanpa mengunduh apa pun."""
+
+    @pytest.fixture(autouse=True)
+    def isolate(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(library_mod, "LIBRARY_FILE", tmp_path / "library.json")
+
+    def test_empty_library_prints_message_no_crash(self, capsys):
+        app_mod.run_check_updates()  # tidak boleh raise walau library kosong
+
+    @responses_lib.activate
+    def test_reports_new_chapters(self):
+        library_mod.remember_story("10", "Cerita A", 3)
+        responses_lib.add(
+            responses_lib.GET, api_mod.STORY_INFO_URL.format(story_id="10"),
+            json={"title": "Cerita A", "user": {"name": "P"}, "numParts": 5,
+                  "parts": [{"id": i, "title": f"Ch{i}"} for i in range(5)]},
+            status=200,
+        )
+        app_mod.run_check_updates()  # tidak boleh raise; hasil divalidasi via unit test api terpisah
+
+    @responses_lib.activate
+    def test_handles_deleted_story_gracefully(self):
+        library_mod.remember_story("11", "Cerita Dihapus", 3)
+        responses_lib.add(
+            responses_lib.GET, api_mod.STORY_INFO_URL.format(story_id="11"), status=404,
+        )
+        app_mod.run_check_updates()  # tidak boleh raise walau salah satu cerita 404
+
+
+class TestCliArgsNewFlags:
+    """Validasi argumen baru: --workers, --user, --check-updates, --watch, dll."""
+
+    def test_default_workers_is_one(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1"])
+        assert args.workers == 1
+
+    def test_workers_zero_rejected(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1", "--workers", "0"])
+        with pytest.raises(ValueError):
+            cli_args.validate_non_interactive_args(args)
+
+    def test_user_flag_parsed(self):
+        args = cli_args.parse_args(["--user", "nekonaru"])
+        assert args.user == "nekonaru"
+        assert args.user_select == "all"
+
+    def test_check_updates_flag(self):
+        args = cli_args.parse_args(["--check-updates"])
+        assert args.check_updates is True
+
+    def test_watch_flags_default(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1", "--watch"])
+        assert args.watch is True
+        assert args.watch_interval == 1800
+        assert args.watch_max_iterations is None
+
+    def test_include_images_flag(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1", "--include-images"])
+        assert args.include_images is True
+
+    def test_pdf_is_valid_format_choice(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1", "--format", "pdf"])
+        assert args.format == "pdf"
+        assert cli_args.FORMAT_TO_CODE[args.format] == "5"

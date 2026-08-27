@@ -5,7 +5,6 @@ langsung di sini — semua fetch data lewat modul `api`.
 """
 import os
 import pathlib
-import time
 
 from rich.console import Console
 from rich.progress import (
@@ -179,29 +178,84 @@ def select_single_chapter(parts: list) -> tuple:
     return n, part
 
 
-def download_chapters(indexed_parts: list, story_id: str = None) -> tuple:
+def download_chapters(
+    indexed_parts: list,
+    story_id: str = None,
+    max_workers: int = 1,
+    rate_limiter=None,
+    include_images: bool = False,
+) -> tuple:
     """
     Unduh sekumpulan chapter dengan progress bar.
     indexed_parts: list of (nomor_chapter, part_dict)
     story_id: kalau diisi, chapter yang sudah berhasil diunduh sebelumnya
         (tersimpan dari sesi yang macet/terhenti) akan dipakai ulang dari
         cache tanpa fetch ulang ke server — lihat modul `progress`.
-    Return: (results, failed_chapters)
+    max_workers: jumlah chapter yang diunduh bersamaan (paralel). 1 = berurutan
+        (default, paling aman/paling lambat). >1 mempercepat unduhan cerita
+        panjang, tapi tetap dijaga oleh `rate_limiter` supaya tidak membanjiri
+        server Wattpad.
+    rate_limiter: instance `api.AdaptiveRateLimiter` opsional, dibagi antar
+        semua chapter (dan semua worker) supaya jeda otomatis melambat kalau
+        server mulai balikin rate-limit. Dibuat baru kalau tidak diisi.
+    include_images: kalau True, ekstrak & unduh juga gambar inline (<img>) di
+        setiap chapter. Catatan: gambar inline TIDAK ikut disimpan di progress
+        resume (cuma teksnya) — kalau proses diresume, gambar chapter yang
+        sempat gagal di tengah jalan akan diunduh ulang, bukan dari cache.
+
+    Return: (results, failed_chapters, images_by_idx)
       results = list of (nomor_chapter, judul_chapter, teks)
+      images_by_idx = {nomor_chapter: [bytes_gambar, ...]} — kosong kalau
+        include_images=False.
     """
+    import threading
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     from . import progress as progress_mod
     from .writers import html_to_text
 
+    if rate_limiter is None:
+        rate_limiter = api.AdaptiveRateLimiter()
+
     results = []
     failed = []
-    cached = progress_mod.load_progress(story_id) if story_id else {}
+    images_by_idx = {}
+    store = progress_mod.ProgressStore(story_id) if story_id else None
     resumed_count = 0
+    print_lock = threading.Lock()
 
     def on_retry(attempt, retries, wait, error):
-        console.print(
-            f"    [warning]⚠  Gagal (percobaan {attempt}/{retries}), "
-            f"coba lagi dalam {wait}s… ({error})[/warning]"
-        )
+        with print_lock:
+            console.print(
+                f"    [warning]⚠  Gagal (percobaan {attempt}/{retries}), "
+                f"coba lagi dalam {wait}s… ({error})[/warning]"
+            )
+
+    def fetch_one(idx, part):
+        """Kerjakan 1 chapter: pakai cache kalau ada, atau unduh + retry.
+        Aman dipanggil dari banyak thread sekaligus (tidak ada shared mutable
+        state kecuali lewat `store`/`rate_limiter`, yang sudah thread-safe)."""
+        part_id = part["id"]
+        chapter_title = part.get("title", f"Chapter {idx}")
+
+        if store is not None and store.has(part_id):
+            cached = store.get(part_id)
+            return idx, chapter_title, cached["text"], [], True, None
+
+        try:
+            raw_html = api.get_chapter_html(part_id, on_retry=on_retry, rate_limiter=rate_limiter)
+            text = html_to_text(raw_html)
+            images = []
+            if include_images:
+                for img_url in api.extract_chapter_images(raw_html):
+                    img_bytes = api.download_image(img_url)
+                    if img_bytes:
+                        images.append(img_bytes)
+            if store is not None:
+                store.mark_done(part_id, chapter_title, text)
+            return idx, chapter_title, text, images, False, None
+        except Exception as e:
+            return idx, chapter_title, "[GAGAL DIUNDUH — coba jalankan ulang]", [], False, e
 
     progress_columns = [
         SpinnerColumn(style="accent", spinner_name="dots"),
@@ -218,38 +272,57 @@ def download_chapters(indexed_parts: list, story_id: str = None) -> tuple:
     with Progress(*progress_columns, console=console) as progress:
         task = progress.add_task("Menyiapkan…", total=len(indexed_parts))
 
-        for idx, part in indexed_parts:
-            part_id = part["id"]
-            chapter_title = part.get("title", f"Chapter {idx}")
-            cache_key = str(part_id)
+        if max_workers <= 1:
+            # Jalur sederhana berurutan (default) — dipertahankan terpisah dari
+            # jalur paralel di bawah supaya perilakunya persis sama seperti
+            # sebelumnya (termasuk urutan pesan di layar), bukan cuma kasus
+            # khusus dari ThreadPoolExecutor(max_workers=1).
+            for idx, part in indexed_parts:
+                chapter_title = part.get("title", f"Chapter {idx}")
+                short_title = (chapter_title[:26] + "…") if len(chapter_title) > 26 else chapter_title
+                progress.update(task, description=f"{short_title:<28}")
 
-            short_title = (chapter_title[:26] + "…") if len(chapter_title) > 26 else chapter_title
-            progress.update(task, description=f"{short_title:<28}")
+                _, _, text, images, was_cached, err = fetch_one(idx, part)
+                if was_cached:
+                    resumed_count += 1
+                elif err is not None:
+                    console.print(f"\n    [danger]⚠  Chapter [{idx}] gagal:[/danger] {err}")
+                    failed.append(f"Chapter {idx}: {chapter_title}")
+                else:
+                    rate_limiter.wait()
 
-            if cache_key in cached:
-                text = cached[cache_key]["text"]
-                resumed_count += 1
                 results.append((idx, chapter_title, text))
+                if images:
+                    images_by_idx[idx] = images
                 progress.advance(task)
-                continue
+        else:
+            # Jalur paralel — beberapa chapter diunduh bersamaan lewat thread
+            # pool. Urutan penyelesaian tidak dijamin sama dengan urutan
+            # chapter, jadi `results` disortir ulang berdasarkan idx di akhir.
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = {executor.submit(fetch_one, idx, part): (idx, part) for idx, part in indexed_parts}
+                for future in as_completed(futures):
+                    idx, part = futures[future]
+                    chapter_title = part.get("title", f"Chapter {idx}")
+                    _, _, text, images, was_cached, err = future.result()
+                    if was_cached:
+                        resumed_count += 1
+                    elif err is not None:
+                        with print_lock:
+                            console.print(f"\n    [danger]⚠  Chapter [{idx}] gagal:[/danger] {err}")
+                        failed.append(f"Chapter {idx}: {chapter_title}")
 
-            try:
-                raw_html = api.get_chapter_html(part_id, on_retry=on_retry)
-                text = html_to_text(raw_html)
-                if story_id:
-                    progress_mod.save_chapter_progress(story_id, part_id, chapter_title, text)
-            except Exception as e:
-                console.print(f"\n    [danger]⚠  Chapter [{idx}] gagal:[/danger] {e}")
-                text = "[GAGAL DIUNDUH — coba jalankan ulang]"
-                failed.append(f"Chapter {idx}: {chapter_title}")
-
-            results.append((idx, chapter_title, text))
-            progress.advance(task)
-            time.sleep(api.DELAY_SECONDS)
+                    results.append((idx, chapter_title, text))
+                    if images:
+                        images_by_idx[idx] = images
+                    progress.update(task, description=f"{len(results)}/{len(indexed_parts)} chapter")
+                    progress.advance(task)
+            results.sort(key=lambda r: r[0])
+            failed.sort()
 
     if resumed_count:
         console.print(
             f"[muted]↻ {resumed_count} chapter dipakai dari progress sebelumnya (tidak diunduh ulang).[/muted]"
         )
 
-    return results, failed
+    return results, failed, images_by_idx

@@ -39,6 +39,16 @@
 | ↻ **Resume otomatis** | Kalau proses terhenti di tengah jalan, jalankan ulang cerita yang sama — chapter yang sudah berhasil tidak diunduh ulang |
 | ⚙️ **Ingat preferensi** | Folder simpan & format file terakhir otomatis dipakai lagi di sesi berikutnya |
 | 🤖 **Mode non-interaktif** | Bisa dijalankan lewat argumen command line untuk scripting/otomatisasi, tanpa perlu jawab prompt |
+| 📄 **5 pilihan format** | `.txt`, `.docx`, `.epub`, `.md`, dan sekarang **`.pdf`** |
+| 🖼️ **Gambar inline** | Opsional (`--include-images`) ikut unduh & sisipkan gambar di dalam teks chapter, bukan cuma cover |
+| ⚡ **Unduh paralel** | `--workers N` mengunduh beberapa chapter sekaligus, mempercepat cerita panjang secara signifikan |
+| 🐢 **Rate-limit adaptif** | Jeda antar chapter otomatis melambat kalau Wattpad mulai membatasi (429/503), lalu pelan-pelan cepat lagi |
+| 👤 **Unduh per penulis** | `--user <username>` mengunduh semua/cerita pilihan dari satu penulis sekaligus |
+| 🔔 **Deteksi chapter baru** | `--check-updates` melaporkan cerita ongoing mana saja yang sudah punya chapter baru |
+| 👀 **Mode watch** | `--watch` memantau 1 cerita terus-menerus, otomatis unduh ulang begitu ada chapter baru |
+| 💾 **Cache metadata** | Info cerita di-cache singkat supaya percobaan berulang dalam waktu dekat tidak selalu hit API |
+| 🔔 **Cek update wattpdl** | Beri tahu otomatis kalau ada versi wattpdl lebih baru di PyPI |
+| 🎯 **Pesan error spesifik** | Bedakan pesan untuk cerita dihapus (404) vs private/dibatasi (403) |
 
 ## 📦 Requirements
 
