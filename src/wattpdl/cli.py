@@ -234,7 +234,15 @@ def download_chapters(
     def fetch_one(idx, part):
         """Kerjakan 1 chapter: pakai cache kalau ada, atau unduh + retry.
         Aman dipanggil dari banyak thread sekaligus (tidak ada shared mutable
-        state kecuali lewat `store`/`rate_limiter`, yang sudah thread-safe)."""
+        state kecuali lewat `store`/`rate_limiter`, yang sudah thread-safe).
+
+        Jeda `rate_limiter.wait()` sengaja dipanggil DI SINI (bukan di
+        caller/loop luar) supaya konsisten berlaku baik di jalur sequential
+        maupun paralel — sebelumnya jeda cuma diterapkan di jalur sequential,
+        jadi mode `--workers > 1` menembak API tanpa throttle adaptif sama
+        sekali. Gambar inline juga ikut kena jeda yang sama per item, karena
+        sebelumnya unduhan gambar tidak pernah melalui rate limiter sama sekali
+        di kedua jalur."""
         part_id = part["id"]
         chapter_title = part.get("title", f"Chapter {idx}")
 
@@ -245,12 +253,14 @@ def download_chapters(
         try:
             raw_html = api.get_chapter_html(part_id, on_retry=on_retry, rate_limiter=rate_limiter)
             text = html_to_text(raw_html)
+            rate_limiter.wait()
             images = []
             if include_images:
                 for img_url in api.extract_chapter_images(raw_html):
                     img_bytes = api.download_image(img_url)
                     if img_bytes:
                         images.append(img_bytes)
+                    rate_limiter.wait()
             if store is not None:
                 store.mark_done(part_id, chapter_title, text)
             return idx, chapter_title, text, images, False, None
@@ -288,8 +298,6 @@ def download_chapters(
                 elif err is not None:
                     console.print(f"\n    [danger]⚠  Chapter [{idx}] gagal:[/danger] {err}")
                     failed.append(f"Chapter {idx}: {chapter_title}")
-                else:
-                    rate_limiter.wait()
 
                 results.append((idx, chapter_title, text))
                 if images:

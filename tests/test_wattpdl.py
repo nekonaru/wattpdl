@@ -6,6 +6,7 @@ Jalankan dengan: pytest
 import base64
 import pathlib
 import tempfile
+import threading
 import zipfile
 
 import pytest
@@ -1077,3 +1078,87 @@ class TestCliArgsNewFlags:
         args = cli_args.parse_args(["--id", "1", "--mode", "1", "--format", "pdf"])
         assert args.format == "pdf"
         assert cli_args.FORMAT_TO_CODE[args.format] == "5"
+
+
+class TestDownloadChaptersRateLimiting:
+    """Regresi utk bug yg ditemukan reviewer eksternal: rate_limiter.wait()
+    dulu cuma dipanggil di jalur sequential (max_workers=1), sama sekali
+    tidak dipanggil di jalur paralel (ThreadPoolExecutor) maupun untuk
+    unduhan gambar inline — jadi --workers > 1 dan --include-images
+    menembak API tanpa throttle adaptif sama sekali, padahal itu justru
+    tujuan utama fitur rate limiter. Sebelumnya tidak ada test yang benar-benar
+    menjalankan jalur max_workers > 1 di download_chapters, jadi bug ini lolos."""
+
+    @pytest.fixture(autouse=True)
+    def isolate_progress(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(progress_mod, "PROGRESS_DIR", tmp_path / "progress")
+
+    def _make_parts(self, n):
+        return [(i, {"id": i, "title": f"Bab {i}"}) for i in range(1, n + 1)]
+
+    def test_sequential_path_calls_wait_per_chapter(self, monkeypatch):
+        n = 4
+        monkeypatch.setattr(api_mod, "get_chapter_html", lambda *a, **kw: "<p>isi</p>")
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.0)
+        wait_calls = {"n": 0}
+        monkeypatch.setattr(rl, "wait", lambda: wait_calls.__setitem__("n", wait_calls["n"] + 1))
+
+        cli_mod.download_chapters(self._make_parts(n), max_workers=1, rate_limiter=rl)
+        assert wait_calls["n"] == n, "sequential path harus panggil wait() 1x per chapter sukses"
+
+    def test_parallel_path_calls_wait_per_chapter(self, monkeypatch):
+        """Ini test yg dulu TIDAK ADA — jalur max_workers > 1 sebelumnya tidak
+        pernah dijalankan sama sekali oleh test suite, sehingga bug rate
+        limiter yg cuma jalan di jalur sequential lolos tanpa ketahuan."""
+        n = 6
+        monkeypatch.setattr(api_mod, "get_chapter_html", lambda *a, **kw: "<p>isi</p>")
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.0)
+        wait_calls = {"n": 0}
+        lock = threading.Lock()
+
+        def counting_wait():
+            with lock:
+                wait_calls["n"] += 1
+
+        monkeypatch.setattr(rl, "wait", counting_wait)
+
+        results, failed, _ = cli_mod.download_chapters(
+            self._make_parts(n), max_workers=3, rate_limiter=rl
+        )
+        assert not failed
+        assert wait_calls["n"] == n, (
+            "jalur paralel (max_workers > 1) harus tetap panggil wait() 1x per "
+            "chapter sukses, bukan cuma jalur sequential"
+        )
+
+    def test_cached_chapters_do_not_trigger_wait(self, monkeypatch):
+        """Chapter yang dipakai dari cache/resume tidak boleh kena delay
+        (tidak ada request baru yang perlu di-throttle)."""
+        story_id = "rl-cache-test"
+        progress_mod.save_chapter_progress(story_id, 1, "Bab 1", "sudah ada")
+        monkeypatch.setattr(api_mod, "get_chapter_html", lambda *a, **kw: "<p>isi baru</p>")
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.0)
+        wait_calls = {"n": 0}
+        monkeypatch.setattr(rl, "wait", lambda: wait_calls.__setitem__("n", wait_calls["n"] + 1))
+
+        cli_mod.download_chapters(self._make_parts(2), story_id=story_id, max_workers=1, rate_limiter=rl)
+        # Cuma chapter 2 yang benar-benar di-fetch (chapter 1 dari cache) -> wait() cuma 1x
+        assert wait_calls["n"] == 1
+
+    def test_include_images_waits_between_each_image(self, monkeypatch):
+        """Bug lain yg ditemukan: unduhan gambar inline sama sekali tidak
+        melalui rate limiter di kedua jalur. Sekarang tiap gambar harus ikut
+        kena wait() juga."""
+        html_with_2_images = '<img src="a.jpg"><img src="b.jpg"><p>teks</p>'
+        monkeypatch.setattr(api_mod, "get_chapter_html", lambda *a, **kw: html_with_2_images)
+        monkeypatch.setattr(api_mod, "download_image", lambda url: b"fake-image-bytes")
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.0)
+        wait_calls = {"n": 0}
+        monkeypatch.setattr(rl, "wait", lambda: wait_calls.__setitem__("n", wait_calls["n"] + 1))
+
+        results, failed, images_by_idx = cli_mod.download_chapters(
+            self._make_parts(1), max_workers=1, rate_limiter=rl, include_images=True
+        )
+        # 1x utk teks chapter + 2x utk masing-masing gambar = 3
+        assert wait_calls["n"] == 3
+        assert len(images_by_idx[1]) == 2
