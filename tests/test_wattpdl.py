@@ -1162,3 +1162,51 @@ class TestDownloadChaptersRateLimiting:
         # 1x utk teks chapter + 2x utk masing-masing gambar = 3
         assert wait_calls["n"] == 3
         assert len(images_by_idx[1]) == 2
+
+    def test_wait_still_called_when_chapter_fails(self, monkeypatch):
+        """Regresi: dulu blok except di fetch_one() tidak memanggil
+        rate_limiter.wait() sama sekali kalau chapter gagal total (retry
+        habis) — jadi begitu 1 chapter gagal, chapter berikutnya langsung
+        ditembak tanpa jeda, padahal rate_limiter._level sudah naik akibat
+        kegagalan itu. wait() sekarang harus tetap dipanggil di jalur gagal."""
+
+        def always_fail(*a, **kw):
+            raise ConnectionError("simulasi gagal total")
+
+        monkeypatch.setattr(api_mod, "get_chapter_html", always_fail)
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.0)
+        wait_calls = {"n": 0}
+        monkeypatch.setattr(rl, "wait", lambda: wait_calls.__setitem__("n", wait_calls["n"] + 1))
+
+        results, failed, _ = cli_mod.download_chapters(
+            self._make_parts(3), max_workers=1, rate_limiter=rl
+        )
+        assert len(failed) == 3
+        assert wait_calls["n"] == 3, "wait() harus tetap dipanggil walau chapter-nya gagal total"
+
+    def test_failed_list_sorted_numerically_not_alphabetically(self, monkeypatch):
+        """Regresi: failed.sort() dulu mengurutkan string biasa, jadi
+        'Chapter 10' muncul sebelum 'Chapter 2' (sort alfabetis, bukan
+        numerik) di ringkasan mode paralel."""
+        fail_ids = {2, 10, 11}
+
+        def maybe_fail(part_id, **kw):
+            if part_id in fail_ids:
+                raise ConnectionError("gagal")
+            return "<p>ok</p>"
+
+        monkeypatch.setattr(api_mod, "get_chapter_html", maybe_fail)
+        rl = api_mod.AdaptiveRateLimiter(base_delay=0.0)
+        monkeypatch.setattr(rl, "wait", lambda: None)
+
+        results, failed, _ = cli_mod.download_chapters(
+            self._make_parts(12), max_workers=4, rate_limiter=rl
+        )
+        assert len(failed) == 3
+        # Harus urut numerik: chapter 2, lalu 10, lalu 11 — BUKAN alfabetis
+        # ("Chapter 10" < "Chapter 11" < "Chapter 2" kalau salah sort).
+        assert failed == [
+            "Chapter 2: Bab 2",
+            "Chapter 10: Bab 10",
+            "Chapter 11: Bab 11",
+        ]

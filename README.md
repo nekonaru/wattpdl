@@ -49,6 +49,7 @@
 | 💾 **Cache metadata** | Info cerita di-cache singkat supaya percobaan berulang dalam waktu dekat tidak selalu hit API |
 | 🔔 **Cek update wattpdl** | Beri tahu otomatis kalau ada versi wattpdl lebih baru di PyPI |
 | 🎯 **Pesan error spesifik** | Bedakan pesan untuk cerita dihapus (404) vs private/dibatasi (403) |
+| 🌐 **`--lang`** | Set kode bahasa metadata EPUB (default `id`) untuk cerita berbahasa lain |
 
 ## 📦 Requirements
 

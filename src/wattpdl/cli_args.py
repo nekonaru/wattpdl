@@ -74,6 +74,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Jangan pakai cache metadata cerita (~/.wattpdl/cache/), selalu ambil data terbaru.",
     )
     parser.add_argument(
+        "--lang", metavar="KODE", default="id",
+        help="Kode bahasa ISO 639-1 utk metadata EPUB (default: id). Isi 'en' kalau "
+             "ceritanya berbahasa Inggris, dst. Tidak memengaruhi format lain.",
+    )
+    parser.add_argument(
         "--no-update-check", action="store_true",
         help="Jangan cek versi wattpdl terbaru di PyPI saat start.",
     )

@@ -15,7 +15,11 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from rich.prompt import Confirm, Prompt
+from rich.prompt import (  # noqa: F401 — IntPrompt dipakai via cli.IntPrompt di app.py
+    Confirm,
+    IntPrompt,
+    Prompt,
+)
 from rich.rule import Rule
 from rich.theme import Theme
 
@@ -265,6 +269,14 @@ def download_chapters(
                 store.mark_done(part_id, chapter_title, text)
             return idx, chapter_title, text, images, False, None
         except Exception as e:
+            # Chapter gagal total (retry di get_chapter_html sudah habis). Tetap
+            # panggil wait() di sini juga — tanpa ini, begitu 1 chapter gagal,
+            # eksekusi lompat ke chapter berikutnya TANPA jeda sama sekali,
+            # padahal rate_limiter._level sudah naik gara-gara kegagalan ini
+            # (dilaporkan lewat report_throttled() di get_chapter_html kalau
+            # sebabnya 429/503). Request beruntun tanpa jeda pasca-kegagalan
+            # justru bisa memperparah rate-limiting di server.
+            rate_limiter.wait()
             return idx, chapter_title, "[GAGAL DIUNDUH — coba jalankan ulang]", [], False, e
 
     progress_columns = [
@@ -297,7 +309,7 @@ def download_chapters(
                     resumed_count += 1
                 elif err is not None:
                     console.print(f"\n    [danger]⚠  Chapter [{idx}] gagal:[/danger] {err}")
-                    failed.append(f"Chapter {idx}: {chapter_title}")
+                    failed.append((idx, f"Chapter {idx}: {chapter_title}"))
 
                 results.append((idx, chapter_title, text))
                 if images:
@@ -318,7 +330,7 @@ def download_chapters(
                     elif err is not None:
                         with print_lock:
                             console.print(f"\n    [danger]⚠  Chapter [{idx}] gagal:[/danger] {err}")
-                        failed.append(f"Chapter {idx}: {chapter_title}")
+                        failed.append((idx, f"Chapter {idx}: {chapter_title}"))
 
                     results.append((idx, chapter_title, text))
                     if images:
@@ -326,11 +338,16 @@ def download_chapters(
                     progress.update(task, description=f"{len(results)}/{len(indexed_parts)} chapter")
                     progress.advance(task)
             results.sort(key=lambda r: r[0])
-            failed.sort()
 
     if resumed_count:
         console.print(
             f"[muted]↻ {resumed_count} chapter dipakai dari progress sebelumnya (tidak diunduh ulang).[/muted]"
         )
+
+    # `failed` dikumpulkan sbg (idx, label) supaya bisa disortir NUMERIK
+    # berdasarkan nomor chapter — bukan alfabetis. Sort string biasa bikin
+    # "Chapter 10" muncul sebelum "Chapter 2" di ringkasan mode paralel
+    # (urutan penyelesaian ThreadPoolExecutor tidak berurutan).
+    failed = [label for _, label in sorted(failed, key=lambda item: item[0])]
 
     return results, failed, images_by_idx

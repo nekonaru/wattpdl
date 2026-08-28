@@ -270,7 +270,7 @@ def _text_to_epub_html(text: str) -> str:
 
 
 def _build_epub_book(title: str, author: str, story_id: str, identifier_suffix: str = None,
-                      meta: dict = None):
+                      meta: dict = None, language: str = "id"):
     """
     Buat objek EpubBook kosong dengan metadata standar wattpdl.
     identifier_suffix: opsional, dipakai untuk membuat identifier EPUB unik per file
@@ -280,6 +280,12 @@ def _build_epub_book(title: str, author: str, story_id: str, identifier_suffix: 
     meta: dict opsional {"description", "tags", "create_date"} — kalau diisi,
     ditambahkan sebagai metadata Dublin Core standar (description, subject, date)
     supaya kelihatan di info buku pada e-reader yang mendukungnya.
+    language: kode bahasa ISO 639-1 utk metadata EPUB (mis. "id", "en"). Default
+    "id" karena wattpdl ditujukan utk pembaca Wattpad Indonesia, tapi Wattpad
+    juga menghosting banyak cerita berbahasa lain — kalau ceritanya bahasa
+    Inggris, isi eksplisit lewat --lang supaya metadata EPUB-nya akurat
+    (bukan cuma tampilan/estetika: sebagian e-reader memakai field ini utk
+    text-to-speech dan sortir rak buku per bahasa).
     """
     from ebooklib import epub
 
@@ -287,7 +293,7 @@ def _build_epub_book(title: str, author: str, story_id: str, identifier_suffix: 
     book = epub.EpubBook()
     book.set_identifier(identifier)
     book.set_title(title)
-    book.set_language("id")
+    book.set_language(language or "id")
     book.add_author(author)
 
     meta = meta or {}
@@ -334,11 +340,12 @@ def _add_epub_inline_images(book, epub, idx: int, images: list) -> str:
 
 
 def write_combined_epub(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
-                         meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None) -> None:
+                         meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None,
+                         language: str = "id") -> None:
     """Tulis semua chapter yang diberikan ke satu file .epub (satu buku, banyak bab)."""
     meta = meta or {}
     images_by_idx = images_by_idx or {}
-    book, epub = _build_epub_book(title, author, story_id, meta=meta)
+    book, epub = _build_epub_book(title, author, story_id, meta=meta, language=language)
     _set_epub_cover(book, epub, cover_bytes)
 
     intro_body = (
@@ -351,13 +358,13 @@ def write_combined_epub(path: pathlib.Path, title: str, author: str, story_id: s
         intro_body += f"<p>{html.escape(meta['description'])}</p>"
     intro_body += f"<p>Sumber: https://www.wattpad.com/story/{story_id}</p>"
 
-    intro = epub.EpubHtml(title="Info", file_name="000_info.xhtml", lang="id")
+    intro = epub.EpubHtml(title="Info", file_name="000_info.xhtml", lang=language)
     intro.content = intro_body
     book.add_item(intro)
 
     epub_chapters = [intro]
     for idx, chapter_title, text in results:
-        c = epub.EpubHtml(title=chapter_title, file_name=f"chap_{idx:03d}.xhtml", lang="id")
+        c = epub.EpubHtml(title=chapter_title, file_name=f"chap_{idx:03d}.xhtml", lang=language)
         img_html = _add_epub_inline_images(book, epub, idx, images_by_idx.get(idx))
         c.content = f"<h1>{html.escape(chapter_title)}</h1>{_text_to_epub_html(text)}{img_html}"
         book.add_item(c)
@@ -372,14 +379,16 @@ def write_combined_epub(path: pathlib.Path, title: str, author: str, story_id: s
 
 
 def write_separate_epub_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
-                             meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None) -> None:
+                             meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None,
+                             language: str = "id") -> None:
     """Tulis tiap chapter sebagai file .epub terpisah (satu bab per buku), dikemas dalam satu .zip."""
     meta = meta or {}
     images_by_idx = images_by_idx or {}
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = pathlib.Path(tmpdir)
 
-        info_book, epub = _build_epub_book(title, author, story_id, identifier_suffix="info", meta=meta)
+        info_book, epub = _build_epub_book(title, author, story_id, identifier_suffix="info",
+                                            meta=meta, language=language)
         _set_epub_cover(info_book, epub, cover_bytes)
 
         info_body = (
@@ -392,7 +401,7 @@ def write_separate_epub_zip(path: pathlib.Path, title: str, author: str, story_i
             info_body += f"<p>{html.escape(meta['description'])}</p>"
         info_body += f"<p>Sumber: https://www.wattpad.com/story/{story_id}</p>"
 
-        info_page = epub.EpubHtml(title="Info", file_name="info.xhtml", lang="id")
+        info_page = epub.EpubHtml(title="Info", file_name="info.xhtml", lang=language)
         info_page.content = info_body
         info_book.add_item(info_page)
         info_book.toc = (info_page,)
@@ -405,9 +414,9 @@ def write_separate_epub_zip(path: pathlib.Path, title: str, author: str, story_i
         chapter_files = [info_file]
         for idx, chapter_title, text in results:
             chap_book, _ = _build_epub_book(
-                f"{title} - {chapter_title}", author, story_id, identifier_suffix=f"ch{idx}"
+                f"{title} - {chapter_title}", author, story_id, identifier_suffix=f"ch{idx}", language=language
             )
-            page = epub.EpubHtml(title=chapter_title, file_name="chapter.xhtml", lang="id")
+            page = epub.EpubHtml(title=chapter_title, file_name="chapter.xhtml", lang=language)
             img_html = _add_epub_inline_images(chap_book, epub, idx, images_by_idx.get(idx))
             page.content = f"<h1>{html.escape(chapter_title)}</h1>{_text_to_epub_html(text)}{img_html}"
             chap_book.add_item(page)

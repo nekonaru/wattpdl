@@ -79,7 +79,8 @@ def resolve_chapters(mode: str, parts: list, chapters_arg: str = None, chapter_a
 
 def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                   chapters_arg=None, chapter_arg=None, meta=None, cover_bytes=None,
-                  skip_existing=False, interactive=False, workers=1, include_images=False):
+                  skip_existing=False, interactive=False, workers=1, include_images=False,
+                  language="id"):
     """Alur unduh bersama untuk mode interaktif maupun non-interaktif."""
     indexed_parts = resolve_chapters(mode, parts, chapters_arg, chapter_arg)
 
@@ -139,7 +140,8 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                                                  meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
             elif file_format == "3":
                 writers.write_separate_epub_zip(full_path, title, author, story_id, results,
-                                                 meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
+                                                 meta=meta, cover_bytes=cover_bytes,
+                                                 images_by_idx=images_by_idx, language=language)
             elif file_format == "4":
                 writers.write_separate_md_zip(full_path, title, author, story_id, results, meta=meta)
             elif file_format == "5":
@@ -153,7 +155,8 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                                              meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
             elif file_format == "3":
                 writers.write_combined_epub(full_path, title, author, story_id, results,
-                                             meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
+                                             meta=meta, cover_bytes=cover_bytes,
+                                             images_by_idx=images_by_idx, language=language)
             elif file_format == "4":
                 writers.write_combined_md(full_path, title, author, story_id, results, meta=meta)
             elif file_format == "5":
@@ -292,7 +295,7 @@ def run_non_interactive(args):
         story_id, title, author, parts, args.mode, file_format, save_dir,
         chapters_arg=args.chapters, chapter_arg=args.chapter,
         meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
-        workers=args.workers, include_images=args.include_images,
+        workers=args.workers, include_images=args.include_images, language=args.lang,
     )
 
 
@@ -366,6 +369,29 @@ def run_interactive():
     if file_format in ("2", "3", "5") and meta.get("cover_url"):
         cover_bytes = api.download_cover_image(meta["cover_url"])
 
+    include_images = False
+    if file_format in ("2", "3", "5"):
+        include_images = cli.Confirm.ask(
+            "[value]Ikut unduh & sisipkan gambar di dalam teks chapter (bukan cuma cover)?[/value]",
+            default=False,
+        )
+
+    # Pemilihan chapter aktual (termasuk prompt utk mode 3/4) terjadi di dalam
+    # run_download() -> resolve_chapters(). Di sini cukup pakai len(parts) sbg
+    # perkiraan kasar utk menawarkan mode paralel — cukup akurat karena mode 1/2
+    # memang mengunduh semua chapter, dan menanyakan ini tidak berbahaya
+    # walau nanti user pilih sedikit chapter saja di mode 3/4.
+    workers = 1
+    if len(parts) > 3:
+        use_parallel = cli.Confirm.ask(
+            "[value]Percepat unduhan dengan mengunduh beberapa chapter sekaligus (paralel)?[/value]",
+            default=False,
+        )
+        if use_parallel:
+            workers = cli.IntPrompt.ask(
+                "[muted]Berapa chapter sekaligus? (disarankan 3-5)[/muted]", default=4
+            )
+
     step_rule("Folder Penyimpanan")
     default_dir = pathlib.Path(config["save_dir"]) if config.get("save_dir") else cli.get_default_download_dir()
     console.print(f"[muted]Folder default:[/muted] [accent]{default_dir}[/accent]")
@@ -377,7 +403,8 @@ def run_interactive():
     save_dir = resolve_save_dir(custom, config)
 
     run_download(story_id, title, author, parts, mode, file_format, save_dir,
-                 meta=meta, cover_bytes=cover_bytes, interactive=True)
+                 meta=meta, cover_bytes=cover_bytes, interactive=True,
+                 workers=workers, include_images=include_images)
 
 
 def run_user_mode(args) -> None:
@@ -439,6 +466,7 @@ def run_user_mode(args) -> None:
     for n, story_index in enumerate(chosen_indices, start=1):
         story_summary = stories[story_index - 1]
         console.print(f"\n[primary]— Cerita {n}/{len(chosen_indices)}: {story_summary['title']} —[/primary]")
+        cli.reset_steps()  # reset penomoran ①②③ tiap ganti cerita, bukan terus nambah lintas cerita
         title, author, parts, meta = fetch_story_or_exit(story_summary["id"], use_cache=not args.no_cache)
 
         cover_bytes = None
@@ -448,7 +476,7 @@ def run_user_mode(args) -> None:
         run_download(
             story_summary["id"], title, author, parts, mode, file_format, save_dir,
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
-            workers=args.workers, include_images=args.include_images,
+            workers=args.workers, include_images=args.include_images, language=args.lang,
         )
 
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
@@ -563,7 +591,7 @@ def run_watch(args) -> None:
                     story_id, title, author, parts, args.mode, file_format, save_dir,
                     chapters_arg=args.chapters, chapter_arg=args.chapter,
                     meta=meta, cover_bytes=cover_bytes, skip_existing=False,
-                    workers=args.workers, include_images=args.include_images,
+                    workers=args.workers, include_images=args.include_images, language=args.lang,
                 )
                 last_known_parts = len(parts)
             elif parts is not None:
