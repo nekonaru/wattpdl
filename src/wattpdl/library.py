@@ -1,12 +1,12 @@
 """
-Modul "perpustakaan" — mencatat cerita yang pernah berhasil diunduh PENUH
+Modul "perpustakaan", mencatat cerita yang pernah berhasil diunduh PENUH
 (semua chapter, lewat mode 1/2), beserta jumlah chapter saat itu. Dipakai
 untuk fitur `--check-updates`: bandingkan jumlah chapter yang tercatat di
 sini dengan jumlah chapter saat ini di Wattpad, supaya user tahu cerita
 ongoing mana saja yang ada chapter barunya tanpa perlu buka satu-satu.
 
 Sengaja terpisah dari `progress` (yang urusannya resume unduhan yang lagi
-berjalan/terhenti) dan `metacache` (cache jangka pendek beberapa menit) —
+berjalan/terhenti) dan `metacache` (cache jangka pendek beberapa menit),
 data di sini dimaksudkan bertahan lama (sampai user unduh ulang cerita itu).
 """
 import json

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "wattpdl"
 dynamic = ["version"]
-description = "Script Python + Rich CLI untuk mengunduh cerita Wattpad ke .txt/.docx offline"
+description = "Python script with a Rich CLI to download Wattpad stories as offline .txt/.docx/.epub/.md/.pdf files"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "nekonaru" }]
@@ -62,7 +62,7 @@ select = [
     "I",   # isort (urutan import)
     "UP",  # pyupgrade
     "B",   # flake8-bugbear
-    "FA",  # flake8-future-annotations — tangkap sintaks PEP 604 (`X | Y`) yang
+    "FA",  # flake8-future-annotations, tangkap sintaks PEP 604 (`X | Y`) yang
            # tidak kompatibel dengan target-version py39 (baru didukung dari 3.10)
 ]
 ignore = [

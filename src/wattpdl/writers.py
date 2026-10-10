@@ -10,6 +10,8 @@ import sys
 import tempfile
 import zipfile
 
+from .i18n import t
+
 
 def html_to_text(raw_html: str) -> str:
     """Konversi HTML Wattpad ke teks bersih."""
@@ -39,7 +41,7 @@ def safe_filename(name: str, max_length: int = 100) -> str:
     "File name too long" yang tidak tertangani saat menyimpan.
 
     Juga menghindari nama device reserved Windows (CON, AUX, PRN, NUL,
-    COM1-9, LPT1-9) — kalau judul chapter kebetulan cuma satu kata seperti
+    COM1-9, LPT1-9), kalau judul chapter kebetulan cuma satu kata seperti
     itu (jarang, tapi mungkin), menyimpan file dengan nama itu akan selalu
     gagal di Windows apa pun ekstensinya.
     """
@@ -60,10 +62,10 @@ def check_docx_available(console=None) -> None:
         import docx  # noqa: F401
     except ImportError:
         if console:
-            console.print("\n[danger]❌  Library 'python-docx' belum terinstall.[/danger]")
-            console.print("    [muted]Jalankan:[/muted] [accent]pip install python-docx[/accent]")
+            console.print(f"[danger]{t('lib.missing', lib='python-docx')}[/danger]")
+            console.print(f"[muted]{t('lib.run')}[/muted] [accent]pip install python-docx[/accent]")
         else:
-            print("Library 'python-docx' belum terinstall. Jalankan: pip install python-docx")
+            print(t("lib.missing_plain", lib="python-docx"))
         sys.exit(1)
 
 
@@ -73,10 +75,10 @@ def check_epub_available(console=None) -> None:
         import ebooklib  # noqa: F401
     except ImportError:
         if console:
-            console.print("\n[danger]❌  Library 'EbookLib' belum terinstall.[/danger]")
-            console.print("    [muted]Jalankan:[/muted] [accent]pip install EbookLib[/accent]")
+            console.print(f"[danger]{t('lib.missing', lib='EbookLib')}[/danger]")
+            console.print(f"[muted]{t('lib.run')}[/muted] [accent]pip install EbookLib[/accent]")
         else:
-            print("Library 'EbookLib' belum terinstall. Jalankan: pip install EbookLib")
+            print(t("lib.missing_plain", lib="EbookLib"))
         sys.exit(1)
 
 
@@ -162,7 +164,7 @@ def _write_paragraphs(doc, text: str) -> None:
 
 def _insert_docx_cover(doc, cover_bytes: bytes) -> None:
     """Sisipkan gambar sampul di awal dokumen Word. Gagal decode/insert tidak boleh
-    menggagalkan seluruh proses penulisan file — cover cuma pemanis."""
+    menggagalkan seluruh proses penulisan file, cover cuma pemanis."""
     import io
 
     from docx.shared import Inches
@@ -192,7 +194,7 @@ def _insert_docx_images(doc, images: list) -> None:
 def write_combined_docx(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
                          meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None) -> None:
     """Tulis semua chapter yang diberikan ke satu file .docx.
-    images_by_idx: opsional {nomor_chapter: [bytes_gambar, ...]} — gambar inline
+    images_by_idx: opsional {nomor_chapter: [bytes_gambar, ...]}, gambar inline
     dari dalam teks chapter (bukan cover), disisipkan di akhir tiap chapter.
     """
     from docx import Document
@@ -274,15 +276,15 @@ def _build_epub_book(title: str, author: str, story_id: str, identifier_suffix: 
     """
     Buat objek EpubBook kosong dengan metadata standar wattpdl.
     identifier_suffix: opsional, dipakai untuk membuat identifier EPUB unik per file
-    (mis. per chapter) — tanpa ini, semua EPUB dari cerita yang sama akan punya
+    (mis. per chapter), tanpa ini, semua EPUB dari cerita yang sama akan punya
     identifier persis sama, yang melanggar spec EPUB dan bisa bikin sebagian
     e-reader (Calibre, Kobo) bentrok/menimpa entri satu sama lain.
-    meta: dict opsional {"description", "tags", "create_date"} — kalau diisi,
+    meta: dict opsional {"description", "tags", "create_date"}, kalau diisi,
     ditambahkan sebagai metadata Dublin Core standar (description, subject, date)
     supaya kelihatan di info buku pada e-reader yang mendukungnya.
     language: kode bahasa ISO 639-1 utk metadata EPUB (mis. "id", "en"). Default
     "id" karena wattpdl ditujukan utk pembaca Wattpad Indonesia, tapi Wattpad
-    juga menghosting banyak cerita berbahasa lain — kalau ceritanya bahasa
+    juga menghosting banyak cerita berbahasa lain, kalau ceritanya bahasa
     Inggris, isi eksplisit lewat --lang supaya metadata EPUB-nya akurat
     (bukan cuma tampilan/estetika: sebagian e-reader memakai field ini utk
     text-to-speech dan sortir rak buku per bahasa).
@@ -309,7 +311,7 @@ def _build_epub_book(title: str, author: str, story_id: str, identifier_suffix: 
 
 def _set_epub_cover(book, epub, cover_bytes: bytes) -> None:
     """Sisipkan gambar sampul ke EpubBook. Gagal insert tidak boleh menggagalkan
-    seluruh proses penulisan file — cover cuma pemanis."""
+    seluruh proses penulisan file, cover cuma pemanis."""
     if not cover_bytes:
         return
     try:
@@ -436,7 +438,7 @@ def write_separate_epub_zip(path: pathlib.Path, title: str, author: str, story_i
 def _pdf_image_flowable(img_bytes: bytes, max_width: float, max_height: float):
     """Bikin flowable reportlab dari bytes gambar, diskalakan proporsional supaya
     muat dalam max_width x max_height. Kembalikan None kalau gambarnya rusak/tidak
-    bisa dibaca — dipanggil dengan asumsi caller melewati None tanpa crash."""
+    bisa dibaca, dipanggil dengan asumsi caller melewati None tanpa crash."""
     import io
 
     from reportlab.lib.utils import ImageReader
@@ -576,8 +578,8 @@ def check_pdf_available(console=None) -> None:
         import reportlab  # noqa: F401
     except ImportError:
         if console:
-            console.print("\n[danger]❌  Library 'reportlab' belum terinstall.[/danger]")
-            console.print("    [muted]Jalankan:[/muted] [accent]pip install reportlab[/accent]")
+            console.print(f"[danger]{t('lib.missing', lib='reportlab')}[/danger]")
+            console.print(f"[muted]{t('lib.run')}[/muted] [accent]pip install reportlab[/accent]")
         else:
-            print("Library 'reportlab' belum terinstall. Jalankan: pip install reportlab")
+            print(t("lib.missing_plain", lib="reportlab"))
         sys.exit(1)

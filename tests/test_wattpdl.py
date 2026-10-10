@@ -16,7 +16,7 @@ import responses as responses_lib
 from wattpdl import api as api_mod
 from wattpdl import app as app_mod
 from wattpdl import cli as cli_mod
-from wattpdl import cli_args, metacache, updater
+from wattpdl import cli_args, i18n, metacache, updater
 from wattpdl import config as config_mod
 from wattpdl import library as library_mod
 from wattpdl import progress as progress_mod
@@ -193,13 +193,13 @@ class TestHtmlToText:
 
 class TestFormatDuration:
     def test_seconds_only(self):
-        assert format_duration(45) == "45d"
+        assert format_duration(45) == "45s"
 
     def test_minutes_and_seconds(self):
-        assert format_duration(138) == "2m 18d"
+        assert format_duration(138) == "2m 18s"
 
     def test_zero(self):
-        assert format_duration(0) == "0d"
+        assert format_duration(0) == "0s"
 
 
 class TestConfig:
@@ -541,7 +541,7 @@ class TestCoverImage:
         from wattpdl.writers import _build_epub_book, _set_epub_cover
 
         book, epub = _build_epub_book("Judul", "Penulis", "999")
-        # Byte acak yang bukan gambar valid — pastikan tidak melempar exception,
+        # Byte acak yang bukan gambar valid, pastikan tidak melempar exception,
         # karena kegagalan sisip cover tidak boleh menggagalkan seluruh file.
         _set_epub_cover(book, epub, b"bukan-gambar-valid")
 
@@ -602,7 +602,7 @@ class TestEpubMetadata:
 class TestIntegrationMockHttp:
     """
     Integration test yang mem-mock HTTP di level `requests` (pakai `responses`),
-    bukan cuma unit test fungsi murni — memastikan pipeline API -> writer
+    bukan cuma unit test fungsi murni, memastikan pipeline API -> writer
     utuh berjalan seperti pemakaian nyata.
     """
 
@@ -1013,7 +1013,7 @@ class TestLibrary:
 
 
 class TestCheckUpdatesFlow:
-    """Fitur baru: app.run_check_updates() — laporan chapter baru untuk semua
+    """Fitur baru: app.run_check_updates(), laporan chapter baru untuk semua
     cerita di library, tanpa mengunduh apa pun."""
 
     @pytest.fixture(autouse=True)
@@ -1084,7 +1084,7 @@ class TestDownloadChaptersRateLimiting:
     """Regresi utk bug yg ditemukan reviewer eksternal: rate_limiter.wait()
     dulu cuma dipanggil di jalur sequential (max_workers=1), sama sekali
     tidak dipanggil di jalur paralel (ThreadPoolExecutor) maupun untuk
-    unduhan gambar inline — jadi --workers > 1 dan --include-images
+    unduhan gambar inline, jadi --workers > 1 dan --include-images
     menembak API tanpa throttle adaptif sama sekali, padahal itu justru
     tujuan utama fitur rate limiter. Sebelumnya tidak ada test yang benar-benar
     menjalankan jalur max_workers > 1 di download_chapters, jadi bug ini lolos."""
@@ -1107,7 +1107,7 @@ class TestDownloadChaptersRateLimiting:
         assert wait_calls["n"] == n, "sequential path harus panggil wait() 1x per chapter sukses"
 
     def test_parallel_path_calls_wait_per_chapter(self, monkeypatch):
-        """Ini test yg dulu TIDAK ADA — jalur max_workers > 1 sebelumnya tidak
+        """Ini test yg dulu TIDAK ADA, jalur max_workers > 1 sebelumnya tidak
         pernah dijalankan sama sekali oleh test suite, sehingga bug rate
         limiter yg cuma jalan di jalur sequential lolos tanpa ketahuan."""
         n = 6
@@ -1166,7 +1166,7 @@ class TestDownloadChaptersRateLimiting:
     def test_wait_still_called_when_chapter_fails(self, monkeypatch):
         """Regresi: dulu blok except di fetch_one() tidak memanggil
         rate_limiter.wait() sama sekali kalau chapter gagal total (retry
-        habis) — jadi begitu 1 chapter gagal, chapter berikutnya langsung
+        habis), jadi begitu 1 chapter gagal, chapter berikutnya langsung
         ditembak tanpa jeda, padahal rate_limiter._level sudah naik akibat
         kegagalan itu. wait() sekarang harus tetap dipanggil di jalur gagal."""
 
@@ -1203,10 +1203,132 @@ class TestDownloadChaptersRateLimiting:
             self._make_parts(12), max_workers=4, rate_limiter=rl
         )
         assert len(failed) == 3
-        # Harus urut numerik: chapter 2, lalu 10, lalu 11 — BUKAN alfabetis
+        # Harus urut numerik: chapter 2, lalu 10, lalu 11, BUKAN alfabetis
         # ("Chapter 10" < "Chapter 11" < "Chapter 2" kalau salah sort).
         assert failed == [
             "Chapter 2: Bab 2",
             "Chapter 10: Bab 10",
             "Chapter 11: Bab 11",
         ]
+
+
+class TestI18n:
+    """Pilihan bahasa tampilan CLI (Indonesia/English) lewat --ui-lang, env, dan config."""
+
+    @pytest.fixture(autouse=True)
+    def isolate_lang(self, tmp_path, monkeypatch):
+        # Config & env diisolasi, dan bahasa dikembalikan ke default setelah tiap test
+        # supaya test lain (yang mengasumsikan teks Indonesia) tidak ikut terpengaruh.
+        monkeypatch.setattr(config_mod, "CONFIG_DIR", tmp_path / ".wattpdl")
+        monkeypatch.setattr(config_mod, "CONFIG_FILE", tmp_path / ".wattpdl" / "config.json")
+        monkeypatch.delenv("WATTPDL_LANG", raising=False)
+        i18n.set_language("en")
+        yield
+        i18n.set_language("en")
+
+    def test_same_keys_in_both_languages(self):
+        assert set(i18n.MESSAGES["id"]) == set(i18n.MESSAGES["en"])
+
+    def test_same_placeholders_in_both_languages(self):
+        import string
+        fmt = string.Formatter()
+        for key, text_id in i18n.MESSAGES["id"].items():
+            names_id = {f[1] for f in fmt.parse(text_id) if f[1]}
+            names_en = {f[1] for f in fmt.parse(i18n.MESSAGES["en"][key]) if f[1]}
+            assert names_id == names_en, f"placeholder berbeda di key {key!r}"
+
+    def test_default_is_english(self):
+        assert i18n.resolve_language(env={}) == "en"
+        assert i18n.t("table.chapter_title") == "Chapter Title"
+
+    def test_set_language_indonesian(self):
+        i18n.set_language("id")
+        assert i18n.t("table.chapter_title") == "Judul Chapter"
+
+    def test_normalize_variants(self):
+        assert i18n.normalize("EN") == "en"
+        assert i18n.normalize("en_US") == "en"
+        assert i18n.normalize("id-ID") == "id"
+        assert i18n.normalize("fr") is None
+        assert i18n.normalize(None) is None
+
+    def test_unknown_language_falls_back_to_default(self):
+        assert i18n.set_language("xx") == "en"
+
+    def test_unknown_key_returns_key(self):
+        assert i18n.t("no.such.key") == "no.such.key"
+
+    def test_priority_cli_over_env_over_config(self):
+        assert i18n.resolve_language("id", "en", {"WATTPDL_LANG": "en"}) == "id"
+        assert i18n.resolve_language(None, "en", {"WATTPDL_LANG": "id"}) == "id"
+        assert i18n.resolve_language(None, "id", {}) == "id"
+        assert i18n.resolve_language("fr", None, {}) == "en"
+
+    def test_parse_args_ui_lang_sets_language(self):
+        args = cli_args.parse_args(["--ui-lang", "en"])
+        assert args.ui_lang == "en"
+        assert i18n.get_language() == "en"
+
+    def test_parse_args_reads_saved_config(self):
+        config_mod.save_config(ui_lang="id")
+        cli_args.parse_args([])
+        assert i18n.get_language() == "id"
+
+    def test_parse_args_env_var(self, monkeypatch):
+        monkeypatch.setenv("WATTPDL_LANG", "id")
+        cli_args.parse_args([])
+        assert i18n.get_language() == "id"
+
+    def test_cli_flag_beats_saved_config(self):
+        config_mod.save_config(ui_lang="id")
+        cli_args.parse_args(["--ui-lang", "en"])
+        assert i18n.get_language() == "en"
+
+    def test_invalid_ui_lang_rejected(self):
+        with pytest.raises(SystemExit):
+            cli_args.parse_args(["--ui-lang", "fr"])
+
+    def test_help_text_is_translated(self, capsys):
+        with pytest.raises(SystemExit):
+            cli_args.parse_args(["--ui-lang", "en", "--help"])
+        out = capsys.readouterr().out
+        assert "Wattpad story ID or link" in out
+        assert "ID atau link cerita" not in out
+
+    def test_validation_errors_in_english(self):
+        i18n.set_language("en")
+        args = cli_args.parse_args(["--ui-lang", "en", "--id", "1"])
+        with pytest.raises(ValueError, match="--mode is required"):
+            cli_args.validate_non_interactive_args(args)
+
+    def test_validation_errors_in_indonesian(self):
+        args = cli_args.parse_args(["--ui-lang", "id", "--id", "1"])
+        with pytest.raises(ValueError, match="--mode wajib diisi"):
+            cli_args.validate_non_interactive_args(args)
+
+    def test_chapter_selection_errors_in_english(self):
+        i18n.set_language("en")
+        with pytest.raises(ValueError, match="cannot be empty"):
+            parse_chapter_selection("", 5)
+        with pytest.raises(ValueError, match="not a valid number"):
+            parse_chapter_selection("abc", 5)
+
+    def test_extract_story_id_error_in_english(self):
+        i18n.set_language("en")
+        with pytest.raises(ValueError, match="not recognized"):
+            extract_story_id("bukan-link")
+
+    def test_http_404_message_in_english(self):
+        i18n.set_language("en")
+        resp = requests.Response()
+        resp.status_code = 404
+        with pytest.raises(api_mod.StoryNotFoundError, match="Story not found"):
+            api_mod._raise_specific_http_error(requests.HTTPError(response=resp))
+
+    def test_format_duration_unit_follows_language(self):
+        assert format_duration(75) == "1m 15s"
+        i18n.set_language("id")
+        assert format_duration(75) == "1m 15d"
+
+    def test_config_default_has_ui_lang(self):
+        assert config_mod.load_config()["ui_lang"] is None

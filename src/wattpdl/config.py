@@ -12,6 +12,7 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 DEFAULT_CONFIG = {
     "save_dir": None,     # path folder simpan terakhir, None = pakai folder Downloads
     "file_format": "1",   # "1" = .txt, "2" = .docx, "3" = .epub, "4" = .md
+    "ui_lang": None,      # bahasa tampilan CLI: "id" / "en", None = ikuti default (en)
 }
 
 

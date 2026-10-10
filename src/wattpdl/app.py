@@ -1,5 +1,5 @@
 """
-WattPDL — Wattpad Story Downloader
+WattPDL: Wattpad Story Downloader
 Entry point utama. Dua mode:
   - Interaktif  : python wattpdl.py           (tanpa argumen, tanya-jawab di terminal)
   - Non-interaktif : python wattpdl.py --id ... --mode ... (untuk scripting/otomatisasi)
@@ -21,6 +21,7 @@ from . import api, cli, cli_args, library, metacache, updater, writers
 from . import config as config_mod
 from . import progress as progress_mod
 from .cli import console, step_rule
+from .i18n import t
 
 
 def resolve_save_dir(custom_path: str, config: dict) -> pathlib.Path:
@@ -35,20 +36,20 @@ def resolve_save_dir(custom_path: str, config: dict) -> pathlib.Path:
     try:
         save_dir.mkdir(parents=True, exist_ok=True)
     except OSError as e:
-        console.print(f"[danger]❌  Folder tidak bisa dibuat:[/danger] {e}")
+        console.print(f"[danger]{t('err.folder_create').lstrip()}[/danger] {e}")
         try:
             fallback = cli.get_default_download_dir()
         except OSError as e2:
-            console.print(f"[danger]❌  Folder default juga tidak bisa dibuat:[/danger] {e2}")
-            console.print("    [muted]Coba jalankan ulang dengan folder simpan lain yang kamu punya izin tulis di sana.[/muted]")
+            console.print(f"[danger]{t('err.folder_default_create')}[/danger] {e2}")
+            console.print(f"[muted]{t('hint.other_folder')}[/muted]")
             sys.exit(1)
-        console.print(f"    [muted]Menggunakan folder default: {fallback}[/muted]")
+        console.print(f"[muted]{t('info.using_default_folder', path=fallback)}[/muted]")
         save_dir = fallback
     return save_dir
 
 
 def should_skip_existing(full_path: pathlib.Path, skip_existing: bool) -> bool:
-    """True kalau file output sudah ada dan mode skip-existing aktif —
+    """True kalau file output sudah ada dan mode skip-existing aktif,
     dipakai mode non-interaktif supaya tidak menimpa/mengunduh ulang tanpa perlu.
     Dipisah jadi fungsi murni supaya gampang ditest tanpa perlu mock filesystem penuh."""
     return skip_existing and full_path.exists()
@@ -59,7 +60,7 @@ def resolve_chapters(mode: str, parts: list, chapters_arg: str = None, chapter_a
     if mode == "3":
         if chapters_arg is not None:
             numbers = cli.parse_chapter_selection(chapters_arg, len(parts))
-            console.print(f"[success]✔ {len(numbers)} chapter dipilih.[/success]")
+            console.print(f"[success]{t('ok.chapters_selected', n=len(numbers))}[/success]")
             return [(n, parts[n - 1]) for n in numbers]
         return cli.select_multiple_chapters(parts)
 
@@ -67,10 +68,10 @@ def resolve_chapters(mode: str, parts: list, chapters_arg: str = None, chapter_a
         if chapter_arg is not None:
             n = chapter_arg
             if not (1 <= n <= len(parts)):
-                console.print(f"[danger]❌  Chapter {n} di luar rentang (1-{len(parts)}).[/danger]")
+                console.print(f"[danger]{t('err.chapter_out_of_range', n=n, total=len(parts))}[/danger]")
                 sys.exit(1)
             part = parts[n - 1]
-            console.print(f"[success]✔ Dipilih:[/success] Chapter {n} — {part.get('title', '')}")
+            console.print(f"[success]{t('ok.selected')}[/success] Chapter {n}: {part.get('title', '')}")
             return [(n, part)]
         return [cli.select_single_chapter(parts)]
 
@@ -105,26 +106,26 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         # untuk mode 4, atau folder tujuan yang dipilih user sudah panjang)
         # tetap melebihi batas panjang path sistem operasi walau sudah dipotong
         # oleh safe_filename(). Tampilkan pesan rapi, jangan biarkan traceback mentah.
-        console.print(f"\n[danger]❌  Nama file/path tidak valid atau terlalu panjang:[/danger] {e}")
-        console.print(f"    [muted]Path yang dicoba: {full_path}[/muted]")
-        console.print("    [muted]Coba pilih folder simpan dengan path yang lebih pendek.[/muted]")
+        console.print(f"[danger]{t('err.path_invalid')}[/danger] {e}")
+        console.print(f"[muted]{t('info.path_tried', path=full_path)}[/muted]")
+        console.print(f"[muted]{t('hint.shorter_path')}[/muted]")
         sys.exit(1)
 
     if path_exists:
         if interactive:
             if not cli.confirm_overwrite(full_path):
-                console.print("[muted]Dilewati — file yang sudah ada tidak diubah.[/muted]\n")
+                console.print(f"[muted]{t('info.skipped_existing_kept')}[/muted]")
                 return
         elif should_skip_existing(full_path, skip_existing):
             console.print(
-                f"[muted]⏭  Dilewati — file sudah ada:[/muted] [accent]{full_path}[/accent]\n"
-                "    [muted](hapus --skip-existing kalau mau menimpanya)[/muted]"
+                f"[muted]{t('info.skipped_existing')}[/muted] [accent]{full_path}[/accent]\n"
+                f"[muted]{t('hint.remove_skip_existing')}[/muted]"
             )
             return
 
-    console.print(f"\n[value]💾 File akan disimpan di:[/value] [accent]{full_path}[/accent]")
+    console.print(f"[value]{t('info.saved_at')}[/value] [accent]{full_path}[/accent]")
 
-    step_rule("Mengunduh Chapter")
+    step_rule(t("step.downloading"))
     start_time = time.time()
     rate_limiter = api.AdaptiveRateLimiter()
     results, failed_chapters, images_by_idx = cli.download_chapters(
@@ -166,44 +167,38 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                 writers.write_combined_txt(full_path, title, author, story_id, results)
     except OSError as e:
         # Chapter sudah terlanjur diunduh (dan progress-nya sudah tersimpan lewat
-        # progress.py) — jangan sampai kegagalan MENULIS file di detik terakhir
+        # progress.py), jangan sampai kegagalan MENULIS file di detik terakhir
         # (path terlalu panjang, disk penuh, tidak ada izin tulis, dst.) muncul
         # sebagai traceback mentah. Beri tahu user progress tidak hilang.
-        console.print(f"\n[danger]❌  Gagal menulis file output:[/danger] {e}")
-        console.print(f"    [muted]Path yang dicoba: {full_path}[/muted]")
-        console.print(
-            "    [muted]Chapter yang sudah berhasil diunduh tetap tersimpan di progress — "
-            "jalankan ulang setelah masalah di atas diperbaiki.[/muted]"
-        )
+        console.print(f"[danger]{t('err.write_failed')}[/danger] {e}")
+        console.print(f"[muted]{t('info.path_tried', path=full_path)}[/muted]")
+        console.print(f"[muted]{t('hint.progress_kept')}[/muted]")
         sys.exit(1)
 
-    step_rule("Ringkasan")
+    step_rule(t("step.summary"))
     summary = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
     summary.add_column(style="muted")
     summary.add_column(style="value")
-    summary.add_row("📁 File tersimpan di", f"[accent]{full_path}[/accent]")
-    summary.add_row("✅ Berhasil", f"[success]{len(results) - len(failed_chapters)}/{len(results)}[/success]")
+    summary.add_row(t("sum.file_saved"), f"[accent]{full_path}[/accent]")
+    summary.add_row(t("sum.success"), f"[success]{len(results) - len(failed_chapters)}/{len(results)}[/success]")
     if failed_chapters:
-        summary.add_row("⚠️  Gagal", f"[danger]{len(failed_chapters)}[/danger]")
-    summary.add_row("⏱️  Waktu total", elapsed)
+        summary.add_row(t("sum.failed"), f"[danger]{len(failed_chapters)}[/danger]")
+    summary.add_row(t("sum.total_time"), elapsed)
 
     if failed_chapters:
         fail_list = "\n".join(f"[danger]• {ch}[/danger]" for ch in failed_chapters)
         body = Table.grid(padding=(0, 0))
         body.add_row(summary)
         body.add_row("")
-        body.add_row(f"[muted]Chapter yang gagal:[/muted]\n{fail_list}")
+        body.add_row(f"[muted]{t('sum.failed_chapters')}[/muted]\n{fail_list}")
         console.print(Panel(
             body,
-            title="[warning]⚠️  Selesai dengan beberapa kegagalan[/warning]",
+            title=f"[warning]{t('sum.title_partial')}[/warning]",
             border_style="warning",
             box=box.ROUNDED,
             padding=(1, 2),
         ))
-        console.print(
-            "[muted]Progress chapter yang sudah berhasil sudah tersimpan — "
-            "jalankan ulang cerita yang sama untuk melanjutkan tanpa mengulang dari awal.[/muted]\n"
-        )
+        console.print(f"[muted]{t('sum.partial_hint')}[/muted]\n")
     else:
         # Semua chapter berhasil -> file progress resume cerita ini tidak diperlukan lagi.
         progress_mod.clear_progress(story_id)
@@ -213,7 +208,7 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
             library.remember_story(story_id, title, len(parts))
         console.print(Panel(
             summary,
-            title="[success]🎉 Berhasil!  Semua chapter tersimpan[/success]",
+            title=f"[success]{t('sum.title_done')}[/success]",
             border_style="success",
             box=box.DOUBLE,
             padding=(1, 2),
@@ -230,7 +225,7 @@ def fetch_story_or_exit(story_id: str, use_cache: bool = True):
         if cached:
             return cached
 
-    with console.status(f"[accent]Mengambil info cerita (ID: {story_id})…[/accent]", spinner="dots"):
+    with console.status(f"[accent]{t('status.fetching_story', story_id=story_id)}[/accent]", spinner="dots"):
         try:
             title, author, parts, meta = api.get_story_info(story_id)
         except (api.StoryNotFoundError, api.StoryAccessError) as e:
@@ -238,12 +233,12 @@ def fetch_story_or_exit(story_id: str, use_cache: bool = True):
             console.print(f"[danger]❌  {e}[/danger]")
             sys.exit(1)
         except requests.RequestException as e:
-            console.print(f"[danger]❌  Gagal mengakses API Wattpad:[/danger] {e}")
-            console.print("    [muted]Pastikan koneksi internet stabil, dan coba lagi beberapa saat.[/muted]")
+            console.print(f"[danger]{t('err.api_access')}[/danger] {e}")
+            console.print(f"[muted]{t('hint.check_connection')}[/muted]")
             sys.exit(1)
 
     if not parts:
-        console.print("[danger]❌  Tidak ada chapter ditemukan. Cek lagi ID/link ceritanya.[/danger]")
+        console.print(f"[danger]{t('err.no_chapters')}[/danger]")
         sys.exit(1)
 
     if use_cache:
@@ -268,13 +263,13 @@ def run_non_interactive(args):
     config = config_mod.load_config()
     title, author, parts, meta = fetch_story_or_exit(story_id, use_cache=not args.no_cache)
 
-    step_rule("Info Cerita")
+    step_rule(t("step.story_info"))
     info_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
     info_table.add_column(style="muted")
     info_table.add_column(style="value")
-    info_table.add_row("📌 Judul", title)
-    info_table.add_row("✍️  Penulis", author)
-    info_table.add_row("📚 Jumlah chapter", str(len(parts)))
+    info_table.add_row(t("info.title"), title)
+    info_table.add_row(t("info.author"), author)
+    info_table.add_row(t("info.chapter_count"), str(len(parts)))
     console.print(Panel(info_table, border_style="success", box=box.ROUNDED, padding=(1, 2)))
 
     file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
@@ -305,14 +300,14 @@ def run_interactive():
     console.print(Align.center(cli.LOGO))
     console.print(
         Align.center(
-            "[value]📖 Wattpad Story Downloader[/value]  [muted]—  simpan cerita jadi file .txt/.docx offline[/muted]"
+            f"[value]{t('tagline')}[/value]  [muted]{t('tagline_sub')}[/muted]"
         )
     )
 
     config = config_mod.load_config()
 
-    step_rule("Masukkan Cerita")
-    raw = cli.Prompt.ask("[value]Link atau ID cerita Wattpad[/value]")
+    step_rule(t("step.enter_story"))
+    raw = cli.Prompt.ask(f"[value]{t('prompt.story')}[/value]")
     try:
         story_id = api.extract_story_id(raw)
     except ValueError as e:
@@ -321,40 +316,40 @@ def run_interactive():
 
     title, author, parts, meta = fetch_story_or_exit(story_id)
 
-    step_rule("Info Cerita")
+    step_rule(t("step.story_info"))
     info_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
     info_table.add_column(style="muted")
     info_table.add_column(style="value")
-    info_table.add_row("📌 Judul", title)
-    info_table.add_row("✍️  Penulis", author)
-    info_table.add_row("📚 Jumlah chapter", str(len(parts)))
+    info_table.add_row(t("info.title"), title)
+    info_table.add_row(t("info.author"), author)
+    info_table.add_row(t("info.chapter_count"), str(len(parts)))
     console.print(Panel(info_table, border_style="success", box=box.ROUNDED, padding=(1, 2)))
 
-    step_rule("Pilih Mode Unduh")
+    step_rule(t("step.pick_mode"))
     mode_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
     mode_table.add_column(style="accent", justify="right")
     mode_table.add_column(style="value")
-    mode_table.add_row("1", "Semua chapter → 1 file gabungan")
-    mode_table.add_row("2", "Semua chapter → file terpisah per chapter, dikemas .zip")
-    mode_table.add_row("3", "Pilih beberapa chapter → 1 file gabungan")
-    mode_table.add_row("4", "Pilih 1 chapter saja")
+    mode_table.add_row("1", t("mode.1"))
+    mode_table.add_row("2", t("mode.2"))
+    mode_table.add_row("3", t("mode.3"))
+    mode_table.add_row("4", t("mode.4"))
     console.print(mode_table)
 
-    mode = cli.Prompt.ask("\n[value]Pilih mode[/value]", choices=["1", "2", "3", "4"], default="1")
+    mode = cli.Prompt.ask(f"\n[value]{t('prompt.mode')}[/value]", choices=["1", "2", "3", "4"], default="1")
 
     format_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
     format_table.add_column(style="accent", justify="right")
     format_table.add_column(style="value")
-    format_table.add_row("1", "Teks polos (.txt)")
-    format_table.add_row("2", "Dokumen Word (.docx)")
-    format_table.add_row("3", "Ebook (.epub)")
-    format_table.add_row("4", "Markdown (.md)")
-    format_table.add_row("5", "PDF (.pdf)")
+    format_table.add_row("1", t("fmt.1"))
+    format_table.add_row("2", t("fmt.2"))
+    format_table.add_row("3", t("fmt.3"))
+    format_table.add_row("4", t("fmt.4"))
+    format_table.add_row("5", t("fmt.5"))
     console.print()
     console.print(format_table)
 
     file_format = cli.Prompt.ask(
-        "\n[value]Pilih format file[/value]",
+        f"\n[value]{t('prompt.format')}[/value]",
         choices=["1", "2", "3", "4", "5"],
         default=config.get("file_format", "1"),
     )
@@ -372,31 +367,31 @@ def run_interactive():
     include_images = False
     if file_format in ("2", "3", "5"):
         include_images = cli.Confirm.ask(
-            "[value]Ikut unduh & sisipkan gambar di dalam teks chapter (bukan cuma cover)?[/value]",
+            f"[value]{t('prompt.include_images')}[/value]",
             default=False,
         )
 
     # Pemilihan chapter aktual (termasuk prompt utk mode 3/4) terjadi di dalam
     # run_download() -> resolve_chapters(). Di sini cukup pakai len(parts) sbg
-    # perkiraan kasar utk menawarkan mode paralel — cukup akurat karena mode 1/2
+    # perkiraan kasar utk menawarkan mode paralel, cukup akurat karena mode 1/2
     # memang mengunduh semua chapter, dan menanyakan ini tidak berbahaya
     # walau nanti user pilih sedikit chapter saja di mode 3/4.
     workers = 1
     if len(parts) > 3:
         use_parallel = cli.Confirm.ask(
-            "[value]Percepat unduhan dengan mengunduh beberapa chapter sekaligus (paralel)?[/value]",
+            f"[value]{t('prompt.parallel')}[/value]",
             default=False,
         )
         if use_parallel:
             workers = cli.IntPrompt.ask(
-                "[muted]Berapa chapter sekaligus? (disarankan 3-5)[/muted]", default=4
+                f"[muted]{t('prompt.workers')}[/muted]", default=4
             )
 
-    step_rule("Folder Penyimpanan")
+    step_rule(t("step.save_folder"))
     default_dir = pathlib.Path(config["save_dir"]) if config.get("save_dir") else cli.get_default_download_dir()
-    console.print(f"[muted]Folder default:[/muted] [accent]{default_dir}[/accent]")
+    console.print(f"[muted]{t('info.default_folder')}[/muted] [accent]{default_dir}[/accent]")
     custom = cli.Prompt.ask(
-        "[muted]Tekan Enter untuk pakai folder itu, atau ketik path lain[/muted]",
+        f"[muted]{t('prompt.custom_folder')}[/muted]",
         default="",
         show_default=False,
     ).strip()
@@ -410,34 +405,34 @@ def run_interactive():
 def run_user_mode(args) -> None:
     """Unduh semua/cerita pilihan dari satu penulis Wattpad sekaligus (--user).
     Selalu non-interaktif: cerita mana yang diunduh ditentukan lewat --user-select,
-    dan tiap cerita diunduh mode 1 (gabungan) atau 2 (zip terpisah) — mode 3/4
+    dan tiap cerita diunduh mode 1 (gabungan) atau 2 (zip terpisah), mode 3/4
     (pilih chapter tertentu) tidak relevan untuk banyak cerita sekaligus.
     """
     cli.reset_steps()
     mode = args.mode or "1"
     if mode not in ("1", "2"):
-        console.print("[danger]❌  --user hanya mendukung --mode 1 atau 2 (unduh chapter tertentu tidak berlaku untuk banyak cerita sekaligus).[/danger]")
+        console.print(f"[danger]{t('err.user_mode_only_12')}[/danger]")
         sys.exit(1)
 
-    step_rule(f"Daftar Cerita — {args.user}")
+    step_rule(t("step.story_list", user=args.user))
     try:
-        with console.status(f"[accent]Mengambil daftar cerita milik '{args.user}'…[/accent]", spinner="dots"):
+        with console.status(f"[accent]{t('status.fetching_user_stories', user=args.user)}[/accent]", spinner="dots"):
             stories = api.get_author_stories(args.user)
     except (api.StoryNotFoundError, api.StoryAccessError) as e:
         console.print(f"[danger]❌  {e}[/danger]")
         sys.exit(1)
     except requests.RequestException as e:
-        console.print(f"[danger]❌  Gagal mengakses API Wattpad:[/danger] {e}")
+        console.print(f"[danger]{t('err.api_access')}[/danger] {e}")
         sys.exit(1)
 
     if not stories:
-        console.print(f"[danger]❌  Tidak ada cerita ditemukan untuk penulis '{args.user}'.[/danger]")
+        console.print(f"[danger]{t('err.no_user_stories', user=args.user)}[/danger]")
         sys.exit(1)
 
     table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
-    table.add_column("No", style="muted", justify="right", width=5)
-    table.add_column("Judul", style="value")
-    table.add_column("Chapter", style="muted", justify="right")
+    table.add_column(t("table.no"), style="muted", justify="right", width=5)
+    table.add_column(t("table.title"), style="value")
+    table.add_column(t("table.chapters"), style="muted", justify="right")
     for i, s in enumerate(stories, start=1):
         table.add_row(str(i), s["title"], str(s["num_parts"]))
     console.print(table)
@@ -448,10 +443,10 @@ def run_user_mode(args) -> None:
         try:
             chosen_indices = cli.parse_chapter_selection(args.user_select, len(stories))
         except ValueError as e:
-            console.print(f"[danger]❌  --user-select tidak valid: {e}[/danger]")
+            console.print(f"[danger]{t('err.user_select_invalid', error=e)}[/danger]")
             sys.exit(1)
 
-    console.print(f"\n[success]✔ {len(chosen_indices)} dari {len(stories)} cerita akan diunduh.[/success]")
+    console.print(f"[success]{t('ok.stories_selected', n=len(chosen_indices), total=len(stories))}[/success]")
 
     config = config_mod.load_config()
     file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
@@ -465,7 +460,7 @@ def run_user_mode(args) -> None:
 
     for n, story_index in enumerate(chosen_indices, start=1):
         story_summary = stories[story_index - 1]
-        console.print(f"\n[primary]— Cerita {n}/{len(chosen_indices)}: {story_summary['title']} —[/primary]")
+        console.print(f"[primary]{t('info.story_progress', n=n, total=len(chosen_indices), title=story_summary['title'])}[/primary]")
         cli.reset_steps()  # reset penomoran ①②③ tiap ganti cerita, bukan terus nambah lintas cerita
         title, author, parts, meta = fetch_story_or_exit(story_summary["id"], use_cache=not args.no_cache)
 
@@ -485,24 +480,21 @@ def run_user_mode(args) -> None:
 def run_check_updates() -> None:
     """Cek semua cerita yang pernah diunduh penuh (tercatat di library.json)
     apakah ada chapter baru di Wattpad sekarang. Tidak mengunduh apa pun,
-    cuma melaporkan — user tinggal jalankan ulang unduhan normal kalau ada
+    cuma melaporkan, user tinggal jalankan ulang unduhan normal kalau ada
     yang mau di-update.
     """
     cli.reset_steps()
-    step_rule("Cek Update Cerita")
+    step_rule(t("step.check_updates"))
     saved = library.load_library()
     if not saved:
-        console.print(
-            "[muted]Belum ada cerita yang tercatat. Cerita otomatis tercatat setelah "
-            "berhasil diunduh penuh lewat mode 1 atau 2.[/muted]"
-        )
+        console.print(f"[muted]{t('info.library_empty')}[/muted]")
         return
 
     table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
-    table.add_column("Judul", style="value")
-    table.add_column("Chapter Tercatat", style="muted", justify="right")
-    table.add_column("Chapter Sekarang", style="muted", justify="right")
-    table.add_column("Status", style="value")
+    table.add_column(t("table.title"), style="value")
+    table.add_column(t("table.recorded_chapters"), style="muted", justify="right")
+    table.add_column(t("table.current_chapters"), style="muted", justify="right")
+    table.add_column(t("table.status"), style="value")
 
     any_update = False
     for story_id, entry in saved.items():
@@ -511,25 +503,22 @@ def run_check_updates() -> None:
             _, _, parts, _ = api.get_story_info(story_id)
             new_count = len(parts)
         except api.StoryNotFoundError:
-            table.add_row(entry.get("title", story_id), str(old_count), "-", "[danger]❌ dihapus/tidak ditemukan[/danger]")
+            table.add_row(entry.get("title", story_id), str(old_count), "-", f"[danger]{t('status.deleted')}[/danger]")
             continue
         except (api.StoryAccessError, requests.RequestException):
-            table.add_row(entry.get("title", story_id), str(old_count), "?", "[warning]⚠ gagal cek[/warning]")
+            table.add_row(entry.get("title", story_id), str(old_count), "?", f"[warning]{t('status.check_failed')}[/warning]")
             continue
 
         if new_count > old_count:
             any_update = True
-            status = f"[success]✨ +{new_count - old_count} chapter baru[/success]"
+            status = f"[success]{t('status.new_chapters', n=new_count - old_count)}[/success]"
         else:
-            status = "[muted]sudah terbaru[/muted]"
+            status = f"[muted]{t('status.up_to_date')}[/muted]"
         table.add_row(entry.get("title", story_id), str(old_count), str(new_count), status)
 
     console.print(table)
     if any_update:
-        console.print(
-            "\n[muted]Ada cerita dengan chapter baru — jalankan ulang unduhan normal "
-            "(mode 1/2) untuk cerita itu untuk memperbarui filenya.[/muted]"
-        )
+        console.print(f"[muted]{t('info.updates_available')}[/muted]")
 
 
 def run_watch(args) -> None:
@@ -550,10 +539,7 @@ def run_watch(args) -> None:
         console.print(f"[danger]❌  {e}[/danger]")
         sys.exit(1)
 
-    console.print(
-        f"\n[value]👀 Mode watch aktif[/value] untuk cerita ID [accent]{story_id}[/accent]. "
-        f"Cek tiap [accent]{args.watch_interval}[/accent] detik. [muted]Tekan Ctrl+C untuk berhenti.[/muted]\n"
-    )
+    console.print(f"[value]{t('watch.active', story_id=story_id, interval=args.watch_interval)}[/value]")
 
     iteration = 0
     last_known_parts = None
@@ -566,14 +552,13 @@ def run_watch(args) -> None:
                 console.print(f"[danger]❌  {e}[/danger]")
                 sys.exit(1)
             except requests.RequestException as e:
-                console.print(f"[warning]⚠  Gagal cek update (percobaan #{iteration}): {e}[/warning]")
+                console.print(f"[warning]{t('watch.check_failed', iteration=iteration, error=e)}[/warning]")
                 parts = None
 
             if parts is not None and (last_known_parts is None or len(parts) > last_known_parts):
                 if last_known_parts is not None:
                     console.print(
-                        f"\n[success]✨ Chapter baru terdeteksi![/success] "
-                        f"({last_known_parts} → {len(parts)} chapter). Mengunduh ulang…"
+                        f"[success]{t('watch.new_chapters', old=last_known_parts, new=len(parts))}[/success]"
                     )
                 config = config_mod.load_config()
                 file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
@@ -596,28 +581,31 @@ def run_watch(args) -> None:
                 last_known_parts = len(parts)
             elif parts is not None:
                 console.print(
-                    f"[muted]↻ Belum ada chapter baru ({len(parts)} chapter). "
-                    f"Cek lagi dalam {args.watch_interval} detik…[/muted]"
+                    f"[muted]{t('watch.no_new', n=len(parts), interval=args.watch_interval)}[/muted]"
                 )
 
             if args.watch_max_iterations is not None and iteration >= args.watch_max_iterations:
-                console.print("[muted]Batas jumlah pengecekan tercapai, mode watch berhenti.[/muted]")
+                console.print(f"[muted]{t('watch.max_reached')}[/muted]")
                 break
             time.sleep(args.watch_interval)
     except KeyboardInterrupt:
-        console.print("\n[muted]Mode watch dihentikan.[/muted]")
+        console.print(f"[muted]{t('watch.stopped')}[/muted]")
 
 
 def main():
-    args = cli_args.parse_args()
+    args = cli_args.parse_args()  # parse_args juga menetapkan bahasa tampilan (i18n)
+
+    if args.ui_lang:
+        # Pilihan eksplisit --ui-lang diingat untuk sesi berikutnya.
+        config_mod.save_config(ui_lang=args.ui_lang)
 
     if not args.no_update_check:
         try:
             latest = updater.check_for_update()
             if latest:
                 console.print(
-                    f"[muted]💡 Versi baru wattpdl tersedia: {latest}. "
-                    f"Update dengan:[/muted] [accent]pip install --upgrade wattpdl[/accent]\n"
+                    f"[muted]{t('update.available', latest=latest)}[/muted] "
+                    "[accent]pip install --upgrade wattpdl[/accent]\n"
                 )
         except Exception:
             pass  # cek update tidak boleh pernah menghentikan aplikasi utama

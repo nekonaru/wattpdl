@@ -1,7 +1,7 @@
 """
 Modul cek update: bandingkan versi wattpdl yang terinstall dengan versi
 terbaru di PyPI. Hasilnya di-cache di disk supaya tidak mengecek ke PyPI
-tiap kali aplikasi dijalankan — cukup sekali per CHECK_INTERVAL.
+tiap kali aplikasi dijalankan, cukup sekali per CHECK_INTERVAL.
 
 Prinsip penting: kegagalan cek update (tidak ada internet, PyPI down, dll)
 TIDAK BOLEH pernah mengganggu jalannya aplikasi utama. Semua fungsi di sini

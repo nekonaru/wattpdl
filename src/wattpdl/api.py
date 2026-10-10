@@ -10,6 +10,8 @@ from typing import Optional
 
 import requests
 
+from .i18n import t
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -30,7 +32,7 @@ CHAPTER_TEXT_URL = "https://www.wattpad.com/apiv2/storytext?id={part_id}"
 # diverifikasi langsung ke server asli karena lingkungan pengembangan ini
 # tidak mempunyai akses jaringan ke wattpad.com. Kalau ternyata struktur
 # JSON respons berbeda di lapangan, cukup sesuaikan parsing di
-# `get_author_stories()` — bentuk fungsi & pemanggilnya tidak perlu berubah.
+# `get_author_stories()`, bentuk fungsi & pemanggilnya tidak perlu berubah.
 AUTHOR_STORIES_URL = (
     "https://www.wattpad.com/api/v3/users/{username}/stories/published"
     "?fields=stories(id,title,numParts,completed)"
@@ -45,7 +47,7 @@ class WattpadAPIError(Exception):
 
 
 class StoryNotFoundError(WattpadAPIError):
-    """Cerita tidak ditemukan — dihapus penulisnya, atau ID/link salah."""
+    """Cerita tidak ditemukan, dihapus penulisnya, atau ID/link salah."""
 
 
 class StoryAccessError(WattpadAPIError):
@@ -76,7 +78,7 @@ class AdaptiveRateLimiter:
             self._level += 1
 
     def report_success(self) -> None:
-        """Panggil tiap kali request sukses — turunkan level pelan-pelan (bukan
+        """Panggil tiap kali request sukses, turunkan level pelan-pelan (bukan
         langsung ke 0, supaya tidak langsung ngebut lagi begitu 1 request
         kebetulan lolos di tengah kondisi server yang masih sibuk)."""
         with self._lock:
@@ -97,37 +99,27 @@ def extract_story_id(user_input: str) -> str:
         return user_input
 
     # Link share/mobile per-chapter Wattpad (mis. wattpad.com/1234567-judul-part)
-    # tidak mengandung "story/" dan angkanya adalah ID chapter (part), bukan ID cerita —
+    # tidak mengandung "story/" dan angkanya adalah ID chapter (part), bukan ID cerita,
     # jadi tidak bisa langsung dipakai di sini. Beri pesan yang jelas alih-alih pesan generik.
     chapter_link = re.search(r"wattpad\.com/(\d+)-", user_input)
     if chapter_link:
-        raise ValueError(
-            "Link ini mengarah ke satu chapter (part), bukan ke halaman cerita.\n"
-            "Buka chapter tersebut di Wattpad, lalu pakai link/judul cerita di bagian atas "
-            "halaman (mengandung '/story/'), atau salin ID cerita dari sana.\n"
-            "Contoh link cerita : https://www.wattpad.com/story/398440633-judul-cerita"
-        )
+        raise ValueError(t("api.chapter_link"))
 
-    raise ValueError(
-        "Link atau ID cerita tidak dikenali.\n"
-        "Contoh link : https://www.wattpad.com/story/398440633-judul-cerita\n"
-        "Contoh ID   : 398440633"
-    )
+    raise ValueError(t("api.unrecognized"))
 
 
-def _raise_specific_http_error(e: requests.HTTPError, context: str = "cerita") -> None:
+def _raise_specific_http_error(e: requests.HTTPError, context: str = None) -> None:
     """Ubah requests.HTTPError generik jadi pesan yang jelas berdasarkan status code."""
     status = e.response.status_code if e.response is not None else None
+    if context is None:
+        context = t("api.context_story")
     if status == 404:
         raise StoryNotFoundError(
-            f"{context.capitalize()} tidak ditemukan. Kemungkinan sudah dihapus "
-            "penulisnya, akun penulisnya sudah nonaktif, atau ID/link yang "
-            "dimasukkan salah."
+            t("api.not_found", context=context.capitalize())
         ) from e
     if status in (401, 403):
         raise StoryAccessError(
-            f"{context.capitalize()} ini private atau dibatasi aksesnya, sehingga "
-            "tidak bisa diambil lewat API publik Wattpad."
+            t("api.private", context=context.capitalize())
         ) from e
     raise e
 
@@ -151,7 +143,7 @@ def get_story_info(story_id: str) -> tuple[str, str, list, dict]:
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
-        _raise_specific_http_error(e, context="cerita")
+        _raise_specific_http_error(e, context=t("api.context_story"))
     data = resp.json()
     title = data.get("title", f"story_{story_id}")
     author = data.get("user", {}).get("name", "unknown")
@@ -179,7 +171,7 @@ def get_author_stories(username: str) -> list:
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
-        _raise_specific_http_error(e, context="akun penulis")
+        _raise_specific_http_error(e, context=t("api.context_author"))
     data = resp.json()
     stories = data.get("stories", [])
     return [
@@ -196,8 +188,8 @@ def get_author_stories(username: str) -> list:
 def download_cover_image(cover_url: str) -> Optional[bytes]:
     """
     Unduh gambar sampul cerita. Dipakai untuk menyisipkan cover di file .docx/.epub.
-    Kegagalan di sini tidak boleh menghentikan proses unduh cerita — cover cuma
-    pemanis, bukan bagian penting — jadi selalu kembalikan None saat gagal,
+    Kegagalan di sini tidak boleh menghentikan proses unduh cerita, cover cuma
+    pemanis, bukan bagian penting, jadi selalu kembalikan None saat gagal,
     tidak raise exception.
     """
     if not cover_url:
@@ -213,7 +205,7 @@ def download_cover_image(cover_url: str) -> Optional[bytes]:
 def download_image(image_url: str) -> Optional[bytes]:
     """Unduh 1 gambar generik (dipakai untuk gambar inline di dalam chapter).
     Sama seperti download_cover_image: kegagalan tidak boleh menggagalkan
-    seluruh proses, gambar inline cuma pelengkap — kembalikan None saat gagal.
+    seluruh proses, gambar inline cuma pelengkap, kembalikan None saat gagal.
     """
     if not image_url:
         return None
@@ -234,7 +226,7 @@ def get_chapter_html(
     """
     Unduh HTML teks chapter dengan retry otomatis.
     on_retry: callback opsional dipanggil dengan (attempt, retries, wait, error)
-    tiap kali percobaan gagal — dipakai CLI untuk menampilkan pesan warning
+    tiap kali percobaan gagal, dipakai CLI untuk menampilkan pesan warning
     tanpa modul ini perlu tahu soal `rich`/console.
     rate_limiter: opsional, kalau diisi maka respons 429/503 akan melaporkan
     diri ke rate limiter supaya jeda antar-chapter otomatis diperlambat.

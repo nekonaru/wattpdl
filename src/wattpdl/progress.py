@@ -2,7 +2,7 @@
 Modul resume/progress: menyimpan chapter yang sudah berhasil diunduh untuk
 suatu cerita, supaya kalau proses terhenti di tengah jalan (macet, koneksi
 putus, terminal ditutup), menjalankan ulang dengan cerita yang sama akan
-melanjutkan dari chapter terakhir yang berhasil — bukan mengulang dari awal.
+melanjutkan dari chapter terakhir yang berhasil, bukan mengulang dari awal.
 
 Disimpan per cerita di ~/.wattpdl/progress/<story_id>.json
 """
@@ -37,7 +37,7 @@ def save_chapter_progress(story_id: str, part_id, title: str, text: str) -> None
 
     Dipertahankan sebagai fungsi berdiri sendiri untuk kompatibilitas & pemakaian
     sederhana (baca-ubah-tulis sekali). Untuk sesi unduh banyak chapter
-    berturut-turut, pakai `ProgressStore` di bawah — itu baca file cuma sekali
+    berturut-turut, pakai `ProgressStore` di bawah, itu baca file cuma sekali
     di awal lalu simpan state di memori, supaya nggak perlu baca ulang seluruh
     JSON tiap 1 chapter selesai (O(n) per save, bukan O(n) baca + O(n) tulis
     berulang untuk tiap chapter = O(n^2) total untuk cerita panjang).
@@ -60,7 +60,7 @@ class ProgressStore:
 
     Dipakai oleh `cli.download_chapters()` supaya tiap chapter yang selesai
     diunduh cukup update dict di memori + tulis ulang ke disk sekali (tanpa
-    baca ulang file dari awal tiap kali) — jauh lebih ringan untuk cerita
+    baca ulang file dari awal tiap kali), jauh lebih ringan untuk cerita
     dengan ratusan/ribuan chapter. Sudah thread-safe (pakai lock) supaya aman
     dipanggil dari beberapa worker unduhan paralel sekaligus.
     """

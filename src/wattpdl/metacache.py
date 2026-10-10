@@ -5,9 +5,9 @@ Dipakai supaya kalau user menjalankan wattpdl beberapa kali berturut-turut
 untuk cerita yang sama dalam waktu singkat (mis. lagi coba-coba beberapa
 pilihan mode/format sebelum benar-benar unduh, atau script otomatisasi yang
 memanggil wattpdl berkali-kali untuk cerita yang sama), tidak perlu fetch API
-Wattpad ulang tiap kali — cukup pakai hasil fetch sebelumnya yang masih segar.
+Wattpad ulang tiap kali, cukup pakai hasil fetch sebelumnya yang masih segar.
 
-TIDAK dipakai untuk keperluan jangka panjang (itu urusan modul `library`) —
+TIDAK dipakai untuk keperluan jangka panjang (itu urusan modul `library`),
 TTL sengaja pendek supaya info cerita (jumlah chapter dst.) tetap akurat
 kalau memang ada perubahan di Wattpad.
 """
@@ -43,7 +43,7 @@ def get_cached_story(story_id: str):
 
 def save_story_cache(story_id: str, title: str, author: str, parts: list, meta: dict) -> None:
     """Simpan hasil fetch info cerita ke cache. Kegagalan tulis (disk penuh,
-    tidak ada izin, dll) tidak boleh mengganggu alur utama — cache cuma
+    tidak ada izin, dll) tidak boleh mengganggu alur utama, cache cuma
     optimisasi, bukan bagian penting."""
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,33 +1,43 @@
-# Contributing ke WattPDL
+# Contributing to WattPDL
 
-Makasih sudah tertarik bantu kembangin WattPDL! Panduan ini singkat aja biar gampang diikuti.
+**English** | [Bahasa Indonesia](CONTRIBUTING.id.md)
 
-## Struktur Project
+Thanks for your interest in helping improve WattPDL! This guide is kept short so it is easy to follow.
+
+## Project Structure
 
 ```
 src/wattpdl/
-├── __init__.py   # metadata package (__version__)
-├── __main__.py   # entry untuk `python -m wattpdl`
-├── app.py        # orkestrasi alur program (main())
-├── api.py        # komunikasi ke Wattpad public API (fetch info & teks chapter)
-├── writers.py    # konversi teks & penulisan file .txt/.docx/.epub/.zip
-├── cli.py        # tampilan terminal (rich), interaksi dengan user
-├── cli_args.py   # parsing & validasi argumen command line (mode non-interaktif)
-├── config.py     # simpan preferensi user (folder simpan, format) di ~/.wattpdl/config.json
-└── progress.py   # cache chapter yang berhasil diunduh, untuk fitur resume
-tests/            # unit test (pytest)
+├── __init__.py   # package metadata (__version__)
+├── __main__.py   # entry point for `python -m wattpdl`
+├── app.py        # program flow orchestration (main())
+├── api.py        # communication with the Wattpad public API (story info & chapter text)
+├── writers.py    # text conversion and writing .txt/.docx/.epub/.md/.pdf/.zip files
+├── cli.py        # terminal display (rich), user interaction
+├── cli_args.py   # command line argument parsing & validation (non-interactive mode)
+├── config.py     # saves user preferences (save folder, format, language) in ~/.wattpdl/config.json
+├── i18n.py       # translations for the CLI display text (en/id)
+└── progress.py   # cache of successfully downloaded chapters, for the resume feature
+tests/            # unit tests (pytest)
 ```
 
-Aturan sederhana:
-- `api.py` tidak boleh tahu soal tampilan (`rich`)
-- `writers.py` tidak boleh melakukan request jaringan
-- `config.py` dan `progress.py` tidak boleh tahu soal CLI, `rich`, atau jaringan — murni baca-tulis JSON
-- `cli_args.py` tidak boleh punya logika bisnis, hanya parsing & validasi argumen
-- Import antar modul di dalam package pakai relative import (`from . import api`, bukan `import api`)
+Simple rules:
+- `api.py` must not know anything about the display (`rich`)
+- `writers.py` must not make network requests
+- `config.py` and `progress.py` must not know about the CLI, `rich`, or the network: they only read and write JSON
+- `cli_args.py` must not contain business logic, only argument parsing & validation
+- `i18n.py` is pure data plus small functions, and must not know about `rich`, the network, or the CLI
+- Do not hardcode user-facing text in the code. Add a new key in `i18n.py` for **both languages** (`en` and `id`, with the same `{name}` placeholders), then use `t("your.key")`. A test makes sure both languages always stay complete.
+- Imports between modules inside the package use relative imports (`from . import api`, not `import api`)
 
-Kalau fitur baru butuh gabungan beberapa modul, taruh orkestrasinya di `app.py`.
+If a new feature needs several modules together, put the orchestration in `app.py`.
 
-## Setup Lokal
+## Documentation and Style
+
+- Documentation is **English by default** (`README.md`, `CONTRIBUTING.md`). Indonesian versions live in `README.id.md` and `CONTRIBUTING.id.md`. When you change one, update the other.
+- Do not use em dashes in documents or code. Use a comma, a colon, or a hyphen instead.
+
+## Local Setup
 
 ```bash
 git clone https://github.com/nekonaru/wattpdl.git
@@ -35,45 +45,45 @@ cd wattpdl
 pip install -e .[dev]
 ```
 
-`pip install -e .[dev]` menginstall project dalam mode "editable" (perubahan kode langsung kepakai tanpa install ulang) sekaligus dependency development (`pytest`, `ruff`, `build`, `twine`). Setelah ini, command `wattpdl` di terminal akan menjalankan kode dari folder ini.
+`pip install -e .[dev]` installs the project in "editable" mode (code changes take effect without reinstalling) together with the development dependencies (`pytest`, `ruff`, `build`, `twine`). After this, the `wattpdl` command in your terminal runs the code from this folder.
 
-## Sebelum Membuat Pull Request
+## Before Opening a Pull Request
 
-1. **Jalankan test** — pastikan semua lolos:
+1. **Run the tests** and make sure they all pass:
    ```bash
    pytest tests/ -v
    ```
-2. **Jalankan linter** — pastikan tidak ada warning:
+2. **Run the linter** and make sure there are no warnings:
    ```bash
    ruff check .
    ```
-3. Kalau menambah fungsi baru yang bisa dites tanpa koneksi internet (parsing, formatting, validasi), tambahkan unit test-nya di `tests/test_wattpdl.py`.
-4. Update `README.md` kalau ada perubahan cara pakai atau fitur baru.
+3. If you add a new function that can be tested without an internet connection (parsing, formatting, validation), add its unit test in `tests/test_wattpdl.py`.
+4. Update `README.md` (English) **and** `README.id.md` (Indonesian) if usage changes or a new feature is added.
 
-## Alur Kontribusi
+## Contribution Flow
 
-1. Fork repo ini
-2. Buat branch baru: `git checkout -b fitur/nama-fitur-kamu`
-3. Commit perubahan dengan pesan yang jelas (`feat: ...`, `fix: ...`, `docs: ...`, `test: ...`)
-4. Push ke fork kamu, lalu buka Pull Request ke branch `main`
-5. Tunggu GitHub Actions (test + lint) selesai jalan dan hijau semua
+1. Fork this repo
+2. Create a new branch: `git checkout -b feat/your-feature-name`
+3. Commit your changes with a clear message (`feat: ...`, `fix: ...`, `docs: ...`, `test: ...`)
+4. Push to your fork, then open a Pull Request to the `main` branch
+5. Wait for GitHub Actions (test + lint) to finish and turn all green
 
-## Melaporkan Bug
+## Reporting Bugs
 
-Buka [Issue baru](https://github.com/nekonaru/wattpdl/issues/new) dan sertakan:
-- Versi Python yang dipakai
-- Command/langkah yang dijalankan
-- Pesan error lengkap (kalau ada)
-- ID atau link cerita yang dipakai (kalau bug-nya spesifik ke cerita tertentu, tapi pastikan cerita itu publik)
+Open a [new Issue](https://github.com/nekonaru/wattpdl/issues/new) and include:
+- The Python version you use
+- The command/steps you ran
+- The full error message (if any)
+- The story ID or link you used (if the bug is specific to a certain story, but make sure the story is public)
 
-## Proses Release (untuk maintainer)
+## Release Process (for maintainers)
 
-1. Update nomor versi di **dua tempat** (harus sama):
+1. Update the version number in **two places** (they must match):
    - `src/wattpdl/__init__.py` → `__version__ = "x.y.z"`
    - `pyproject.toml` → `version = "x.y.z"`
-2. Commit perubahan versi, push ke `main`
-3. Buat **GitHub Release** baru dengan tag `vx.y.z`
-4. Publish release → workflow `.github/workflows/publish.yml` otomatis jalan, build package, dan upload ke PyPI lewat Trusted Publishing
-5. Cek `https://pypi.org/project/wattpdl/` — versi baru harusnya muncul dalam beberapa menit
+2. Commit the version change and push to `main`
+3. Create a new **GitHub Release** with the tag `vx.y.z`
+4. Publish the release → the `.github/workflows/publish.yml` workflow runs automatically, builds the package, and uploads it to PyPI through Trusted Publishing
+5. Check `https://pypi.org/project/wattpdl/`, the new version should appear within a few minutes
 
-Trusted Publishing perlu didaftarkan sekali di halaman pengaturan project PyPI (Publishing → Add a new publisher) sebelum workflow ini bisa jalan. Lihat [docs.pypi.org/trusted-publishers](https://docs.pypi.org/trusted-publishers/).
+Trusted Publishing must be registered once in the PyPI project settings page (Publishing → Add a new publisher) before this workflow can run. See [docs.pypi.org/trusted-publishers](https://docs.pypi.org/trusted-publishers/).

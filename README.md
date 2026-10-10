@@ -1,8 +1,8 @@
 <div align="center">
 
-# 📖 WattPDL — Wattpad Story Downloader
+# 📖 WattPDL: Wattpad Story Downloader
 
-**Simpan cerita favoritmu jadi file `.txt`, `.docx`, `.epub`, atau `.md`, lengkap atau per chapter, secara offline.**
+**Save your favorite stories as `.txt`, `.docx`, `.epub`, `.md`, or `.pdf` files, whole or chapter by chapter, for offline reading.**
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![PyPI](https://img.shields.io/pypi/v/wattpdl?style=flat-square&color=blue)
@@ -13,116 +13,118 @@
 
 </div>
 
-## ✨ Tentang Project
+**English** | [Bahasa Indonesia](README.id.md)
 
-**WattPDL** adalah script Python ringan yang mengunduh chapter dari cerita Wattpad pilihanmu, lalu menyimpannya sebagai file `.txt` polos, dokumen Word `.docx`, ebook `.epub`, atau Markdown `.md` yang bersih dan rapi. Kamu bisa unduh seluruh cerita jadi satu file, semua chapter terpisah dalam satu `.zip`, atau cukup chapter tertentu yang kamu pilih sendiri — lengkap dengan cover cerita yang otomatis disisipkan ke `.docx`/`.epub`. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
+## ✨ About
 
-> _"Karena cerita yang bagus layak dibaca kapan saja, bahkan tanpa internet."_
+**WattPDL** is a lightweight Python script that downloads the chapters of a Wattpad story of your choice and saves them as a clean, tidy plain `.txt` file, a Word `.docx` document, an `.epub` ebook, a Markdown `.md` file, or a `.pdf`. You can download the whole story as a single file, every chapter separately in one `.zip`, or only the chapters you pick, complete with the story cover automatically embedded in `.docx`/`.epub`/`.pdf`. No login, no API key, just the story link or ID.
 
-## 🎯 Fitur
+> _"Because a good story deserves to be read anytime, even without internet."_
 
-| Fitur | Keterangan |
-|-------|------------|
-| 🎨 **Tampilan CLI rapi** | Panel, tabel info cerita, dan warna berkat library `rich` |
-| 🧩 **4 mode unduh** | Semua jadi 1 file, semua terpisah dalam `.zip`, pilih beberapa chapter, atau cukup 1 chapter |
-| 📄 **4 pilihan format** | Simpan sebagai `.txt` polos, dokumen Word `.docx`, ebook `.epub`, atau Markdown `.md` |
-| 🖼️ **Cover otomatis** | Gambar sampul cerita disisipkan ke file `.docx`/`.epub` (bisa dimatikan lewat `--no-cover`) |
-| 📚 **Metadata EPUB lengkap** | Genre/tag, deskripsi cerita, dan tanggal terbit ikut tersimpan sebagai metadata buku |
-| ⏭️ **Skip file yang sudah ada** | Lewati unduhan kalau file output sudah ada di folder tujuan, tidak menimpa tanpa sengaja |
-| 📁 **Pilih folder simpan** | Default ke folder `Downloads` sistem, bisa dikustomisasi |
-| 🔄 **Auto-retry** | Chapter gagal dicoba ulang hingga 3× sebelum dilewati |
-| 📊 **Progress bar animasi** | Spinner, persentase, jumlah chapter, dan estimasi waktu tersisa |
-| 📋 **Ringkasan akhir** | Panel laporan chapter yang gagal (jika ada) setelah selesai |
-| 🗂 **Nama file aman** | Karakter ilegal otomatis dihapus dari nama file |
-| 🔗 **Link sumber tersimpan** | URL cerita dicantumkan di header file hasil |
-| ⚡ **Tanpa login** | Pakai endpoint publik Wattpad, jadi tidak butuh akun |
-| ↻ **Resume otomatis** | Kalau proses terhenti di tengah jalan, jalankan ulang cerita yang sama — chapter yang sudah berhasil tidak diunduh ulang |
-| ⚙️ **Ingat preferensi** | Folder simpan & format file terakhir otomatis dipakai lagi di sesi berikutnya |
-| 🤖 **Mode non-interaktif** | Bisa dijalankan lewat argumen command line untuk scripting/otomatisasi, tanpa perlu jawab prompt |
-| 📄 **5 pilihan format** | `.txt`, `.docx`, `.epub`, `.md`, dan sekarang **`.pdf`** |
-| 🖼️ **Gambar inline** | Opsional (`--include-images`) ikut unduh & sisipkan gambar di dalam teks chapter, bukan cuma cover |
-| ⚡ **Unduh paralel** | `--workers N` mengunduh beberapa chapter sekaligus, mempercepat cerita panjang secara signifikan |
-| 🐢 **Rate-limit adaptif** | Jeda antar chapter otomatis melambat kalau Wattpad mulai membatasi (429/503), lalu pelan-pelan cepat lagi |
-| 👤 **Unduh per penulis** | `--user <username>` mengunduh semua/cerita pilihan dari satu penulis sekaligus |
-| 🔔 **Deteksi chapter baru** | `--check-updates` melaporkan cerita ongoing mana saja yang sudah punya chapter baru |
-| 👀 **Mode watch** | `--watch` memantau 1 cerita terus-menerus, otomatis unduh ulang begitu ada chapter baru |
-| 💾 **Cache metadata** | Info cerita di-cache singkat supaya percobaan berulang dalam waktu dekat tidak selalu hit API |
-| 🔔 **Cek update wattpdl** | Beri tahu otomatis kalau ada versi wattpdl lebih baru di PyPI |
-| 🎯 **Pesan error spesifik** | Bedakan pesan untuk cerita dihapus (404) vs private/dibatasi (403) |
-| 🌐 **`--lang`** | Set kode bahasa metadata EPUB (default `id`) untuk cerita berbahasa lain |
+## 🎯 Features
+
+| Feature | Description |
+|---------|-------------|
+| 🎨 **Neat CLI display** | Panels, story info tables, and colors thanks to the `rich` library |
+| 🌍 **English and Indonesian UI** | The CLI is in English by default; switch with `--ui-lang id` (menus, messages, and `--help`) |
+| 🧩 **4 download modes** | Everything in 1 file, everything separate in a `.zip`, pick several chapters, or just 1 chapter |
+| 📄 **5 file formats** | Save as plain `.txt`, Word `.docx`, `.epub` ebook, Markdown `.md`, or `.pdf` |
+| 🖼️ **Automatic cover** | The story cover is embedded in `.docx`/`.epub`/`.pdf` files (can be turned off with `--no-cover`) |
+| 🖼️ **Inline images** | Optional (`--include-images`) download & embed of images inside chapter text, not just the cover |
+| 📚 **Rich EPUB metadata** | Genre/tags, story description, and publish date are saved as book metadata |
+| ⏭️ **Skip existing files** | Skip the download if the output file already exists in the target folder, so nothing is overwritten by accident |
+| 📁 **Choose the save folder** | Defaults to the system `Downloads` folder, customizable |
+| 🔄 **Auto-retry** | A failed chapter is retried up to 3 times before being skipped |
+| 📊 **Animated progress bar** | Spinner, percentage, chapter count, and estimated time remaining |
+| 📋 **Final summary** | A report panel listing failed chapters (if any) when finished |
+| 🗂 **Safe file names** | Illegal characters are removed from file names automatically |
+| 🔗 **Source link saved** | The story URL is included in the header of the resulting file |
+| ⚡ **No login** | Uses Wattpad's public endpoint, so no account is needed |
+| ↻ **Automatic resume** | If the process stops midway, run the same story again: chapters that already succeeded are not downloaded again |
+| ⚙️ **Remembers preferences** | The last save folder, file format, and language are reused in the next session |
+| 🤖 **Non-interactive mode** | Run with command line arguments for scripting/automation, no prompts to answer |
+| ⚡ **Parallel download** | `--workers N` downloads several chapters at once, speeding up long stories significantly |
+| 🐢 **Adaptive rate limit** | The delay between chapters slows down automatically when Wattpad starts limiting requests (429/503), then gradually speeds up again |
+| 👤 **Download by author** | `--user <username>` downloads all or selected stories from one author at once |
+| 🔔 **New chapter detection** | `--check-updates` reports which ongoing stories already have new chapters |
+| 👀 **Watch mode** | `--watch` monitors 1 story continuously and re-downloads as soon as a new chapter appears |
+| 💾 **Metadata cache** | Story info is cached briefly so repeated attempts in a short time do not always hit the API |
+| 🔔 **wattpdl update check** | Notifies you automatically when a newer wattpdl version is on PyPI |
+| 🎯 **Specific error messages** | Different messages for a deleted story (404) vs a private/restricted one (403) |
+| 🌐 **`--lang`** | Sets the EPUB metadata language code (default `id`) for stories in other languages |
 
 ## 📦 Requirements
 
-- **Python** 3.9 atau lebih baru
-- **Koneksi internet**
-- Library: `requests`, `rich`, `python-docx`, `EbookLib` — otomatis terinstall bareng `wattpdl`, tidak perlu diinstall manual
+- **Python** 3.9 or newer
+- **Internet connection**
+- Libraries: `requests`, `rich`, `python-docx`, `EbookLib`, `reportlab`, installed automatically together with `wattpdl`, no manual install needed
 
-### Belum pernah pakai terminal? Ikuti ini dulu
+### Never used a terminal? Start here
 
 <details>
-<summary><b>🪟 Cara buka terminal di Windows</b></summary>
+<summary><b>🪟 How to open a terminal on Windows</b></summary>
 
-1. Tekan tombol **Windows**, ketik `PowerShell`, lalu tekan **Enter**
-2. Jendela hitam/biru akan terbuka. Itu tempat kamu mengetik perintah
-3. Semua perintah `python ...` atau `pip ...` di panduan ini diketik di jendela itu, lalu tekan **Enter**
+1. Press the **Windows** key, type `PowerShell`, then press **Enter**
+2. A black/blue window opens. That is where you type commands
+3. Every `python ...` or `pip ...` command in this guide is typed in that window, followed by **Enter**
 
 </details>
 
 <details>
-<summary><b>🍎 Cara buka terminal di macOS</b></summary>
+<summary><b>🍎 How to open a terminal on macOS</b></summary>
 
-1. Tekan **Cmd + Spasi**, ketik `Terminal`, lalu tekan **Enter**
-2. Ketik perintah-perintah di panduan ini di situ, lalu tekan **Enter**
+1. Press **Cmd + Space**, type `Terminal`, then press **Enter**
+2. Type the commands from this guide there, followed by **Enter**
 
 </details>
 
 <details>
-<summary><b>🐧 Cara buka terminal di Linux</b></summary>
+<summary><b>🐧 How to open a terminal on Linux</b></summary>
 
-Tekan **Ctrl + Alt + T**, atau cari aplikasi "Terminal" di menu aplikasi.
+Press **Ctrl + Alt + T**, or search for the "Terminal" app in your application menu.
 
 </details>
 
-### Belum punya Python?
+### Don't have Python yet?
 
-1. Buka [python.org/downloads](https://www.python.org/downloads/) dan unduh versi terbaru
-2. **Khusus Windows**: saat instalasi, centang dulu kotak **"Add Python to PATH"** di layar pertama sebelum klik Install. Kalau ini kelewat, perintah `python` nanti tidak akan dikenali
-3. Setelah selesai install, buka terminal (lihat panduan di atas) lalu cek dengan:
+1. Go to [python.org/downloads](https://www.python.org/downloads/) and download the latest version
+2. **Windows only**: during installation, tick the **"Add Python to PATH"** box on the first screen before clicking Install. If you miss this, the `python` command will not be recognized later
+3. After installing, open a terminal (see the guide above) and check with:
 
 ```bash
 python --version
-# atau
+# or
 python3 --version
 ```
 
-Kalau muncul angka versi (misal `Python 3.12.1`), berarti sudah siap.
+If a version number appears (for example `Python 3.12.1`), you are ready.
 
-## 🚀 Instalasi
+## 🚀 Installation
 
-### Cara A: Install dari PyPI (paling gampang)
+### Option A: Install from PyPI (easiest)
 
 ```bash
 pip install wattpdl
 ```
 
-> Kalau `pip` tidak dikenali, coba:
+> If `pip` is not recognized, try:
 > ```bash
 > python -m pip install wattpdl
 > ```
 
-> Kalau muncul error `externally-managed-environment` (biasanya di Linux):
+> If you get an `externally-managed-environment` error (usually on Linux):
 > ```bash
 > pip install wattpdl --break-system-packages
 > ```
 
-Setelah terinstall, command `wattpdl` langsung bisa dipakai dari terminal mana saja — lanjut ke bagian [Cara Pakai](#️-cara-pakai).
+Once installed, the `wattpdl` command works from any terminal. Continue to [Usage](#️-usage).
 
-### Cara B: Install dari source (untuk development / mau lihat/ubah kode)
+### Option B: Install from source (for development / to read or change the code)
 
-**1. Ambil kode project ini**
+**1. Get the project code**
 
 <details>
-<summary><b>Punya Git terinstall</b></summary>
+<summary><b>I have Git installed</b></summary>
 
 ```bash
 git clone https://github.com/nekonaru/wattpdl.git
@@ -132,12 +134,12 @@ cd wattpdl
 </details>
 
 <details>
-<summary><b>Tidak punya Git</b></summary>
+<summary><b>I don't have Git</b></summary>
 
-1. Buka halaman repository di GitHub
-2. Klik tombol hijau **`Code`** → pilih **`Download ZIP`**
-3. Ekstrak file ZIP yang terunduh ke folder pilihanmu
-4. Di terminal, masuk ke folder hasil ekstrak, contoh:
+1. Open the repository page on GitHub
+2. Click the green **`Code`** button → choose **`Download ZIP`**
+3. Extract the downloaded ZIP file to a folder of your choice
+4. In the terminal, go into the extracted folder, for example:
 
 ```bash
 cd Downloads/wattpdl-main
@@ -145,215 +147,244 @@ cd Downloads/wattpdl-main
 
 </details>
 
-**2. Install dalam mode "editable"**
+**2. Install in "editable" mode**
 ```bash
 pip install -e .
 ```
 
-> Sama seperti Cara A, tambahkan `--break-system-packages` di akhir kalau muncul error `externally-managed-environment`.
+> Same as Option A, add `--break-system-packages` at the end if you get an `externally-managed-environment` error.
 
-Ini juga mendaftarkan command `wattpdl`, tapi mengambil kodenya langsung dari folder ini — cocok kalau kamu mau modifikasi kode dan langsung lihat hasilnya tanpa install ulang.
+This also registers the `wattpdl` command, but it loads the code directly from this folder, which is ideal if you want to modify the code and see the result right away without reinstalling.
 
-## 🖥️ Cara Pakai
+## 🖥️ Usage
 
-**Jalankan:**
+**Run:**
 ```bash
 wattpdl
 ```
 
-> Kalau kamu install dari source tanpa `pip install -e .`, jalankan lewat `python -m wattpdl` dari dalam folder `src/` — tapi cara Editable Install di atas lebih direkomendasikan.
+> If you installed from source without `pip install -e .`, run it with `python -m wattpdl` from inside the `src/` folder. The editable install above is recommended, though.
 
-**Masukkan link atau ID cerita saat diminta:**
+**Enter the story link or ID when asked:**
 ```
-Link atau ID cerita Wattpad: https://www.wattpad.com/story/123456789-judul-cerita
+Wattpad story link or ID: https://www.wattpad.com/story/123456789-story-title
 ```
-atau cukup ID-nya:
+or just the ID:
 ```
-Link atau ID cerita Wattpad: 123456789
-```
-
-**Pilih mode unduh:**
-```
-  1  Semua chapter → 1 file gabungan
-  2  Semua chapter → file terpisah per chapter, dikemas .zip
-  3  Pilih beberapa chapter → 1 file gabungan
-  4  Pilih 1 chapter saja
-
-Pilih mode [1/2/3/4] (1):
+Wattpad story link or ID: 123456789
 ```
 
-- **Mode 1**: cara paling umum, seluruh cerita jadi satu file rapi dari chapter pertama sampai terakhir
-- **Mode 2**: cocok kalau mau baca per chapter terpisah, hasilnya satu `.zip` berisi file per chapter
-- **Mode 3**: muncul daftar semua judul chapter bernomor, lalu ketik nomor yang mau diunduh, bisa gabung koma dan rentang, contoh: `1,3,5-8`
-- **Mode 4**: muncul daftar semua judul chapter, ketik satu nomor untuk unduh chapter itu saja
-
-**Pilih format file:**
+**Choose the download mode:**
 ```
-  1  Teks polos (.txt)
-  2  Dokumen Word (.docx)
+  1  All chapters → 1 combined file
+  2  All chapters → separate file per chapter, packed as .zip
+  3  Select several chapters → 1 combined file
+  4  Select 1 chapter only
+
+Select mode [1/2/3/4] (1):
+```
+
+- **Mode 1**: the most common way, the whole story as one tidy file from the first to the last chapter
+- **Mode 2**: good if you want to read chapter by chapter, producing one `.zip` with a file per chapter
+- **Mode 3**: a numbered list of all chapter titles appears, then type the numbers you want, combining commas and ranges, for example: `1,3,5-8`
+- **Mode 4**: a list of all chapter titles appears, type a single number to download only that chapter
+
+**Choose the file format:**
+```
+  1  Plain text (.txt)
+  2  Word document (.docx)
   3  Ebook (.epub)
   4  Markdown (.md)
+  5  PDF (.pdf)
 
-Pilih format file [1/2/3/4] (1):
+Select file format [1/2/3/4/5] (1):
 ```
 
-**Pilih folder penyimpanan:**
+**Choose the save folder:**
 ```
-Folder default: C:\Users\user\Downloads
-Tekan Enter untuk pakai folder itu, atau ketik path lain:
+Default folder: C:\Users\user\Downloads
+Press Enter to use that folder, or type another path:
 ```
-Tekan **Enter** untuk simpan di `Downloads`, atau ketik path kustom seperti:
-- Windows: `D:\Cerita\Wattpad`
-- Linux/macOS: `/home/user/cerita`
+Press **Enter** to save in `Downloads`, or type a custom path such as:
+- Windows: `D:\Stories\Wattpad`
+- Linux/macOS: `/home/user/stories`
 
-**Tunggu proses selesai:**
+**Wait for it to finish:**
 ```
-⠋ Chapter 24...              ████████████████░░░░░░░░░░░░░░  53.3%  24/45  0:00:12  sisa 0:00:11
+⠋ Chapter 24...              ████████████████░░░░░░░░░░░░░░  53.3%  24/45  0:00:12  left 0:00:11
 ```
 
 **Done! 🎉**
 ```
-╔══════ 🎉 Berhasil!  Semua chapter tersimpan ══════╗
-║ 📁 File tersimpan di   C:\Users\user\Downloads\Judul_Cerita.txt ║
-║ ✅ Berhasil            45/45                                    ║
-║ ⏱️  Waktu total         2m 18d                                   ║
-╚═══════════════════════════════════════════════════╝
+╔══════ 🎉 Success!  All chapters saved ══════╗
+║ 📁 File saved to   C:\Users\user\Downloads\Story_Title.txt ║
+║ ✅ Succeeded       45/45                                   ║
+║ ⏱️  Total time      2m 18s                                  ║
+╚═════════════════════════════════════════════╝
 ```
 
-## ↻ Resume Otomatis
+## 🌍 Display Language
 
-Kalau proses unduh terhenti di tengah jalan (koneksi putus, terminal ditutup, laptop mati), setiap chapter yang **sudah berhasil** diunduh tersimpan otomatis di `~/.wattpdl/progress/<id_cerita>.json`.
+The CLI display (menus, prompts, error messages, and `--help` text) is available in **English** (default) and **Indonesian**.
 
-Jalankan lagi dengan cerita yang sama (ID/link sama), dan WattPDL akan:
-- Melewati chapter yang sudah berhasil (dipakai dari cache, tidak fetch ulang)
-- Hanya mengunduh chapter yang belum berhasil / gagal sebelumnya
+```bash
+wattpdl --ui-lang id              # Indonesian, this choice is remembered for next runs
+wattpdl --ui-lang en              # back to English
+WATTPDL_LANG=id wattpdl           # via environment variable
+```
 
-File progress otomatis dihapus setelah semua chapter berhasil diunduh dalam satu sesi. Kalau mau paksa unduh ulang dari awal, hapus manual folder `~/.wattpdl/progress/`.
+Priority order: `--ui-lang` → env `WATTPDL_LANG` → `ui_lang` in `~/.wattpdl/config.json` → default `en`.
 
-> **Beda dengan `--skip-existing`:** resume di atas bekerja di level *chapter* (melanjutkan unduhan yang terhenti di tengah jalan). Sedangkan `--skip-existing` bekerja di level *file output* — kalau file akhirnya (misal `Judul_Cerita.epub`) sudah ada di folder tujuan, seluruh proses unduh dilewati sama sekali, cocok dipakai bareng `cron`/Task Scheduler supaya tidak mengunduh ulang cerita yang sudah pernah selesai diunduh.
+> `--ui-lang` only changes the CLI display. Do not confuse it with `--lang`, which sets the language code in the EPUB metadata.
 
-## ⚙️ Preferensi Tersimpan
+## ↻ Automatic Resume
 
-Folder simpan dan format file terakhir yang kamu pilih otomatis tersimpan di `~/.wattpdl/config.json`, dan dipakai lagi sebagai default di sesi berikutnya — gak perlu isi ulang tiap kali jalanin script.
+If the download stops midway (connection lost, terminal closed, laptop shut down), every chapter that **already succeeded** is saved automatically in `~/.wattpdl/progress/<story_id>.json`.
 
-## 🤖 Mode Non-Interaktif (Scripting/Otomatisasi)
+Run again with the same story (same ID/link), and WattPDL will:
+- Skip chapters that already succeeded (used from the cache, not fetched again)
+- Download only the chapters that have not succeeded yet or failed earlier
 
-Selain mode tanya-jawab, WattPDL juga bisa dijalankan lewat argumen command line — cocok buat dijadwalkan (cron/Task Scheduler) atau dipanggil dari script lain.
+The progress file is deleted automatically once all chapters have been downloaded in a single session. To force a download from scratch, delete the `~/.wattpdl/progress/` folder manually.
+
+> **Not the same as `--skip-existing`:** the resume above works at the *chapter* level (continuing a download that stopped midway). `--skip-existing` works at the *output file* level: if the final file (for example `Story_Title.epub`) already exists in the target folder, the whole download is skipped entirely, which is handy together with `cron`/Task Scheduler so stories that were already downloaded are not downloaded again.
+
+## ⚙️ Saved Preferences
+
+The last save folder, file format, and display language you chose are saved automatically in `~/.wattpdl/config.json` and reused as defaults in the next session, so there is no need to fill them in every time you run the script.
+
+## 🤖 Non-Interactive Mode (Scripting/Automation)
+
+Besides the question-and-answer mode, WattPDL can also be run through command line arguments, which is great for scheduling (cron/Task Scheduler) or calling from other scripts.
 
 ```bash
 wattpdl --id 398440633 --mode 1 --format docx
 ```
 
-**Argumen yang tersedia:**
+**Available arguments:**
 
-| Argumen | Keterangan |
+| Argument | Description |
 |---|---|
-| `--id` | ID atau link cerita Wattpad. Mengisi ini mengaktifkan mode non-interaktif. |
-| `--mode {1,2,3,4}` | 1 = semua jadi 1 file, 2 = semua terpisah `.zip`, 3 = pilih beberapa chapter, 4 = pilih 1 chapter |
-| `--format {txt,docx,epub,md}` | Format file output. Default: dari config tersimpan, atau `txt` |
-| `--chapters` | Nomor chapter untuk `--mode 3`, contoh: `1,3,5-8` |
-| `--chapter` | Nomor chapter untuk `--mode 4`, contoh: `5` |
-| `--output-dir` | Folder penyimpanan custom. Default: dari config tersimpan, atau folder `Downloads` |
-| `--skip-existing` | Lewati unduhan kalau file output tujuan sudah ada, alih-alih menimpanya |
-| `--no-cover` | Jangan sisipkan gambar sampul cerita ke file `.docx`/`.epub` |
+| `--id` | Wattpad story ID or link. Setting this enables non-interactive mode. |
+| `--mode {1,2,3,4}` | 1 = everything in 1 file, 2 = everything separate in a `.zip`, 3 = select several chapters, 4 = select 1 chapter |
+| `--format {txt,docx,epub,md,pdf}` | Output file format. Default: from saved config, or `txt` |
+| `--chapters` | Chapter numbers for `--mode 3`, example: `1,3,5-8` |
+| `--chapter` | Chapter number for `--mode 4`, example: `5` |
+| `--output-dir` | Custom save folder. Default: from saved config, or the `Downloads` folder |
+| `--skip-existing` | Skip the download if the target output file already exists, instead of overwriting it |
+| `--no-cover` | Do not embed the story cover image in `.docx`/`.epub`/`.pdf` files |
+| `--include-images` | Also download & embed inline images inside chapters (adds download time) |
+| `--workers N` | Number of chapters downloaded at the same time (default 1) |
+| `--no-cache` | Do not use the story metadata cache, always fetch fresh data |
+| `--lang` | ISO 639-1 language code for EPUB metadata (default `id`) |
+| `--ui-lang {id,en}` | CLI display language (default `en`, remembered once chosen) |
+| `--user` / `--user-select` | Download from an author's story list, optionally selecting which stories |
+| `--check-updates` | Report which downloaded stories have new chapters |
+| `--watch` / `--watch-interval` | Monitor a story and re-download when new chapters appear |
+| `--no-update-check` | Do not check for the latest wattpdl version on PyPI at startup |
 
-**Contoh lain:**
+**More examples:**
 
 ```bash
-# Unduh semua chapter sebagai .zip terpisah
+# Download all chapters as separate files in a .zip
 wattpdl --id 398440633 --mode 2 --format txt
 
-# Unduh chapter 1, 3, dan 5-8 saja, jadi 1 file gabungan
+# Download only chapters 1, 3, and 5-8 as 1 combined file
 wattpdl --id 398440633 --mode 3 --chapters 1,3,5-8 --format docx
 
-# Unduh chapter 10 saja, simpan ke folder custom
-wattpdl --id 398440633 --mode 4 --chapter 10 --output-dir "D:\Cerita Wattpad"
+# Download only chapter 10, save to a custom folder
+wattpdl --id 398440633 --mode 4 --chapter 10 --output-dir "D:\Wattpad Stories"
 
-# Unduh semua chapter jadi 1 ebook .epub
+# Download all chapters as 1 .epub ebook
 wattpdl --id 398440633 --mode 1 --format epub
 
-# Unduh sebagai Markdown, lewati kalau filenya sudah ada (cocok untuk dijadwalkan)
+# Download as Markdown, skip if the file already exists (good for scheduling)
 wattpdl --id 398440633 --mode 1 --format md --skip-existing
 
-# Lihat semua opsi
+# Show all options
 wattpdl --help
 ```
 
-## 📂 Struktur Output
+## 📂 Output Structure
 
-Nama dan bentuk file yang dihasilkan tergantung mode & format yang kamu pilih:
+The name and shape of the generated files depend on the mode & format you choose:
 
-| Mode | Format `.txt` | Format `.docx` | Format `.epub` | Format `.md` |
+| Mode | `.txt` format | `.docx` format | `.epub` format | `.md` format |
 |------|----------------|-----------------|------------------|---------------|
-| 1 - Semua, gabungan | `Judul_Cerita.txt` | `Judul_Cerita.docx` | `Judul_Cerita.epub` | `Judul_Cerita.md` |
-| 2 - Semua, terpisah | `Judul_Cerita.zip` (isi: `.txt` per chapter) | `Judul_Cerita.zip` (isi: `.docx` per chapter) | `Judul_Cerita.zip` (isi: `.epub` per chapter) | `Judul_Cerita.zip` (isi: `.md` per chapter) |
-| 3 - Beberapa chapter | `Judul_Cerita_pilihan.txt` | `Judul_Cerita_pilihan.docx` | `Judul_Cerita_pilihan.epub` | `Judul_Cerita_pilihan.md` |
-| 4 - Satu chapter | `Judul_Cerita_Ch003_Nama_Chapter.txt` | `Judul_Cerita_Ch003_Nama_Chapter.docx` | `Judul_Cerita_Ch003_Nama_Chapter.epub` | `Judul_Cerita_Ch003_Nama_Chapter.md` |
+| 1 - All, combined | `Story_Title.txt` | `Story_Title.docx` | `Story_Title.epub` | `Story_Title.md` |
+| 2 - All, separate | `Story_Title.zip` (contains: one `.txt` per chapter) | `Story_Title.zip` (contains: one `.docx` per chapter) | `Story_Title.zip` (contains: one `.epub` per chapter) | `Story_Title.zip` (contains: one `.md` per chapter) |
+| 3 - Several chapters | `Story_Title_pilihan.txt` | `Story_Title_pilihan.docx` | `Story_Title_pilihan.epub` | `Story_Title_pilihan.md` |
+| 4 - One chapter | `Story_Title_Ch003_Chapter_Name.txt` | `Story_Title_Ch003_Chapter_Name.docx` | `Story_Title_Ch003_Chapter_Name.epub` | `Story_Title_Ch003_Chapter_Name.md` |
 
-**Isi file gabungan (mode 1 & 3):** judul cerita, penulis, dan sumber di bagian atas, lalu tiap chapter dipisah dengan penanda `#####`.
+The `.pdf` format follows the same naming pattern.
+
+**Content of the combined file (modes 1 & 3):** the story title, author, and source at the top, then each chapter separated by a `#####` marker.
 
 ```
-Judul Cerita
-oleh Nama Penulis
+Story Title
+oleh Author Name
 Sumber : https://www.wattpad.com/story/123456789
 
 ==================================================
 
-##### Judul Chapter 1 #####
+##### Chapter 1 Title #####
 
-Isi teks chapter 1...
+Text of chapter 1...
 
-##### Judul Chapter 2 #####
+##### Chapter 2 Title #####
 
-Isi teks chapter 2...
+Text of chapter 2...
 ```
 
-Di versi `.docx`, judul cerita jadi heading utama dan tiap chapter otomatis jadi Heading 1 dengan halaman baru, tinggal buka di Word atau Google Docs dan langsung enak dibaca.
+> The header labels inside the generated files are currently in Indonesian: `oleh` means "by" and `Sumber` means "Source".
 
-Di versi `.epub`, cerita jadi ebook standar dengan daftar isi (table of contents) otomatis per chapter — tinggal buka di aplikasi pembaca ebook favoritmu (Google Play Books, Apple Books, Calibre, dll).
+In the `.docx` version, the story title becomes the main heading and each chapter automatically becomes a Heading 1 on a new page, so it is comfortable to read right away in Word or Google Docs.
 
-Di versi `.md`, cerita ditulis pakai heading Markdown standar (`#` untuk judul, `##` per chapter) — enak dibuka di editor apa pun atau di-render langsung di GitHub/Obsidian/Notion.
+In the `.epub` version, the story becomes a standard ebook with an automatic table of contents per chapter, ready to open in your favorite ebook reader (Google Play Books, Apple Books, Calibre, and others).
 
-Kalau cerita punya cover, gambarnya otomatis disisipkan di halaman/paragraf pertama file `.docx`/`.epub` (kecuali dijalankan dengan `--no-cover`). Genre/tag, deskripsi, dan tanggal terbit cerita juga ikut tersimpan sebagai metadata resmi di file `.epub` — biasa muncul di halaman detail buku pada aplikasi pembaca ebook.
+In the `.md` version, the story is written with standard Markdown headings (`#` for the title, `##` per chapter), which is pleasant to open in any editor or render directly on GitHub/Obsidian/Notion.
 
-**Isi zip (mode 2):** satu file per chapter, bernomor urut sesuai posisi di cerita, plus `000_info.txt`/`000_info.docx`/`000_info.epub` berisi judul, penulis, dan sumber. Ekstensi file di dalam zip mengikuti format yang dipilih saat menjalankan script (`.txt`, `.docx`, atau `.epub`):
+If the story has a cover, the image is embedded automatically on the first page/paragraph of the `.docx`/`.epub`/`.pdf` file (unless run with `--no-cover`). The story's genre/tags, description, and publish date are also saved as official metadata in the `.epub` file, usually shown on the book detail page in ebook reader apps.
+
+**Zip content (mode 2):** one file per chapter, numbered by its position in the story, plus `000_info.txt`/`000_info.docx`/`000_info.epub` containing the title, author, and source. The file extension inside the zip follows the format you chose when running the script:
 
 ```
-Judul_Cerita.zip
+Story_Title.zip
 ├── 000_info.txt
-├── 001_Judul_Chapter_1.txt
-├── 002_Judul_Chapter_2.txt
+├── 001_Chapter_1_Title.txt
+├── 002_Chapter_2_Title.txt
 └── ...
 ```
 
 ## 🗺️ Default Folder per OS
 
-| Sistem Operasi | Folder Default |
-|----------------|----------------|
-| 🪟 Windows | `C:\Users\<namauser>\Downloads` |
-| 🍎 macOS | `/Users/<namauser>/Downloads` |
-| 🐧 Linux | `/home/<namauser>/Downloads` |
+| Operating System | Default Folder |
+|------------------|----------------|
+| 🪟 Windows | `C:\Users\<username>\Downloads` |
+| 🍎 macOS | `/Users/<username>/Downloads` |
+| 🐧 Linux | `/home/<username>/Downloads` |
 
 ## ⚠️ Troubleshooting
 
-| Masalah | Solusi |
-|---------|--------|
-| `ModuleNotFoundError: No module named 'requests'` | Jalankan `pip install requests` |
-| `ModuleNotFoundError: No module named 'rich'` | Jalankan `pip install rich` |
-| `Library 'python-docx' belum terinstall` | Jalankan `pip install python-docx` (cuma dibutuhkan kalau memilih format `.docx`) |
-| `Library 'EbookLib' belum terinstall` | Jalankan `pip install EbookLib` (cuma dibutuhkan kalau memilih format `.epub`) |
-| Error `404` / "Tidak ada chapter ditemukan" | Pastikan ID/link benar & cerita tidak di-private |
-| Folder tidak bisa dibuat | Cek path valid & kamu punya izin tulis di sana |
-| Proses macet di satu chapter | Cek koneksi internet, jalankan ulang, progress akan lanjut |
+| Problem | Solution |
+|---------|----------|
+| `ModuleNotFoundError: No module named 'requests'` | Run `pip install requests` |
+| `ModuleNotFoundError: No module named 'rich'` | Run `pip install rich` |
+| `Library 'python-docx' is not installed` | Run `pip install python-docx` (only needed if you choose the `.docx` format) |
+| `Library 'EbookLib' is not installed` | Run `pip install EbookLib` (only needed if you choose the `.epub` format) |
+| `Library 'reportlab' is not installed` | Run `pip install reportlab` (only needed if you choose the `.pdf` format) |
+| `404` error / "No chapters found" | Make sure the ID/link is correct & the story is not private |
+| Folder cannot be created | Check that the path is valid & you have write permission there |
+| The process hangs on one chapter | Check your internet connection and run again, progress will continue |
 
-## 📝 Catatan Penting
+## 📝 Important Notes
 
-- ID cerita adalah angka di URL Wattpad, tepat setelah `/story/`
-- Script memakai endpoint publik, tidak butuh login atau API key
-- Jeda **0.5 detik** antar chapter sudah diatur untuk menghindari rate limit server, jangan dihapus
-- Script ini hanya untuk membaca cerita milik sendiri atau cerita publik secara offline. Hormati hak cipta penulis
+- The story ID is the number in the Wattpad URL, right after `/story/`
+- The script uses a public endpoint, no login or API key needed
+- The **0.5 second** delay between chapters is set to avoid server rate limits, please do not remove it
+- This script is only for reading your own stories or public stories offline. Respect the authors' copyright
 
-## 🛠️ Dibuat dengan
+## 🛠️ Built With
 
 ![Python](https://img.shields.io/badge/-Python-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Requests](https://img.shields.io/badge/-Requests-FF6B6B?style=flat-square)
@@ -361,46 +392,50 @@ Judul_Cerita.zip
 ![python--docx](https://img.shields.io/badge/-python--docx-2B579A?style=flat-square)
 ![Wattpad API](https://img.shields.io/badge/-Wattpad%20Public%20API-FF6122?style=flat-square)
 
-## 🗂️ Struktur Project
+## 🗂️ Project Structure
 
 ```
 wattpdl/
 ├── src/
 │   └── wattpdl/
-│       ├── __init__.py       # metadata package (__version__)
-│       ├── __main__.py       # entry untuk `python -m wattpdl`
-│       ├── app.py            # orkestrasi alur program (main())
-│       ├── api.py            # komunikasi ke Wattpad public API
-│       ├── writers.py        # konversi teks & penulisan file .txt/.docx/.zip
-│       ├── cli.py            # tampilan terminal (rich), interaksi dengan user
-│       ├── cli_args.py       # parsing argumen untuk mode non-interaktif
-│       ├── config.py         # simpan preferensi user (folder simpan, format)
-│       └── progress.py       # cache progress unduhan untuk fitur resume
-├── requirements.txt          # daftar dependency (untuk referensi manual)
-├── pyproject.toml            # metadata package + build config + ruff
+│       ├── __init__.py       # package metadata (__version__)
+│       ├── __main__.py       # entry point for `python -m wattpdl`
+│       ├── app.py            # program flow orchestration (main())
+│       ├── api.py            # communication with the Wattpad public API
+│       ├── writers.py        # text conversion & writing .txt/.docx/.zip files
+│       ├── cli.py            # terminal display (rich), user interaction
+│       ├── cli_args.py       # argument parsing for non-interactive mode
+│       ├── config.py         # saves user preferences (save folder, format, language)
+│       ├── i18n.py           # CLI display translations (en/id)
+│       └── progress.py       # download progress cache for the resume feature
+├── requirements.txt          # dependency list (for manual reference)
+├── pyproject.toml            # package metadata + build config + ruff
 ├── tests/
 │   ├── __init__.py
-│   └── test_wattpdl.py       # unit test (pytest)
+│   └── test_wattpdl.py       # unit tests (pytest)
 ├── .github/
 │   └── workflows/
-│       ├── tests.yml         # CI: test, lint, & build check otomatis
-│       └── publish.yml       # auto-publish ke PyPI saat rilis baru
-├── CONTRIBUTING.md           # panduan kontribusi
+│       ├── tests.yml         # CI: automatic test, lint, & build check
+│       └── publish.yml       # auto-publish to PyPI on a new release
+├── CONTRIBUTING.md           # contribution guide (English)
+├── CONTRIBUTING.id.md        # contribution guide (Indonesian)
 ├── LICENSE
-└── README.md
+├── README.md                 # main documentation (English)
+└── README.id.md              # documentation (Indonesian)
 ```
 
-**Prinsip pemisahan modul:**
-- `api.py` — tidak tahu apa-apa soal tampilan (`rich`), murni fetch data
-- `writers.py` — tidak melakukan request jaringan, murni konversi & tulis file
-- `cli.py` — semua interaksi dengan user & tampilan progress bar
-- `cli_args.py` — parsing & validasi argumen command line, tidak ada logika bisnis
-- `config.py` / `progress.py` — baca-tulis file JSON di `~/.wattpdl/`, tidak tahu soal CLI atau jaringan
-- `app.py` — menyatukan semuanya, tanpa logika bisnis sendiri (dipanggil lewat command `wattpdl` setelah install)
+**Module separation principles:**
+- `api.py`: knows nothing about the display (`rich`), purely fetches data
+- `writers.py`: makes no network requests, purely converts & writes files
+- `cli.py`: all user interaction & progress bar display
+- `cli_args.py`: command line argument parsing & validation, no business logic
+- `i18n.py`: display text dictionary (English/Indonesian), pure data, knows nothing about `rich` or the network
+- `config.py` / `progress.py`: read/write JSON files in `~/.wattpdl/`, know nothing about the CLI or the network
+- `app.py`: ties everything together, with no business logic of its own (invoked through the `wattpdl` command after install)
 
 ## 🧪 Testing
 
-Ada unit test untuk fungsi-fungsi inti (parsing ID cerita, validasi nama file, parsing pilihan chapter, konversi HTML ke teks, config, progress/resume, parsing argumen CLI, dll).
+There are unit tests for the core functions (story ID parsing, file name validation, chapter selection parsing, HTML to text conversion, config, progress/resume, CLI argument parsing, translations, and more).
 
 ```bash
 pip install -e .[dev]
@@ -408,50 +443,50 @@ pytest tests/ -v
 ruff check .
 ```
 
-## 🤝 Kontribusi
+## 🤝 Contributing
 
-Mau bantu kembangin WattPDL? Baca [`CONTRIBUTING.md`](CONTRIBUTING.md) untuk struktur project dan alur kontribusi.
+Want to help improve WattPDL? Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the project structure and contribution flow.
 
 ## ❓ FAQ
 
 <details>
-<summary><b>Apakah ini legal / aman dipakai?</b></summary>
+<summary><b>Is this legal / safe to use?</b></summary>
 
-Script ini memakai endpoint publik Wattpad yang sama seperti saat kamu baca cerita lewat browser, jadi tidak meng-hack apa pun. Tapi gunakan secara bertanggung jawab: unduh untuk bacaan pribadi/offline, dan hormati hak cipta penulis. Jangan sebar ulang atau jual isi cerita orang lain.
-
-</details>
-
-<details>
-<summary><b>Apakah butuh akun Wattpad?</b></summary>
-
-Tidak. Tidak perlu login atau API key sama sekali.
+This script uses the same public Wattpad endpoint as when you read a story in the browser, so it does not hack anything. But use it responsibly: download for personal/offline reading, and respect the authors' copyright. Do not redistribute or sell other people's stories.
 
 </details>
 
 <details>
-<summary><b>Cerita private / dihapus, bisa diunduh?</b></summary>
+<summary><b>Do I need a Wattpad account?</b></summary>
 
-Tidak. Script hanya bisa mengakses cerita yang memang publik.
-
-</details>
-
-<details>
-<summary><b>Prosesnya lama, kenapa?</b></summary>
-
-Ada jeda 0.5 detik antar chapter (sengaja, biar tidak membebani server Wattpad). Untuk cerita ratusan chapter, wajar kalau prosesnya makan waktu beberapa menit.
+No. No login or API key is needed at all.
 
 </details>
 
 <details>
-<summary><b>Mode dan format mana yang sebaiknya dipilih?</b></summary>
+<summary><b>Can I download private / deleted stories?</b></summary>
 
-- Mau baca dari awal sampai akhir kayak buku → **Mode 1**, format `.epub` paling enak dibaca di aplikasi ebook
-- Mau tiap chapter jadi file sendiri-sendiri → **Mode 2**
-- Cuma butuh beberapa chapter tertentu (misal lagi ulang baca bagian tertentu) → **Mode 3**
-- Cuma penasaran satu chapter → **Mode 4**
-- Mau baca santai di HP/tablet pakai aplikasi ebook (Google Play Books, Apple Books, dll) → pilih format **`.epub`**
-- Mau edit atau print rapi pakai Word → pilih format **`.docx`**
-- Mau file kecil dan simpel, atau mau dibaca di aplikasi e-reader/notes → pilih format **`.txt`**
+No. The script can only access stories that are public.
+
+</details>
+
+<details>
+<summary><b>Why does it take so long?</b></summary>
+
+There is a 0.5 second delay between chapters (on purpose, so Wattpad's servers are not overloaded). For stories with hundreds of chapters, it is normal for the process to take a few minutes. You can speed it up with `--workers`.
+
+</details>
+
+<details>
+<summary><b>Which mode and format should I pick?</b></summary>
+
+- Want to read from start to finish like a book → **Mode 1**, the `.epub` format is the most comfortable in ebook apps
+- Want each chapter as its own file → **Mode 2**
+- Only need a few specific chapters (for example re-reading a certain part) → **Mode 3**
+- Just curious about one chapter → **Mode 4**
+- Want to read casually on a phone/tablet with an ebook app (Google Play Books, Apple Books, etc.) → choose the **`.epub`** format
+- Want to edit or print neatly with Word → choose the **`.docx`** format
+- Want a small, simple file, or to read it in an e-reader/notes app → choose the **`.txt`** format
 
 </details>
 
@@ -474,6 +509,6 @@ Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more informa
 
 Made with by **Nicolas Dwi Dharma**
 
-*Star ⭐ repo ini kalau project ini membantumu!*
+*Star ⭐ this repo if this project helps you!*
 
 </div>
