@@ -51,7 +51,7 @@
 | 🔔 **Cek update wattpdl** | Beri tahu otomatis kalau ada versi wattpdl lebih baru di PyPI |
 | 🎯 **Pesan error spesifik** | Bedakan pesan untuk cerita dihapus (404) vs private/dibatasi (403) |
 | 🌐 **`--lang`** | Set kode bahasa metadata EPUB (default `id`) untuk cerita berbahasa lain |
-| 🇬🇧 **`--ui-lang id\|en`** | Pilih bahasa tampilan CLI (menu, pesan, `--help`). Default English (`en`); pakai `--ui-lang id` untuk Bahasa Indonesia |
+| 🌍 **`--ui-lang id\|en`** | Pilih bahasa tampilan CLI (menu, pesan, `--help`). Default English (`en`); pakai `--ui-lang id` untuk Bahasa Indonesia |
 
 ## 📦 Requirements
 
