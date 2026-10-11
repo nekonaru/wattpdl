@@ -59,15 +59,15 @@ target-version = "py39"
 select = [
     "E",   # pycodestyle errors
     "F",   # pyflakes
-    "I",   # isort (urutan import)
+    "I",   # isort (import ordering)
     "UP",  # pyupgrade
     "B",   # flake8-bugbear
-    "FA",  # flake8-future-annotations, tangkap sintaks PEP 604 (`X | Y`) yang
-           # tidak kompatibel dengan target-version py39 (baru didukung dari 3.10)
+    "FA",  # flake8-future-annotations, catches PEP 604 syntax (`X | Y`) which is
+           # incompatible with target-version py39 (only supported from 3.10)
 ]
 ignore = [
-    "E501",   # baris panjang ditoleransi untuk string tabel/UI rich
-    "FA100",  # saran modernisasi Optional[X] -> X | None; bukan bug, biarkan Optional eksplisit
+    "E501",   # long lines are tolerated for rich table/UI strings
+    "FA100",  # modernization suggestion Optional[X] -> X | None; not a bug, keep Optional explicit
 ]
 
 [tool.ruff.lint.per-file-ignores]

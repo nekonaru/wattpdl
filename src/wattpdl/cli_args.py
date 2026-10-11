@@ -1,7 +1,7 @@
 """
-Modul parsing argumen command line untuk mode non-interaktif.
-Kalau --id/--user diisi, script jalan tanpa prompt sama sekali, cocok untuk
-otomatisasi/scripting.
+Command line argument parsing module for non-interactive mode.
+If --id/--user is given, the script runs with no prompts at all, which is great for
+automation/scripting.
 """
 import argparse
 
@@ -74,7 +74,7 @@ help=t("help.workers"),
         help=t("help.no_update_check"),
     )
 
-    # --- unduh semua/cerita pilihan dari 1 penulis ---
+    # --- download all/selected stories from 1 author ---
     parser.add_argument(
         "--user", metavar="USERNAME",
 help=t("help.user"),
@@ -84,13 +84,13 @@ help=t("help.user"),
 help=t("help.user_select"),
     )
 
-    # --- deteksi update chapter untuk cerita yang sudah pernah diunduh ---
+    # --- detect new chapters for stories that were downloaded before ---
     parser.add_argument(
         "--check-updates", action="store_true",
 help=t("help.check_updates"),
     )
 
-    # --- mode watch: pantau cerita ongoing, auto-unduh ulang kalau ada chapter baru ---
+    # --- watch mode: monitor an ongoing story, auto re-download when there are new chapters ---
     parser.add_argument(
         "--watch", action="store_true",
 help=t("help.watch"),
@@ -101,16 +101,16 @@ help=t("help.watch"),
     )
     parser.add_argument(
         "--watch-max-iterations", type=int, default=None, metavar="N",
-        help=argparse.SUPPRESS,  # knob internal buat testing, sengaja tidak didokumentasikan ke user
+        help=argparse.SUPPRESS,  # internal knob for testing, deliberately not documented for users
     )
 
     return parser
 
 
 def _apply_ui_language(argv=None) -> str:
-    """Tentukan & aktifkan bahasa tampilan SEBELUM parser dibuat, karena teks --help
-    dan pesan error argparse dibuat saat parser dibangun. Prioritas: --ui-lang >
-    env WATTPDL_LANG > config tersimpan > default (id)."""
+    """Determine & activate the display language BEFORE the parser is built, because the --help text
+    and argparse error messages are created when the parser is built. Priority: --ui-lang >
+    env WATTPDL_LANG > saved config > default (en)."""
     pre = argparse.ArgumentParser(add_help=False)
     pre.add_argument("--ui-lang", default=None)
     known, _ = pre.parse_known_args(argv)
@@ -125,8 +125,8 @@ def parse_args(argv=None) -> argparse.Namespace:
 
 def validate_non_interactive_args(args: argparse.Namespace) -> None:
     """
-    Validasi kombinasi argumen mode non-interaktif (dipakai setelah --id diisi).
-    Raise ValueError dengan pesan yang jelas kalau ada argumen wajib yang kurang.
+    Validate the argument combination for non-interactive mode (used after --id is given).
+    Raise ValueError with a clear message if a required argument is missing.
     """
     if not args.mode:
         raise ValueError(t("val.mode_required"))

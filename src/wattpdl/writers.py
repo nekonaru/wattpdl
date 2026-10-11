@@ -1,7 +1,7 @@
 """
-Modul konversi teks dan penulisan file output.
-Berisi semua fungsi yang mengubah teks chapter mentah menjadi file
-.txt / .docx / .zip di disk. Tidak ada logika jaringan atau tampilan CLI di sini.
+Text conversion and output file writing module.
+Contains every function that turns raw chapter text into
+.txt / .docx / .epub / .md / .pdf / .zip files on disk. No network logic or CLI display here.
 """
 import html
 import pathlib
@@ -31,33 +31,33 @@ _WINDOWS_RESERVED_NAMES = {
 
 
 def safe_filename(name: str, max_length: int = 100) -> str:
-    """Buat nama file yang aman untuk semua sistem operasi.
+    """Make a file name that is safe on all operating systems.
 
-    Judul cerita/chapter Wattpad kadang sangat panjang (umum untuk judul
-    bergaya panjang/"clickbait"). Dipotong ke `max_length` supaya nama file
-    akhir (yang di beberapa tempat menggabungkan judul cerita + judul chapter,
-    lihat mode 4 di app.py) tidak melebihi batas panjang nama file sistem
-    operasi (mis. 255 byte di Linux/macOS) dan menyebabkan OSError
-    "File name too long" yang tidak tertangani saat menyimpan.
+    Wattpad story/chapter titles are sometimes very long (common for
+    long/"clickbait" style titles). They are cut to `max_length` so the final file name
+    (which in some places combines the story title + chapter title,
+    see mode 4 in app.py) does not exceed the operating system's file name length
+    limit (e.g. 255 bytes on Linux/macOS) and cause an unhandled
+    OSError "File name too long" when saving.
 
-    Juga menghindari nama device reserved Windows (CON, AUX, PRN, NUL,
-    COM1-9, LPT1-9), kalau judul chapter kebetulan cuma satu kata seperti
-    itu (jarang, tapi mungkin), menyimpan file dengan nama itu akan selalu
-    gagal di Windows apa pun ekstensinya.
+    It also avoids Windows reserved device names (CON, AUX, PRN, NUL,
+    COM1-9, LPT1-9): if a chapter title happens to be just one such word
+    (rare, but possible), saving a file with that name would always
+    fail on Windows regardless of the extension.
     """
     name = re.sub(r'[<>:"/\\|?*]', "", name)
     name = re.sub(r"[^\w\s\-]", "", name).strip()
     name = re.sub(r"\s+", "_", name)
     name = name[:max_length].rstrip("_")
     if not name:
-        return "cerita_wattpad"
+        return "wattpad_story"
     if name.upper() in _WINDOWS_RESERVED_NAMES:
         name = f"_{name}"
     return name
 
 
 def check_docx_available(console=None) -> None:
-    """Pastikan library python-docx terinstall sebelum dipakai."""
+    """Make sure the python-docx library is installed before it is used."""
     try:
         import docx  # noqa: F401
     except ImportError:
@@ -70,7 +70,7 @@ def check_docx_available(console=None) -> None:
 
 
 def check_epub_available(console=None) -> None:
-    """Pastikan library EbookLib terinstall sebelum dipakai."""
+    """Make sure the EbookLib library is installed before it is used."""
     try:
         import ebooklib  # noqa: F401
     except ImportError:
@@ -83,11 +83,11 @@ def check_epub_available(console=None) -> None:
 
 
 def write_combined_txt(path: pathlib.Path, title: str, author: str, story_id: str, results: list) -> None:
-    """Tulis semua chapter yang diberikan ke satu file .txt."""
+    """Write all the given chapters into one .txt file."""
     with open(path, "w", encoding="utf-8") as f:
         f.write(f"{title}\n")
-        f.write(f"oleh {author}\n")
-        f.write(f"Sumber : https://www.wattpad.com/story/{story_id}\n")
+        f.write(f"by {author}\n")
+        f.write(f"Source: https://www.wattpad.com/story/{story_id}\n")
         f.write(f"\n{'=' * 50}\n\n")
         for _, chapter_title, text in results:
             f.write(f"\n\n{'#' * 5} {chapter_title} {'#' * 5}\n\n")
@@ -97,16 +97,16 @@ def write_combined_txt(path: pathlib.Path, title: str, author: str, story_id: st
 
 def write_combined_md(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
                        meta: dict = None) -> None:
-    """Tulis semua chapter yang diberikan ke satu file Markdown (.md)."""
+    """Write all the given chapters into one Markdown (.md) file."""
     meta = meta or {}
     with open(path, "w", encoding="utf-8") as f:
         f.write(f"# {title}\n\n")
-        f.write(f"**oleh** {author}\n\n")
+        f.write(f"**by** {author}\n\n")
         if meta.get("tags"):
             f.write(f"**Genre**: {', '.join(meta['tags'])}\n\n")
         if meta.get("description"):
             f.write(f"> {meta['description']}\n\n")
-        f.write(f"Sumber: <https://www.wattpad.com/story/{story_id}>\n\n")
+        f.write(f"Source: <https://www.wattpad.com/story/{story_id}>\n\n")
         f.write("---\n")
         for _, chapter_title, text in results:
             f.write(f"\n## {chapter_title}\n\n")
@@ -118,15 +118,15 @@ def write_combined_md(path: pathlib.Path, title: str, author: str, story_id: str
 
 def write_separate_md_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
                            meta: dict = None) -> None:
-    """Tulis tiap chapter sebagai file .md terpisah, dikemas dalam satu .zip."""
+    """Write each chapter as a separate .md file, packed into one .zip."""
     meta = meta or {}
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
-        info_lines = [f"# {title}", "", f"**oleh** {author}"]
+        info_lines = [f"# {title}", "", f"**by** {author}"]
         if meta.get("tags"):
             info_lines.append(f"**Genre**: {', '.join(meta['tags'])}")
         if meta.get("description"):
             info_lines.append(f"\n> {meta['description']}")
-        info_lines.append(f"\nSumber: <https://www.wattpad.com/story/{story_id}>")
+        info_lines.append(f"\nSource: <https://www.wattpad.com/story/{story_id}>")
         zf.writestr("000_info.md", "\n".join(info_lines) + "\n")
         for idx, chapter_title, text in results:
             fname = f"{idx:03d}_{safe_filename(chapter_title)}.md"
@@ -135,12 +135,12 @@ def write_separate_md_zip(path: pathlib.Path, title: str, author: str, story_id:
 
 
 def write_separate_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list) -> None:
-    """Tulis tiap chapter sebagai file .txt terpisah, dikemas dalam satu .zip."""
+    """Write each chapter as a separate .txt file, packed into one .zip."""
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
         info = (
             f"{title}\n"
-            f"oleh {author}\n"
-            f"Sumber : https://www.wattpad.com/story/{story_id}\n"
+            f"by {author}\n"
+            f"Source: https://www.wattpad.com/story/{story_id}\n"
         )
         zf.writestr("000_info.txt", info)
         for idx, chapter_title, text in results:
@@ -149,7 +149,7 @@ def write_separate_zip(path: pathlib.Path, title: str, author: str, story_id: st
 
 
 def _write_paragraphs(doc, text: str) -> None:
-    """Tulis teks chapter ke dokumen Word, menjaga jeda antar paragraf."""
+    """Write chapter text into a Word document, keeping the spacing between paragraphs."""
     for para in text.split("\n\n"):
         para = para.strip()
         if not para:
@@ -163,8 +163,8 @@ def _write_paragraphs(doc, text: str) -> None:
 
 
 def _insert_docx_cover(doc, cover_bytes: bytes) -> None:
-    """Sisipkan gambar sampul di awal dokumen Word. Gagal decode/insert tidak boleh
-    menggagalkan seluruh proses penulisan file, cover cuma pemanis."""
+    """Insert the cover image at the start of the Word document. A decode/insert failure must not
+    break the whole file writing process; the cover is only a nice-to-have."""
     import io
 
     from docx.shared import Inches
@@ -176,10 +176,10 @@ def _insert_docx_cover(doc, cover_bytes: bytes) -> None:
 
 
 def _insert_docx_images(doc, images: list) -> None:
-    """Sisipkan sekumpulan gambar inline (dari dalam teks chapter, bukan cover)
-    ke akhir bagian chapter yang sedang ditulis. Sama seperti cover: gagal
-    decode 1 gambar tidak boleh menggagalkan gambar lain / seluruh proses,
-    jadi tiap gambar dicoba satu-satu dan yang gagal dilewati saja."""
+    """Insert a set of inline images (from inside the chapter text, not the cover)
+    at the end of the chapter section being written. Same as the cover: a failure to
+    decode 1 image must not break the other images / the whole process,
+    so each image is tried one by one and failed ones are simply skipped."""
     import io
 
     from docx.shared import Inches
@@ -193,9 +193,9 @@ def _insert_docx_images(doc, images: list) -> None:
 
 def write_combined_docx(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
                          meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None) -> None:
-    """Tulis semua chapter yang diberikan ke satu file .docx.
-    images_by_idx: opsional {nomor_chapter: [bytes_gambar, ...]}, gambar inline
-    dari dalam teks chapter (bukan cover), disisipkan di akhir tiap chapter.
+    """Write all the given chapters into one .docx file.
+    images_by_idx: optional {chapter_number: [image_bytes, ...]}, inline images
+    from inside the chapter text (not the cover), inserted at the end of each chapter.
     """
     from docx import Document
 
@@ -205,12 +205,12 @@ def write_combined_docx(path: pathlib.Path, title: str, author: str, story_id: s
     if cover_bytes:
         _insert_docx_cover(doc, cover_bytes)
     doc.add_heading(title, level=0)
-    doc.add_paragraph(f"oleh {author}")
+    doc.add_paragraph(f"by {author}")
     if meta.get("tags"):
         doc.add_paragraph(f"Genre: {', '.join(meta['tags'])}")
     if meta.get("description"):
         doc.add_paragraph(meta["description"])
-    doc.add_paragraph(f"Sumber : https://www.wattpad.com/story/{story_id}")
+    doc.add_paragraph(f"Source: https://www.wattpad.com/story/{story_id}")
 
     for idx, chapter_title, text in results:
         doc.add_page_break()
@@ -223,7 +223,7 @@ def write_combined_docx(path: pathlib.Path, title: str, author: str, story_id: s
 
 def write_separate_docx_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
                              meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None) -> None:
-    """Tulis tiap chapter sebagai file .docx terpisah, dikemas dalam satu .zip."""
+    """Write each chapter as a separate .docx file, packed into one .zip."""
     from docx import Document
 
     meta = meta or {}
@@ -235,12 +235,12 @@ def write_separate_docx_zip(path: pathlib.Path, title: str, author: str, story_i
         if cover_bytes:
             _insert_docx_cover(info_doc, cover_bytes)
         info_doc.add_heading(title, level=0)
-        info_doc.add_paragraph(f"oleh {author}")
+        info_doc.add_paragraph(f"by {author}")
         if meta.get("tags"):
             info_doc.add_paragraph(f"Genre: {', '.join(meta['tags'])}")
         if meta.get("description"):
             info_doc.add_paragraph(meta["description"])
-        info_doc.add_paragraph(f"Sumber : https://www.wattpad.com/story/{story_id}")
+        info_doc.add_paragraph(f"Source: https://www.wattpad.com/story/{story_id}")
         info_file = tmp_path / "000_info.docx"
         info_doc.save(str(info_file))
 
@@ -260,7 +260,7 @@ def write_separate_docx_zip(path: pathlib.Path, title: str, author: str, story_i
 
 
 def _text_to_epub_html(text: str) -> str:
-    """Ubah teks chapter (paragraf dipisah \\n\\n, baris dipisah \\n) jadi HTML aman untuk EPUB."""
+    """Turn chapter text (paragraphs separated by \\n\\n, lines separated by \\n) into HTML that is safe for EPUB."""
     paragraphs = []
     for para in text.split("\n\n"):
         para = para.strip()
@@ -274,20 +274,20 @@ def _text_to_epub_html(text: str) -> str:
 def _build_epub_book(title: str, author: str, story_id: str, identifier_suffix: str = None,
                       meta: dict = None, language: str = "id"):
     """
-    Buat objek EpubBook kosong dengan metadata standar wattpdl.
-    identifier_suffix: opsional, dipakai untuk membuat identifier EPUB unik per file
-    (mis. per chapter), tanpa ini, semua EPUB dari cerita yang sama akan punya
-    identifier persis sama, yang melanggar spec EPUB dan bisa bikin sebagian
-    e-reader (Calibre, Kobo) bentrok/menimpa entri satu sama lain.
-    meta: dict opsional {"description", "tags", "create_date"}, kalau diisi,
-    ditambahkan sebagai metadata Dublin Core standar (description, subject, date)
-    supaya kelihatan di info buku pada e-reader yang mendukungnya.
-    language: kode bahasa ISO 639-1 utk metadata EPUB (mis. "id", "en"). Default
-    "id" karena wattpdl ditujukan utk pembaca Wattpad Indonesia, tapi Wattpad
-    juga menghosting banyak cerita berbahasa lain, kalau ceritanya bahasa
-    Inggris, isi eksplisit lewat --lang supaya metadata EPUB-nya akurat
-    (bukan cuma tampilan/estetika: sebagian e-reader memakai field ini utk
-    text-to-speech dan sortir rak buku per bahasa).
+    Create an empty EpubBook object with the standard wattpdl metadata.
+    identifier_suffix: optional, used to make a unique EPUB identifier per file
+    (e.g. per chapter); without it, every EPUB of the same story would have
+    exactly the same identifier, which violates the EPUB spec and can make some
+    e-readers (Calibre, Kobo) clash/overwrite each other's entries.
+    meta: optional dict {"description", "tags", "create_date"}; if given,
+    it is added as standard Dublin Core metadata (description, subject, date)
+    so it shows up in the book info on e-readers that support it.
+    language: ISO 639-1 language code for EPUB metadata (e.g. "id", "en"). Defaults to
+    "id" because wattpdl was originally aimed at Indonesian Wattpad readers, but Wattpad
+    also hosts many stories in other languages. If the story is in
+    English, set it explicitly via --lang so the EPUB metadata is accurate
+    (not just cosmetic: some e-readers use this field for
+    text-to-speech and for sorting the bookshelf by language).
     """
     from ebooklib import epub
 
@@ -310,8 +310,8 @@ def _build_epub_book(title: str, author: str, story_id: str, identifier_suffix: 
 
 
 def _set_epub_cover(book, epub, cover_bytes: bytes) -> None:
-    """Sisipkan gambar sampul ke EpubBook. Gagal insert tidak boleh menggagalkan
-    seluruh proses penulisan file, cover cuma pemanis."""
+    """Insert the cover image into the EpubBook. An insert failure must not break the
+    whole file writing process; the cover is only a nice-to-have."""
     if not cover_bytes:
         return
     try:
@@ -321,9 +321,9 @@ def _set_epub_cover(book, epub, cover_bytes: bytes) -> None:
 
 
 def _add_epub_inline_images(book, epub, idx: int, images: list) -> str:
-    """Daftarkan sekumpulan gambar inline (dari dalam teks chapter) sebagai
-    EpubImage ke buku, dan kembalikan potongan HTML <img> untuk disisipkan di
-    akhir konten chapter. Gagal 1 gambar tidak menggagalkan gambar lain."""
+    """Register a set of inline images (from inside the chapter text) as
+    EpubImage in the book, and return the <img> HTML snippet to insert at the
+    end of the chapter content. A failure of 1 image does not break the other images."""
     if not images:
         return ""
     tags = []
@@ -344,7 +344,7 @@ def _add_epub_inline_images(book, epub, idx: int, images: list) -> str:
 def write_combined_epub(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
                          meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None,
                          language: str = "id") -> None:
-    """Tulis semua chapter yang diberikan ke satu file .epub (satu buku, banyak bab)."""
+    """Write all the given chapters into one .epub file (one book, many chapters)."""
     meta = meta or {}
     images_by_idx = images_by_idx or {}
     book, epub = _build_epub_book(title, author, story_id, meta=meta, language=language)
@@ -352,13 +352,13 @@ def write_combined_epub(path: pathlib.Path, title: str, author: str, story_id: s
 
     intro_body = (
         f"<h1>{html.escape(title)}</h1>"
-        f"<p>oleh {html.escape(author)}</p>"
+        f"<p>by {html.escape(author)}</p>"
     )
     if meta.get("tags"):
         intro_body += f"<p>Genre: {html.escape(', '.join(meta['tags']))}</p>"
     if meta.get("description"):
         intro_body += f"<p>{html.escape(meta['description'])}</p>"
-    intro_body += f"<p>Sumber: https://www.wattpad.com/story/{story_id}</p>"
+    intro_body += f"<p>Source: https://www.wattpad.com/story/{story_id}</p>"
 
     intro = epub.EpubHtml(title="Info", file_name="000_info.xhtml", lang=language)
     intro.content = intro_body
@@ -383,7 +383,7 @@ def write_combined_epub(path: pathlib.Path, title: str, author: str, story_id: s
 def write_separate_epub_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
                              meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None,
                              language: str = "id") -> None:
-    """Tulis tiap chapter sebagai file .epub terpisah (satu bab per buku), dikemas dalam satu .zip."""
+    """Write each chapter as a separate .epub file (one chapter per book), packed into one .zip."""
     meta = meta or {}
     images_by_idx = images_by_idx or {}
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -395,13 +395,13 @@ def write_separate_epub_zip(path: pathlib.Path, title: str, author: str, story_i
 
         info_body = (
             f"<h1>{html.escape(title)}</h1>"
-            f"<p>oleh {html.escape(author)}</p>"
+            f"<p>by {html.escape(author)}</p>"
         )
         if meta.get("tags"):
             info_body += f"<p>Genre: {html.escape(', '.join(meta['tags']))}</p>"
         if meta.get("description"):
             info_body += f"<p>{html.escape(meta['description'])}</p>"
-        info_body += f"<p>Sumber: https://www.wattpad.com/story/{story_id}</p>"
+        info_body += f"<p>Source: https://www.wattpad.com/story/{story_id}</p>"
 
         info_page = epub.EpubHtml(title="Info", file_name="info.xhtml", lang=language)
         info_page.content = info_body
@@ -436,9 +436,9 @@ def write_separate_epub_zip(path: pathlib.Path, title: str, author: str, story_i
 
 
 def _pdf_image_flowable(img_bytes: bytes, max_width: float, max_height: float):
-    """Bikin flowable reportlab dari bytes gambar, diskalakan proporsional supaya
-    muat dalam max_width x max_height. Kembalikan None kalau gambarnya rusak/tidak
-    bisa dibaca, dipanggil dengan asumsi caller melewati None tanpa crash."""
+    """Make a reportlab flowable from image bytes, scaled proportionally so it
+    fits within max_width x max_height. Return None if the image is corrupt/unreadable;
+    callers are expected to skip None without crashing."""
     import io
 
     from reportlab.lib.utils import ImageReader
@@ -456,9 +456,9 @@ def _pdf_image_flowable(img_bytes: bytes, max_width: float, max_height: float):
 
 
 def _text_to_pdf_flowables(text: str, styles) -> list:
-    """Ubah teks chapter jadi list flowable Paragraph reportlab, menjaga jeda
-    antar paragraf & baris. Karakter khusus di-escape supaya tidak ditafsir
-    sebagai mini-markup reportlab."""
+    """Turn chapter text into a list of reportlab Paragraph flowables, keeping the spacing
+    between paragraphs & lines. Special characters are escaped so they are not interpreted
+    as reportlab mini-markup."""
     from reportlab.platypus import Paragraph, Spacer
 
     flowables = []
@@ -473,27 +473,27 @@ def _text_to_pdf_flowables(text: str, styles) -> list:
 
 
 def _build_pdf_story_intro(title, author, story_id, meta, styles) -> list:
-    """Bagian halaman info/intro (judul, penulis, genre, sinopsis) yang dipakai
-    baik di PDF gabungan maupun di file info.pdf pada mode terpisah/zip."""
+    """Info/intro page section (title, author, genre, synopsis) used
+    both in the combined PDF and in the info.pdf file in separate/zip mode."""
     from reportlab.platypus import Paragraph, Spacer
 
     meta = meta or {}
     flowables = [
         Paragraph(html.escape(title), styles["Title"]),
-        Paragraph(f"oleh {html.escape(author)}", styles["Normal"]),
+        Paragraph(f"by {html.escape(author)}", styles["Normal"]),
         Spacer(1, 8),
     ]
     if meta.get("tags"):
         flowables.append(Paragraph(f"Genre: {html.escape(', '.join(meta['tags']))}", styles["Normal"]))
     if meta.get("description"):
         flowables.append(Paragraph(html.escape(meta["description"]), styles["Normal"]))
-    flowables.append(Paragraph(f"Sumber: https://www.wattpad.com/story/{story_id}", styles["Normal"]))
+    flowables.append(Paragraph(f"Source: https://www.wattpad.com/story/{story_id}", styles["Normal"]))
     return flowables
 
 
 def write_combined_pdf(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
                         meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None) -> None:
-    """Tulis semua chapter yang diberikan ke satu file .pdf."""
+    """Write all the given chapters into one .pdf file."""
     from reportlab.lib.pagesizes import A5
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.platypus import PageBreak, SimpleDocTemplate
@@ -525,8 +525,8 @@ def write_combined_pdf(path: pathlib.Path, title: str, author: str, story_id: st
 
 
 def _pdf_chapter_heading(text: str, styles):
-    """Kecil: heading chapter, dipisah jadi fungsi supaya gampang dipakai ulang
-    di writer PDF gabungan maupun terpisah tanpa impor berulang."""
+    """Small helper: chapter heading, split into a function so it is easy to reuse
+    in both the combined and the separate PDF writers without repeated imports."""
     from reportlab.platypus import Paragraph
 
     return Paragraph(html.escape(text), styles["Heading1"])
@@ -534,7 +534,7 @@ def _pdf_chapter_heading(text: str, styles):
 
 def write_separate_pdf_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
                             meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None) -> None:
-    """Tulis tiap chapter sebagai file .pdf terpisah, dikemas dalam satu .zip."""
+    """Write each chapter as a separate .pdf file, packed into one .zip."""
     from reportlab.lib.pagesizes import A5
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.platypus import SimpleDocTemplate
@@ -573,7 +573,7 @@ def write_separate_pdf_zip(path: pathlib.Path, title: str, author: str, story_id
 
 
 def check_pdf_available(console=None) -> None:
-    """Pastikan library reportlab terinstall sebelum dipakai."""
+    """Make sure the reportlab library is installed before it is used."""
     try:
         import reportlab  # noqa: F401
     except ImportError:

@@ -1,7 +1,7 @@
 """
-Unit test untuk fungsi-fungsi murni (pure function) di package wattpdl.
-Jalankan dengan: pytest
-(path ke src/ sudah diatur lewat [tool.pytest.ini_options] di pyproject.toml)
+Unit tests for the pure functions in the wattpdl package.
+Run with: pytest
+(the path to src/ is set through [tool.pytest.ini_options] in pyproject.toml)
 """
 import base64
 import pathlib
@@ -55,8 +55,8 @@ class TestExtractStoryId:
             extract_story_id("")
 
     def test_chapter_link_raises_specific_message(self):
-        # URL per-chapter (format mobile/share, tanpa "story/") harus dikenali
-        # dan dikasih pesan yang jelas, bukan pesan generik "tidak dikenali".
+        # A per-chapter URL (mobile/share format, without "story/") must be recognized
+        # and given a clear message, not the generic "not recognized" message.
         with pytest.raises(ValueError, match="chapter"):
             extract_story_id("https://www.wattpad.com/1234567-judul-part")
 
@@ -69,29 +69,29 @@ class TestSafeFilename:
         assert safe_filename("Judul Cerita Keren") == "Judul_Cerita_Keren"
 
     def test_empty_input_has_fallback(self):
-        assert safe_filename("") == "cerita_wattpad"
+        assert safe_filename("") == "wattpad_story"
 
     def test_only_illegal_chars_has_fallback(self):
-        assert safe_filename('///???***') == "cerita_wattpad"
+        assert safe_filename('///???***') == "wattpad_story"
 
     def test_preserves_unicode_letters(self):
-        # Judul berbahasa Indonesia dengan huruf biasa harus tetap utuh
+        # Titles in Indonesian with ordinary letters must stay intact
         assert safe_filename("Cerita Cinta Sederhana") == "Cerita_Cinta_Sederhana"
 
     def test_very_long_title_is_truncated(self):
-        # Bug: judul cerita/chapter Wattpad kadang sangat panjang (umum untuk
-        # judul bergaya panjang). Tanpa dipotong, nama file gabungan (mis. mode 4
-        # yang menggabungkan judul cerita + judul chapter) bisa melebihi batas
-        # panjang nama file OS dan menyebabkan OSError "File name too long"
-        # yang tidak tertangani saat menyimpan.
-        long_title = "Kata " * 100  # 500 karakter
+        # Bug: Wattpad story/chapter titles are sometimes very long (common for
+        # long-style titles). Without truncation, the combined file name (e.g. mode 4,
+        # which combines the story title + chapter title) can exceed the
+        # OS file name length limit and cause an unhandled OSError "File name too long"
+        # when saving.
+        long_title = "Kata " * 100  # 500 characters
         result = safe_filename(long_title)
         assert len(result) <= 100
         assert not result.endswith("_")
 
     def test_truncated_title_still_usable_combined(self, tmp_path):
-        # Simulasikan nama file gabungan seperti di mode 4 (judul cerita + judul
-        # chapter) tetap harus bisa ditulis ke disk tanpa OSError.
+        # Simulate the combined file name as in mode 4 (story title + chapter
+        # title); it must still be writable to disk without an OSError.
         story_title = safe_filename("Kisah " * 60)
         chapter_title = safe_filename("Bab " * 60)
         full_path = tmp_path / f"{story_title}_Ch001_{chapter_title}.txt"
@@ -99,11 +99,11 @@ class TestSafeFilename:
         assert full_path.exists()
 
     def test_avoids_windows_reserved_device_names(self):
-        # Bug: judul chapter satu kata seperti "Con", "Aux", "Nul", "Com1" dst.
-        # kebetulan sama dengan nama device reserved Windows. Kalau tidak
-        # diubah, file dengan nama itu tidak akan pernah bisa dibuat di
-        # Windows sama sekali (apa pun ekstensinya), padahal ini judul chapter
-        # yang sah dan bisa saja muncul di dunia nyata.
+        # Bug: a one-word chapter title such as "Con", "Aux", "Nul", "Com1", etc.
+        # happens to equal a Windows reserved device name. If it is not
+        # changed, a file with that name can never be created on
+        # Windows at all (regardless of the extension), even though this is a legitimate chapter title
+        # that could easily appear in the real world.
         for reserved in ["CON", "con", "Aux", "PRN", "Nul", "COM1", "lpt9"]:
             result = safe_filename(reserved)
             assert result.upper() not in {
@@ -111,8 +111,8 @@ class TestSafeFilename:
                 *(f"COM{i}" for i in range(1, 10)),
                 *(f"LPT{i}" for i in range(1, 10)),
             }
-        # Judul biasa yang cuma KEBETULAN mengandung kata itu sebagai bagian
-        # dari kalimat tidak boleh ikut diubah (bukan match penuh).
+        # An ordinary title that only HAPPENS to contain that word as part
+        # of a sentence must not be changed (it is not a full match).
         assert safe_filename("Aux Membantu Ayahnya") == "Aux_Membantu_Ayahnya"
 
 
@@ -152,10 +152,10 @@ class TestParseChapterSelection:
             parse_chapter_selection("50,60", total=10)
 
     def test_huge_range_does_not_hang(self):
-        # Bug: dulu range(start, end+1) dibuat penuh SEBELUM difilter ke [1, total],
-        # jadi rentang seperti "1-500000000" bikin CLI hang lama walau cerita cuma
-        # 10 chapter. Sekarang harus dipangkas dulu, jadi selesai hampir instan
-        # berapa pun besar angka yang diketik user.
+        # Bug: range(start, end+1) used to be built in full BEFORE being filtered to [1, total],
+        # so a range like "1-500000000" made the CLI hang for a long time even though the story only has
+        # 10 chapters. It must now be clamped first, so it finishes almost instantly
+        # no matter how large the number the user typed.
         import time
 
         start = time.time()
@@ -166,7 +166,7 @@ class TestParseChapterSelection:
         assert elapsed < 1.0, f"parse_chapter_selection terlalu lambat: {elapsed:.2f}s"
 
     def test_huge_range_partially_overlapping_total(self):
-        # Batas bawah normal, batas atas raksasa -> tetap harus dipangkas ke total.
+        # Normal lower bound, huge upper bound -> must still be clamped to total.
         assert parse_chapter_selection("8-999999999999999", total=10) == [8, 9, 10]
 
 
@@ -205,7 +205,7 @@ class TestFormatDuration:
 class TestConfig:
     @pytest.fixture(autouse=True)
     def isolate_config(self, tmp_path, monkeypatch):
-        # Jangan pernah baca/tulis ke config asli user saat testing
+        # Never read/write the user's real config during testing
         monkeypatch.setattr(config_mod, "CONFIG_DIR", tmp_path / ".wattpdl")
         monkeypatch.setattr(config_mod, "CONFIG_FILE", tmp_path / ".wattpdl" / "config.json")
 
@@ -270,7 +270,7 @@ class TestProgress:
         assert progress_mod.load_progress("12345") == {}
 
     def test_clear_progress_on_nonexistent_is_safe(self):
-        progress_mod.clear_progress("tidak-pernah-ada")  # tidak boleh raise
+        progress_mod.clear_progress("tidak-pernah-ada")  # must not raise
 
 
 class TestCliArgs:
@@ -321,7 +321,7 @@ class TestCliArgs:
 
     def test_validate_passes_for_mode_1(self):
         args = cli_args.parse_args(["--id", "1", "--mode", "1"])
-        cli_args.validate_non_interactive_args(args)  # tidak boleh raise
+        cli_args.validate_non_interactive_args(args)  # must not raise
 
     def test_format_to_code_mapping(self):
         assert cli_args.FORMAT_TO_CODE == {"txt": "1", "docx": "2", "epub": "3", "md": "4", "pdf": "5"}
@@ -373,8 +373,8 @@ class TestEpubWriters:
             assert "000_info.epub" in names
 
     def test_separate_epub_zip_has_unique_identifiers(self, tmp_path, sample_results):
-        # Bug 2: identifier EPUB dulu identik untuk semua file per-chapter.
-        # Sekarang harus unik per file (termasuk file info).
+        # Bug 2: the EPUB identifier used to be identical for all per-chapter files.
+        # It must now be unique per file (including the info file).
         import zipfile
 
         from ebooklib import epub
@@ -395,7 +395,7 @@ class TestEpubWriters:
 
 class TestGetChapterHtml:
     def test_retries_zero_raises_value_error(self):
-        # Bug 3: sebelumnya retries=0 diam-diam mengembalikan string kosong.
+        # Bug 3: retries=0 used to silently return an empty string.
         with pytest.raises(ValueError, match="retries"):
             get_chapter_html(123, retries=0)
 
@@ -406,9 +406,9 @@ class TestGetChapterHtml:
 
 class TestFetchStoryOrExit:
     def test_connection_error_exits_with_friendly_message(self, monkeypatch):
-        # Bug 1: dulu hanya requests.HTTPError yang ditangkap, ConnectionError/Timeout
-        # akan lolos jadi traceback mentah. Sekarang harus exit rapi (SystemExit),
-        # bukan raise ConnectionError langsung ke pemanggil.
+        # Bug 1: only requests.HTTPError used to be caught, ConnectionError/Timeout
+        # would slip through as a raw traceback. It must now exit cleanly (SystemExit),
+        # not raise ConnectionError straight to the caller.
         def fake_get_story_info(story_id):
             raise requests.ConnectionError("koneksi putus")
 
@@ -427,8 +427,8 @@ class TestFetchStoryOrExit:
 
 class TestResolveSaveDir:
     def test_fallback_oserror_exits_cleanly(self, monkeypatch, tmp_path):
-        # Bug 4: fallback ke get_default_download_dir() dulu bisa raise OSError
-        # tanpa tertangkap. Sekarang harus exit rapi (SystemExit), bukan crash mentah.
+        # Bug 4: the fallback to get_default_download_dir() used to be able to raise OSError
+        # uncaught. It must now exit cleanly (SystemExit), not crash raw.
         def fail_mkdir(self, parents=False, exist_ok=False):
             raise OSError("folder tidak writable")
 
@@ -454,7 +454,7 @@ class TestResetSteps:
 
 
 class TestMarkdownWriter:
-    """Fitur baru: format .md sebagai pilihan ke-4."""
+    """New feature: .md format as the 4th choice."""
 
     @pytest.fixture
     def sample_results(self):
@@ -496,7 +496,7 @@ class TestMarkdownWriter:
 
 
 class TestSkipExisting:
-    """Fitur baru: lewati unduhan kalau file output sudah ada."""
+    """New feature: skip the download if the output file already exists."""
 
     def test_skips_when_file_exists_and_flag_on(self, tmp_path):
         existing = tmp_path / "sudah_ada.txt"
@@ -514,7 +514,7 @@ class TestSkipExisting:
 
 
 class TestCoverImage:
-    """Fitur baru: unduh cover cerita untuk disisipkan ke .docx/.epub."""
+    """New feature: download the story cover to embed in .docx/.epub."""
 
     def test_download_cover_image_returns_none_without_url(self):
         assert api_mod.download_cover_image(None) is None
@@ -525,7 +525,7 @@ class TestCoverImage:
             raise requests.ConnectionError("gagal konek")
 
         monkeypatch.setattr(api_mod.requests, "get", fake_get)
-        # Kegagalan unduh cover TIDAK boleh menghentikan proses (cover cuma pemanis).
+        # A cover download failure must NOT stop the process (the cover is only a nice-to-have).
         assert api_mod.download_cover_image("https://example.com/cover.jpg") is None
 
     @responses_lib.activate
@@ -541,8 +541,8 @@ class TestCoverImage:
         from wattpdl.writers import _build_epub_book, _set_epub_cover
 
         book, epub = _build_epub_book("Judul", "Penulis", "999")
-        # Byte acak yang bukan gambar valid, pastikan tidak melempar exception,
-        # karena kegagalan sisip cover tidak boleh menggagalkan seluruh file.
+        # Random bytes that are not a valid image, make sure no exception is thrown,
+        # because a cover insert failure must not break the whole file.
         _set_epub_cover(book, epub, b"bukan-gambar-valid")
 
 
@@ -601,9 +601,9 @@ class TestEpubMetadata:
 
 class TestIntegrationMockHttp:
     """
-    Integration test yang mem-mock HTTP di level `requests` (pakai `responses`),
-    bukan cuma unit test fungsi murni, memastikan pipeline API -> writer
-    utuh berjalan seperti pemakaian nyata.
+    Integration tests that mock HTTP at the `requests` level (using `responses`),
+    not just unit tests of pure functions, making sure the full API -> writer
+    pipeline runs like real usage.
     """
 
     @responses_lib.activate
@@ -663,8 +663,8 @@ class TestIntegrationMockHttp:
             api_mod.STORY_INFO_URL.format(story_id="404"),
             status=404,
         )
-        # Sejak penanganan error spesifik ditambahkan, 404 sekarang jadi
-        # StoryNotFoundError dengan pesan jelas, bukan requests.HTTPError generik.
+        # Since specific error handling was added, a 404 now becomes a
+        # StoryNotFoundError with a clear message, not a generic requests.HTTPError.
         with pytest.raises(api_mod.StoryNotFoundError):
             api_mod.get_story_info("404")
 
@@ -690,9 +690,9 @@ class TestIntegrationMockHttp:
 
 
 class TestAdaptiveRateLimiter:
-    """Fitur baru: jeda antar-chapter otomatis melambat kalau server mulai
-    balikin rate-limit (429) / server sibuk (503) beruntun, lalu pelan-pelan
-    kembali cepat begitu request sukses lagi."""
+    """New feature: the delay between chapters slows down automatically when the server starts
+    returning consecutive rate limits (429) / busy server errors (503), then gradually
+    speeds up again once requests succeed."""
 
     def test_starts_at_base_delay(self):
         rl = api_mod.AdaptiveRateLimiter(base_delay=0.5, max_delay=10.0)
@@ -718,10 +718,10 @@ class TestAdaptiveRateLimiter:
         rl.report_throttled()
         assert rl.current_delay == 4.0
         rl.report_success()
-        assert rl.current_delay == 2.0  # turun 1 level, bukan langsung ke base_delay
+        assert rl.current_delay == 2.0  # drops 1 level, not straight to base_delay
         rl.report_success()
         rl.report_success()
-        assert rl.current_delay == 0.5  # kembali normal setelah cukup banyak sukses
+        assert rl.current_delay == 0.5  # back to normal after enough successes
 
     def test_get_chapter_html_reports_429_to_limiter(self):
         rl = api_mod.AdaptiveRateLimiter(base_delay=0.1, max_delay=1.0)
@@ -753,14 +753,14 @@ class TestAdaptiveRateLimiter:
         try:
             html = api_mod.get_chapter_html(1, retries=3, rate_limiter=rl)
             assert html == "<p>OK</p>"
-            # setelah 1x throttled lalu 1x sukses, level naik ke 1 lalu turun lagi ke 0
+            # after 1 throttled then 1 success, the level goes up to 1 then back down to 0
             assert rl.current_delay == 0.1
         finally:
             api_module.requests.get = orig_get
 
 
 class TestAuthorStories:
-    """Fitur baru: --user, unduh semua/cerita pilihan dari 1 penulis."""
+    """New feature: --user, download all/selected stories from 1 author."""
 
     @responses_lib.activate
     def test_get_author_stories_parses_list(self):
@@ -792,7 +792,7 @@ class TestAuthorStories:
 
 
 class TestExtractChapterImages:
-    """Fitur baru: --include-images, ekstrak URL gambar inline dari HTML chapter."""
+    """New feature: --include-images, extract inline image URLs from chapter HTML."""
 
     def test_extracts_single_image(self):
         html = '<p>Teks</p><img src="https://example.com/a.jpg"><p>Lagi</p>'
@@ -811,8 +811,8 @@ class TestExtractChapterImages:
 
 
 class TestProgressStore:
-    """ProgressStore: baca sekali di awal, simpan ke memori + disk tanpa baca
-    ulang tiap chapter (perbaikan O(n^2) -> O(n) untuk cerita panjang)."""
+    """ProgressStore: read once at the start, save to memory + disk without re-reading
+    for every chapter (an O(n^2) -> O(n) fix for long stories)."""
 
     @pytest.fixture(autouse=True)
     def isolate_progress(self, tmp_path, monkeypatch):
@@ -828,7 +828,7 @@ class TestProgressStore:
         store.mark_done(111, "Bab 1", "Isi bab 1")
         assert store.has(111)
         assert store.get(111)["text"] == "Isi bab 1"
-        # baca lewat API lama juga harus lihat data yang sama (kompatibel)
+        # reading through the old API must also see the same data (compatible)
         assert progress_mod.load_progress("12345")["111"]["text"] == "Isi bab 1"
 
     def test_picks_up_existing_progress_on_init(self):
@@ -876,7 +876,7 @@ class TestPdfWriters:
         assert out.stat().st_size > 0
 
     def test_write_combined_pdf_broken_image_does_not_crash(self, tmp_path, sample_results):
-        # Cover/gambar rusak (bukan gambar valid) tidak boleh menggagalkan seluruh PDF.
+        # A corrupt cover/image (not a valid image) must not break the whole PDF.
         out = tmp_path / "rusak.pdf"
         write_combined_pdf(
             out, "Judul", "Penulis", "1", sample_results,
@@ -895,7 +895,7 @@ class TestPdfWriters:
 
 
 class TestInlineImagesInDocxEpub:
-    """Fitur baru: --include-images, sisip gambar inline (bukan cover) ke docx/epub."""
+    """New feature: --include-images, embed inline images (not the cover) into docx/epub."""
 
     TINY_PNG = base64.b64decode(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
@@ -925,7 +925,7 @@ class TestInlineImagesInDocxEpub:
 
 
 class TestUpdater:
-    """Fitur baru: cek versi terbaru di PyPI saat start."""
+    """New feature: check the latest version on PyPI at startup."""
 
     @pytest.fixture(autouse=True)
     def isolate_cache(self, tmp_path, monkeypatch):
@@ -948,8 +948,8 @@ class TestUpdater:
         assert updater.check_for_update(force=True) is None
 
     def test_network_failure_returns_none_not_raise(self):
-        # Sengaja tidak ada mock -> request akan gagal (ConnectionError dari `responses`
-        # karena tidak activated). Tidak boleh raise sampai ke pemanggil.
+        # Deliberately no mock -> the request will fail (ConnectionError from `responses`
+        # because it is not activated). It must not raise up to the caller.
         assert updater.check_for_update(force=True) is None
 
     @responses_lib.activate
@@ -958,13 +958,13 @@ class TestUpdater:
                            json={"info": {"version": "5.0.0"}}, status=200)
         first = updater.check_for_update(force=True)
         assert first == "5.0.0"
-        # panggilan kedua tanpa force & tanpa mock baru -> harus pakai cache, bukan gagal
+        # second call without force & without a new mock -> must use the cache, not fail
         second = updater.check_for_update(force=False)
         assert second == "5.0.0"
 
 
 class TestMetaCache:
-    """Fitur baru: cache metadata cerita jangka pendek."""
+    """New feature: short-term story metadata cache."""
 
     @pytest.fixture(autouse=True)
     def isolate_cache(self, tmp_path, monkeypatch):
@@ -983,13 +983,13 @@ class TestMetaCache:
 
     def test_expired_cache_is_miss(self, monkeypatch):
         metacache.save_story_cache("2", "Judul", "Penulis", [], {})
-        # majukan waktu melebihi TTL
+        # advance the time past the TTL
         monkeypatch.setattr(metacache.time, "time", lambda: 1e15)
         assert metacache.get_cached_story("2") is None
 
 
 class TestLibrary:
-    """Fitur baru: --check-updates, catat cerita yang pernah diunduh penuh."""
+    """New feature: --check-updates, record stories that were fully downloaded before."""
 
     @pytest.fixture(autouse=True)
     def isolate_library(self, tmp_path, monkeypatch):
@@ -1013,15 +1013,15 @@ class TestLibrary:
 
 
 class TestCheckUpdatesFlow:
-    """Fitur baru: app.run_check_updates(), laporan chapter baru untuk semua
-    cerita di library, tanpa mengunduh apa pun."""
+    """New feature: app.run_check_updates(), a new-chapter report for all
+    stories in the library, without downloading anything."""
 
     @pytest.fixture(autouse=True)
     def isolate(self, tmp_path, monkeypatch):
         monkeypatch.setattr(library_mod, "LIBRARY_FILE", tmp_path / "library.json")
 
     def test_empty_library_prints_message_no_crash(self, capsys):
-        app_mod.run_check_updates()  # tidak boleh raise walau library kosong
+        app_mod.run_check_updates()  # must not raise even if the library is empty
 
     @responses_lib.activate
     def test_reports_new_chapters(self):
@@ -1032,7 +1032,7 @@ class TestCheckUpdatesFlow:
                   "parts": [{"id": i, "title": f"Ch{i}"} for i in range(5)]},
             status=200,
         )
-        app_mod.run_check_updates()  # tidak boleh raise; hasil divalidasi via unit test api terpisah
+        app_mod.run_check_updates()  # must not raise; the result is validated via a separate api unit test
 
     @responses_lib.activate
     def test_handles_deleted_story_gracefully(self):
@@ -1040,11 +1040,11 @@ class TestCheckUpdatesFlow:
         responses_lib.add(
             responses_lib.GET, api_mod.STORY_INFO_URL.format(story_id="11"), status=404,
         )
-        app_mod.run_check_updates()  # tidak boleh raise walau salah satu cerita 404
+        app_mod.run_check_updates()  # must not raise even if one of the stories is a 404
 
 
 class TestCliArgsNewFlags:
-    """Validasi argumen baru: --workers, --user, --check-updates, --watch, dll."""
+    """New argument validation: --workers, --user, --check-updates, --watch, etc."""
 
     def test_default_workers_is_one(self):
         args = cli_args.parse_args(["--id", "1", "--mode", "1"])
@@ -1081,13 +1081,13 @@ class TestCliArgsNewFlags:
 
 
 class TestDownloadChaptersRateLimiting:
-    """Regresi utk bug yg ditemukan reviewer eksternal: rate_limiter.wait()
-    dulu cuma dipanggil di jalur sequential (max_workers=1), sama sekali
-    tidak dipanggil di jalur paralel (ThreadPoolExecutor) maupun untuk
-    unduhan gambar inline, jadi --workers > 1 dan --include-images
-    menembak API tanpa throttle adaptif sama sekali, padahal itu justru
-    tujuan utama fitur rate limiter. Sebelumnya tidak ada test yang benar-benar
-    menjalankan jalur max_workers > 1 di download_chapters, jadi bug ini lolos."""
+    """Regression for a bug found by an external reviewer: rate_limiter.wait()
+    used to be called only on the sequential path (max_workers=1), and was never
+    called on the parallel path (ThreadPoolExecutor) or for inline image
+    downloads, so --workers > 1 and --include-images hit the API with no
+    adaptive throttle at all, even though that is the main purpose of the rate
+    limiter feature. Previously no test actually ran the max_workers > 1 path in
+    download_chapters, so this bug slipped through."""
 
     @pytest.fixture(autouse=True)
     def isolate_progress(self, tmp_path, monkeypatch):
@@ -1107,9 +1107,9 @@ class TestDownloadChaptersRateLimiting:
         assert wait_calls["n"] == n, "sequential path harus panggil wait() 1x per chapter sukses"
 
     def test_parallel_path_calls_wait_per_chapter(self, monkeypatch):
-        """Ini test yg dulu TIDAK ADA, jalur max_workers > 1 sebelumnya tidak
-        pernah dijalankan sama sekali oleh test suite, sehingga bug rate
-        limiter yg cuma jalan di jalur sequential lolos tanpa ketahuan."""
+        """This is a test that used to NOT EXIST: the max_workers > 1 path had
+        never been run at all by the test suite, so a rate limiter bug that
+        only ran on the sequential path slipped through unnoticed."""
         n = 6
         monkeypatch.setattr(api_mod, "get_chapter_html", lambda *a, **kw: "<p>isi</p>")
         rl = api_mod.AdaptiveRateLimiter(base_delay=0.0)
@@ -1132,8 +1132,8 @@ class TestDownloadChaptersRateLimiting:
         )
 
     def test_cached_chapters_do_not_trigger_wait(self, monkeypatch):
-        """Chapter yang dipakai dari cache/resume tidak boleh kena delay
-        (tidak ada request baru yang perlu di-throttle)."""
+        """Chapters taken from the cache/resume must not be delayed
+        (there is no new request that needs to be throttled)."""
         story_id = "rl-cache-test"
         progress_mod.save_chapter_progress(story_id, 1, "Bab 1", "sudah ada")
         monkeypatch.setattr(api_mod, "get_chapter_html", lambda *a, **kw: "<p>isi baru</p>")
@@ -1142,13 +1142,13 @@ class TestDownloadChaptersRateLimiting:
         monkeypatch.setattr(rl, "wait", lambda: wait_calls.__setitem__("n", wait_calls["n"] + 1))
 
         cli_mod.download_chapters(self._make_parts(2), story_id=story_id, max_workers=1, rate_limiter=rl)
-        # Cuma chapter 2 yang benar-benar di-fetch (chapter 1 dari cache) -> wait() cuma 1x
+        # Only chapter 2 was actually fetched (chapter 1 came from the cache) -> wait() only 1x
         assert wait_calls["n"] == 1
 
     def test_include_images_waits_between_each_image(self, monkeypatch):
-        """Bug lain yg ditemukan: unduhan gambar inline sama sekali tidak
-        melalui rate limiter di kedua jalur. Sekarang tiap gambar harus ikut
-        kena wait() juga."""
+        """Another bug that was found: inline image downloads did not go through
+        the rate limiter at all on either path. Now every image must also be
+        subject to wait()."""
         html_with_2_images = '<img src="a.jpg"><img src="b.jpg"><p>teks</p>'
         monkeypatch.setattr(api_mod, "get_chapter_html", lambda *a, **kw: html_with_2_images)
         monkeypatch.setattr(api_mod, "download_image", lambda url: b"fake-image-bytes")
@@ -1159,16 +1159,16 @@ class TestDownloadChaptersRateLimiting:
         results, failed, images_by_idx = cli_mod.download_chapters(
             self._make_parts(1), max_workers=1, rate_limiter=rl, include_images=True
         )
-        # 1x utk teks chapter + 2x utk masing-masing gambar = 3
+        # 1x for the chapter text + 2x for each of the images = 3
         assert wait_calls["n"] == 3
         assert len(images_by_idx[1]) == 2
 
     def test_wait_still_called_when_chapter_fails(self, monkeypatch):
-        """Regresi: dulu blok except di fetch_one() tidak memanggil
-        rate_limiter.wait() sama sekali kalau chapter gagal total (retry
-        habis), jadi begitu 1 chapter gagal, chapter berikutnya langsung
-        ditembak tanpa jeda, padahal rate_limiter._level sudah naik akibat
-        kegagalan itu. wait() sekarang harus tetap dipanggil di jalur gagal."""
+        """Regression: the except block in fetch_one() used to not call
+        rate_limiter.wait() at all if a chapter failed completely (retries
+        used up), so as soon as 1 chapter failed, the next chapter was hit
+        right away with no delay, even though rate_limiter._level had already gone up because
+        of that failure. wait() must now still be called on the failure path."""
 
         def always_fail(*a, **kw):
             raise ConnectionError("simulasi gagal total")
@@ -1185,9 +1185,9 @@ class TestDownloadChaptersRateLimiting:
         assert wait_calls["n"] == 3, "wait() harus tetap dipanggil walau chapter-nya gagal total"
 
     def test_failed_list_sorted_numerically_not_alphabetically(self, monkeypatch):
-        """Regresi: failed.sort() dulu mengurutkan string biasa, jadi
-        'Chapter 10' muncul sebelum 'Chapter 2' (sort alfabetis, bukan
-        numerik) di ringkasan mode paralel."""
+        """Regression: failed.sort() used to sort plain strings, so
+        'Chapter 10' appeared before 'Chapter 2' (alphabetical sort, not
+        numeric) in the summary of parallel mode."""
         fail_ids = {2, 10, 11}
 
         def maybe_fail(part_id, **kw):
@@ -1203,8 +1203,8 @@ class TestDownloadChaptersRateLimiting:
             self._make_parts(12), max_workers=4, rate_limiter=rl
         )
         assert len(failed) == 3
-        # Harus urut numerik: chapter 2, lalu 10, lalu 11, BUKAN alfabetis
-        # ("Chapter 10" < "Chapter 11" < "Chapter 2" kalau salah sort).
+        # Must be in numeric order: chapter 2, then 10, then 11, NOT alphabetical
+        # ("Chapter 10" < "Chapter 11" < "Chapter 2" if the sort is wrong).
         assert failed == [
             "Chapter 2: Bab 2",
             "Chapter 10: Bab 10",
@@ -1213,12 +1213,12 @@ class TestDownloadChaptersRateLimiting:
 
 
 class TestI18n:
-    """Pilihan bahasa tampilan CLI (Indonesia/English) lewat --ui-lang, env, dan config."""
+    """CLI display language choice (Indonesian/English) through --ui-lang, env, and config."""
 
     @pytest.fixture(autouse=True)
     def isolate_lang(self, tmp_path, monkeypatch):
-        # Config & env diisolasi, dan bahasa dikembalikan ke default setelah tiap test
-        # supaya test lain (yang mengasumsikan teks Indonesia) tidak ikut terpengaruh.
+        # Config & env are isolated, and the language is reset to the default after every test
+        # so other tests are not affected.
         monkeypatch.setattr(config_mod, "CONFIG_DIR", tmp_path / ".wattpdl")
         monkeypatch.setattr(config_mod, "CONFIG_FILE", tmp_path / ".wattpdl" / "config.json")
         monkeypatch.delenv("WATTPDL_LANG", raising=False)

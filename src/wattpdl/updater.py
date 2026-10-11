@@ -1,11 +1,11 @@
 """
-Modul cek update: bandingkan versi wattpdl yang terinstall dengan versi
-terbaru di PyPI. Hasilnya di-cache di disk supaya tidak mengecek ke PyPI
-tiap kali aplikasi dijalankan, cukup sekali per CHECK_INTERVAL.
+Update check module: compare the installed wattpdl version with the latest
+version on PyPI. The result is cached on disk so PyPI is not checked
+every time the app runs, only once per CHECK_INTERVAL.
 
-Prinsip penting: kegagalan cek update (tidak ada internet, PyPI down, dll)
-TIDAK BOLEH pernah mengganggu jalannya aplikasi utama. Semua fungsi di sini
-menelan error-nya sendiri dan mengembalikan None kalau gagal.
+Important principle: a failed update check (no internet, PyPI down, etc.)
+must NEVER disturb the main application. Every function here
+swallows its own errors and returns None on failure.
 """
 import json
 import pathlib
@@ -17,13 +17,13 @@ from . import __version__
 
 PYPI_URL = "https://pypi.org/pypi/wattpdl/json"
 CACHE_FILE = pathlib.Path.home() / ".wattpdl" / "update_check.json"
-CHECK_INTERVAL = 24 * 3600  # cek ulang ke PyPI maksimal sekali sehari
+CHECK_INTERVAL = 24 * 3600  # re-check PyPI at most once a day
 
 
 def _parse_version(v: str) -> tuple:
-    """Ubah string versi ('1.10.2') jadi tuple angka (1, 10, 2) supaya bisa
-    dibandingkan urutannya dengan benar (bukan perbandingan string, yang salah
-    untuk kasus semacam '1.9' vs '1.10')."""
+    """Turn a version string ('1.10.2') into a tuple of numbers (1, 10, 2) so the order
+    can be compared correctly (not a string comparison, which is wrong
+    for cases such as '1.9' vs '1.10')."""
     parts = []
     for p in (v or "").split("."):
         digits = "".join(ch for ch in p if ch.isdigit())
@@ -50,9 +50,9 @@ def _save_cache(data: dict) -> None:
 
 def check_for_update(force: bool = False):
     """
-    Kembalikan string versi terbaru kalau ada versi PyPI yang lebih baru dari
-    yang terinstall, None kalau sudah paling baru / gagal cek / masih dalam
-    interval cache. Tidak pernah raise exception.
+    Return the latest version string if a PyPI version newer than the
+    installed one exists, None if already the latest / the check failed / still within the
+    cache interval. Never raises an exception.
     """
     cache = _load_cache()
     now = time.time()

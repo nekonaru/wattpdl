@@ -223,20 +223,6 @@ Press **Enter** to save in `Downloads`, or type a custom path such as:
 ╚═════════════════════════════════════════════╝
 ```
 
-## 🌍 Display Language
-
-The CLI display (menus, prompts, error messages, and `--help` text) is available in **English** (default) and **Indonesian**.
-
-```bash
-wattpdl --ui-lang id              # Indonesian, this choice is remembered for next runs
-wattpdl --ui-lang en              # back to English
-WATTPDL_LANG=id wattpdl           # via environment variable
-```
-
-Priority order: `--ui-lang` → env `WATTPDL_LANG` → `ui_lang` in `~/.wattpdl/config.json` → default `en`.
-
-> `--ui-lang` only changes the CLI display. Do not confuse it with `--lang`, which sets the language code in the EPUB metadata.
-
 ## ↻ Automatic Resume
 
 If the download stops midway (connection lost, terminal closed, laptop shut down), every chapter that **already succeeded** is saved automatically in `~/.wattpdl/progress/<story_id>.json`.
@@ -252,6 +238,20 @@ The progress file is deleted automatically once all chapters have been downloade
 ## ⚙️ Saved Preferences
 
 The last save folder, file format, and display language you chose are saved automatically in `~/.wattpdl/config.json` and reused as defaults in the next session, so there is no need to fill them in every time you run the script.
+
+## 🌍 Display Language
+
+The CLI display (menus, prompts, error messages, and `--help` text) is available in **English** (default) and **Indonesian**.
+
+```bash
+wattpdl --ui-lang id              # Indonesian, this choice is remembered for next runs
+wattpdl --ui-lang en              # back to English
+WATTPDL_LANG=id wattpdl           # via environment variable
+```
+
+Priority order: `--ui-lang` → env `WATTPDL_LANG` → `ui_lang` in `~/.wattpdl/config.json` → default `en`.
+
+> `--ui-lang` only changes the CLI display. Do not confuse it with `--lang`, which sets the language code in the EPUB metadata.
 
 ## 🤖 Non-Interactive Mode (Scripting/Automation)
 
@@ -280,8 +280,9 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--ui-lang {id,en}` | CLI display language (default `en`, remembered once chosen) |
 | `--user` / `--user-select` | Download from an author's story list, optionally selecting which stories |
 | `--check-updates` | Report which downloaded stories have new chapters |
-| `--watch` / `--watch-interval` | Monitor a story and re-download when new chapters appear |
+| `--watch` / `--watch-interval` | Monitor a story and re-download when new chapters appear (default check interval 1800 seconds) |
 | `--no-update-check` | Do not check for the latest wattpdl version on PyPI at startup |
+| `--version` | Show the wattpdl version |
 
 **More examples:**
 
@@ -309,21 +310,19 @@ wattpdl --help
 
 The name and shape of the generated files depend on the mode & format you choose:
 
-| Mode | `.txt` format | `.docx` format | `.epub` format | `.md` format |
-|------|----------------|-----------------|------------------|---------------|
-| 1 - All, combined | `Story_Title.txt` | `Story_Title.docx` | `Story_Title.epub` | `Story_Title.md` |
-| 2 - All, separate | `Story_Title.zip` (contains: one `.txt` per chapter) | `Story_Title.zip` (contains: one `.docx` per chapter) | `Story_Title.zip` (contains: one `.epub` per chapter) | `Story_Title.zip` (contains: one `.md` per chapter) |
-| 3 - Several chapters | `Story_Title_pilihan.txt` | `Story_Title_pilihan.docx` | `Story_Title_pilihan.epub` | `Story_Title_pilihan.md` |
-| 4 - One chapter | `Story_Title_Ch003_Chapter_Name.txt` | `Story_Title_Ch003_Chapter_Name.docx` | `Story_Title_Ch003_Chapter_Name.epub` | `Story_Title_Ch003_Chapter_Name.md` |
-
-The `.pdf` format follows the same naming pattern.
+| Mode | `.txt` format | `.docx` format | `.epub` format | `.md` format | `.pdf` format |
+|------|----------------|-----------------|------------------|---------------|---------------|
+| 1 - All, combined | `Story_Title.txt` | `Story_Title.docx` | `Story_Title.epub` | `Story_Title.md` | `Story_Title.pdf` |
+| 2 - All, separate | `Story_Title.zip` (contains: one `.txt` per chapter) | `Story_Title.zip` (contains: one `.docx` per chapter) | `Story_Title.zip` (contains: one `.epub` per chapter) | `Story_Title.zip` (contains: one `.md` per chapter) | `Story_Title.zip` (contains: one `.pdf` per chapter) |
+| 3 - Several chapters | `Story_Title_selected.txt` | `Story_Title_selected.docx` | `Story_Title_selected.epub` | `Story_Title_selected.md` | `Story_Title_selected.pdf` |
+| 4 - One chapter | `Story_Title_Ch003_Chapter_Name.txt` | `Story_Title_Ch003_Chapter_Name.docx` | `Story_Title_Ch003_Chapter_Name.epub` | `Story_Title_Ch003_Chapter_Name.md` | `Story_Title_Ch003_Chapter_Name.pdf` |
 
 **Content of the combined file (modes 1 & 3):** the story title, author, and source at the top, then each chapter separated by a `#####` marker.
 
 ```
 Story Title
-oleh Author Name
-Sumber : https://www.wattpad.com/story/123456789
+by Author Name
+Source: https://www.wattpad.com/story/123456789
 
 ==================================================
 
@@ -336,8 +335,6 @@ Text of chapter 1...
 Text of chapter 2...
 ```
 
-> The header labels inside the generated files are currently in Indonesian: `oleh` means "by" and `Sumber` means "Source".
-
 In the `.docx` version, the story title becomes the main heading and each chapter automatically becomes a Heading 1 on a new page, so it is comfortable to read right away in Word or Google Docs.
 
 In the `.epub` version, the story becomes a standard ebook with an automatic table of contents per chapter, ready to open in your favorite ebook reader (Google Play Books, Apple Books, Calibre, and others).
@@ -346,7 +343,7 @@ In the `.md` version, the story is written with standard Markdown headings (`#` 
 
 If the story has a cover, the image is embedded automatically on the first page/paragraph of the `.docx`/`.epub`/`.pdf` file (unless run with `--no-cover`). The story's genre/tags, description, and publish date are also saved as official metadata in the `.epub` file, usually shown on the book detail page in ebook reader apps.
 
-**Zip content (mode 2):** one file per chapter, numbered by its position in the story, plus `000_info.txt`/`000_info.docx`/`000_info.epub` containing the title, author, and source. The file extension inside the zip follows the format you chose when running the script:
+**Zip content (mode 2):** one file per chapter, numbered by its position in the story, plus `000_info.txt`/`000_info.md`/`000_info.docx`/`000_info.epub`/`000_info.pdf` (matching the format) containing the title, author, and source. The file extension inside the zip follows the format you chose when running the script:
 
 ```
 Story_Title.zip
@@ -402,7 +399,7 @@ wattpdl/
 │       ├── __main__.py       # entry point for `python -m wattpdl`
 │       ├── app.py            # program flow orchestration (main())
 │       ├── api.py            # communication with the Wattpad public API
-│       ├── writers.py        # text conversion & writing .txt/.docx/.zip files
+│       ├── writers.py        # text conversion & writing .txt/.docx/.epub/.md/.pdf/.zip files
 │       ├── cli.py            # terminal display (rich), user interaction
 │       ├── cli_args.py       # argument parsing for non-interactive mode
 │       ├── config.py         # saves user preferences (save folder, format, language)

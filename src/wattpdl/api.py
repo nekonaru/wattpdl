@@ -1,7 +1,7 @@
 """
-Modul komunikasi ke Wattpad public API.
-Berisi semua fungsi yang mengambil data mentah dari internet
-(info cerita & teks chapter), tanpa urusan tampilan atau penulisan file.
+Communication module for the Wattpad public API.
+Contains every function that fetches raw data from the internet
+(story info & chapter text), with no concern for display or file writing.
 """
 import re
 import threading
@@ -27,45 +27,45 @@ STORY_INFO_URL = (
 )
 CHAPTER_TEXT_URL = "https://www.wattpad.com/apiv2/storytext?id={part_id}"
 
-# CATATAN endpoint ini (get_author_stories) mengikuti pola URL API v3 publik
-# Wattpad yang sama dengan STORY_INFO_URL di atas, tapi belum sempat
-# diverifikasi langsung ke server asli karena lingkungan pengembangan ini
-# tidak mempunyai akses jaringan ke wattpad.com. Kalau ternyata struktur
-# JSON respons berbeda di lapangan, cukup sesuaikan parsing di
-# `get_author_stories()`, bentuk fungsi & pemanggilnya tidak perlu berubah.
+# NOTE: this endpoint (get_author_stories) follows the same public Wattpad
+# API v3 URL pattern as STORY_INFO_URL above, but has not yet been
+# verified against the real server because this development environment
+# has no network access to wattpad.com. If the real JSON response structure
+# turns out to differ, only the parsing in
+# `get_author_stories()` needs adjusting; its signature and callers stay the same.
 AUTHOR_STORIES_URL = (
     "https://www.wattpad.com/api/v3/users/{username}/stories/published"
     "?fields=stories(id,title,numParts,completed)"
 )
 
-DELAY_SECONDS = 0.5   # jeda dasar antar chapter (jangan dihapus)
+DELAY_SECONDS = 0.5   # base delay between chapters (do not remove)
 MAX_RETRIES = 3
 
 
 class WattpadAPIError(Exception):
-    """Kelas dasar untuk semua error API Wattpad yang sudah diberi pesan spesifik."""
+    """Base class for every Wattpad API error that already has a specific message."""
 
 
 class StoryNotFoundError(WattpadAPIError):
-    """Cerita tidak ditemukan, dihapus penulisnya, atau ID/link salah."""
+    """Story not found, deleted by its author, or the ID/link is wrong."""
 
 
 class StoryAccessError(WattpadAPIError):
-    """Cerita ada tapi tidak bisa diakses (private/dibatasi)."""
+    """Story exists but cannot be accessed (private/restricted)."""
 
 
 class AdaptiveRateLimiter:
-    """State jeda antar-request yang dibagi bareng semua chapter (dan semua
-    worker kalau unduh paralel), supaya proses unduh otomatis melambat kalau
-    Wattpad mulai balikin rate-limit (429) atau server sibuk (503) beruntun,
-    lalu pelan-pelan kembali cepat begitu request sukses lagi. Thread-safe.
+    """State for the delay between requests, shared by every chapter (and every
+    worker in parallel downloads), so the download slows down automatically when
+    Wattpad starts returning consecutive rate limits (429) or busy server errors (503),
+    then gradually speeds up again once requests succeed. Thread-safe.
     """
 
     def __init__(self, base_delay: float = DELAY_SECONDS, max_delay: float = 10.0):
         self._lock = threading.Lock()
         self.base_delay = base_delay
         self.max_delay = max_delay
-        self._level = 0  # 0 = kecepatan normal, makin besar makin lambat
+        self._level = 0  # 0 = normal speed, higher means slower
 
     @property
     def current_delay(self) -> float:
@@ -73,14 +73,14 @@ class AdaptiveRateLimiter:
             return min(self.max_delay, self.base_delay * (2 ** self._level))
 
     def report_throttled(self) -> None:
-        """Panggil tiap kali dapat respons 429/503."""
+        """Call every time a 429/503 response is received."""
         with self._lock:
             self._level += 1
 
     def report_success(self) -> None:
-        """Panggil tiap kali request sukses, turunkan level pelan-pelan (bukan
-        langsung ke 0, supaya tidak langsung ngebut lagi begitu 1 request
-        kebetulan lolos di tengah kondisi server yang masih sibuk)."""
+        """Call every time a request succeeds, and lower the level gradually (not
+        straight to 0, so it does not speed up again right away just because 1 request
+        happened to get through while the server is still busy)."""
         with self._lock:
             if self._level > 0:
                 self._level -= 1
@@ -90,7 +90,7 @@ class AdaptiveRateLimiter:
 
 
 def extract_story_id(user_input: str) -> str:
-    """Terima link penuh atau ID angka, kembalikan ID cerita saja."""
+    """Accept a full link or a numeric ID, and return only the story ID."""
     user_input = user_input.strip()
     match = re.search(r"story/(\d+)", user_input)
     if match:
@@ -98,9 +98,9 @@ def extract_story_id(user_input: str) -> str:
     if user_input.isdigit():
         return user_input
 
-    # Link share/mobile per-chapter Wattpad (mis. wattpad.com/1234567-judul-part)
-    # tidak mengandung "story/" dan angkanya adalah ID chapter (part), bukan ID cerita,
-    # jadi tidak bisa langsung dipakai di sini. Beri pesan yang jelas alih-alih pesan generik.
+    # Wattpad share/mobile per-chapter links (e.g. wattpad.com/1234567-title-part)
+    # do not contain "story/" and the number is a chapter (part) ID, not a story ID,
+    # so it cannot be used directly here. Give a clear message instead of a generic one.
     chapter_link = re.search(r"wattpad\.com/(\d+)-", user_input)
     if chapter_link:
         raise ValueError(t("api.chapter_link"))
@@ -109,7 +109,7 @@ def extract_story_id(user_input: str) -> str:
 
 
 def _raise_specific_http_error(e: requests.HTTPError, context: str = None) -> None:
-    """Ubah requests.HTTPError generik jadi pesan yang jelas berdasarkan status code."""
+    """Turn a generic requests.HTTPError into a clear message based on the status code."""
     status = e.response.status_code if e.response is not None else None
     if context is None:
         context = t("api.context_story")
@@ -126,17 +126,17 @@ def _raise_specific_http_error(e: requests.HTTPError, context: str = None) -> No
 
 def get_story_info(story_id: str) -> tuple[str, str, list, dict]:
     """
-    Ambil metadata cerita: judul, penulis, daftar chapter, dan metadata tambahan.
-    Metadata tambahan (dict `meta`) dipakai untuk memperkaya file .docx/.epub:
-      - cover_url    : URL gambar sampul cerita (atau None kalau tidak ada)
-      - description  : sinopsis/deskripsi cerita
-      - tags         : list genre/tag cerita
-      - create_date  : tanggal cerita pertama dibuat, apa adanya dari API
-      - completed    : True kalau cerita sudah ditandai selesai oleh penulis
+    Fetch story metadata: title, author, chapter list, and extra metadata.
+    The extra metadata (the `meta` dict) is used to enrich .docx/.epub files:
+      - cover_url    : URL of the story cover image (or None if there is none)
+      - description  : story synopsis/description
+      - tags         : list of story genres/tags
+      - create_date  : date the story was first created, as-is from the API
+      - completed    : True if the story has been marked as finished by its author
 
-    Raise StoryNotFoundError / StoryAccessError dengan pesan yang jelas kalau
-    cerita tidak ditemukan / tidak bisa diakses, alih-alih requests.HTTPError
-    generik.
+    Raise StoryNotFoundError / StoryAccessError with a clear message if the
+    story is not found / cannot be accessed, instead of a generic
+    requests.HTTPError.
     """
     url = STORY_INFO_URL.format(story_id=story_id)
     resp = requests.get(url, headers=HEADERS, timeout=20)
@@ -160,11 +160,11 @@ def get_story_info(story_id: str) -> tuple[str, str, list, dict]:
 
 def get_author_stories(username: str) -> list:
     """
-    Ambil daftar cerita yang dipublikasikan seorang penulis Wattpad.
-    Kembalikan list dict: [{"id": str, "title": str, "num_parts": int, "completed": bool}, ...]
+    Fetch the list of stories published by a Wattpad author.
+    Return a list of dicts: [{"id": str, "title": str, "num_parts": int, "completed": bool}, ...]
 
-    Dipakai untuk fitur `--user <username>` (unduh semua/cerita pilihan dari
-    satu penulis sekaligus, tanpa perlu cari ID satu-satu).
+    Used by the `--user <username>` feature (download all or selected stories
+    from one author at once, without looking up IDs one by one).
     """
     url = AUTHOR_STORIES_URL.format(username=username)
     resp = requests.get(url, headers=HEADERS, timeout=20)
@@ -187,10 +187,10 @@ def get_author_stories(username: str) -> list:
 
 def download_cover_image(cover_url: str) -> Optional[bytes]:
     """
-    Unduh gambar sampul cerita. Dipakai untuk menyisipkan cover di file .docx/.epub.
-    Kegagalan di sini tidak boleh menghentikan proses unduh cerita, cover cuma
-    pemanis, bukan bagian penting, jadi selalu kembalikan None saat gagal,
-    tidak raise exception.
+    Download the story cover image. Used to embed the cover in .docx/.epub files.
+    A failure here must not stop the story download: the cover is only a
+    nice-to-have, not an essential part, so always return None on failure
+    and never raise an exception.
     """
     if not cover_url:
         return None
@@ -203,9 +203,9 @@ def download_cover_image(cover_url: str) -> Optional[bytes]:
 
 
 def download_image(image_url: str) -> Optional[bytes]:
-    """Unduh 1 gambar generik (dipakai untuk gambar inline di dalam chapter).
-    Sama seperti download_cover_image: kegagalan tidak boleh menggagalkan
-    seluruh proses, gambar inline cuma pelengkap, kembalikan None saat gagal.
+    """Download 1 generic image (used for inline images inside a chapter).
+    Same as download_cover_image: a failure must not break the whole
+    process, inline images are only extras, return None on failure.
     """
     if not image_url:
         return None
@@ -224,12 +224,12 @@ def get_chapter_html(
     rate_limiter: Optional[AdaptiveRateLimiter] = None,
 ) -> str:
     """
-    Unduh HTML teks chapter dengan retry otomatis.
-    on_retry: callback opsional dipanggil dengan (attempt, retries, wait, error)
-    tiap kali percobaan gagal, dipakai CLI untuk menampilkan pesan warning
-    tanpa modul ini perlu tahu soal `rich`/console.
-    rate_limiter: opsional, kalau diisi maka respons 429/503 akan melaporkan
-    diri ke rate limiter supaya jeda antar-chapter otomatis diperlambat.
+    Download the chapter text HTML with automatic retry.
+    on_retry: optional callback called with (attempt, retries, wait, error)
+    every time an attempt fails, used by the CLI to show a warning message
+    without this module needing to know about `rich`/console.
+    rate_limiter: optional, if given then 429/503 responses report
+    themselves to the rate limiter so the delay between chapters slows down automatically.
     """
     if retries < 1:
         raise ValueError("retries harus >= 1")
@@ -258,8 +258,8 @@ _IMG_SRC_RE = re.compile(r'<img[^>]+src=["\']([^"\']+)["\']', re.IGNORECASE)
 
 
 def extract_chapter_images(html: str) -> list:
-    """Cari semua URL gambar inline (tag <img>) di dalam HTML 1 chapter, dalam
-    urutan kemunculannya di teks. Dipakai untuk fitur unduh gambar inline
-    (bukan cuma cover) ke .docx/.epub/.pdf.
+    """Find all inline image URLs (<img> tags) inside the HTML of 1 chapter, in
+    the order they appear in the text. Used by the inline image download
+    feature (not just the cover) for .docx/.epub/.pdf.
     """
     return _IMG_SRC_RE.findall(html or "")

@@ -1,7 +1,7 @@
 """
-Modul tampilan CLI: tema warna, panel, tabel, progress bar, dan interaksi
-dengan user (pilih mode, pilih chapter, dll). Tidak ada logika jaringan
-langsung di sini, semua fetch data lewat modul `api`.
+CLI display module: color theme, panels, tables, progress bar, and interaction
+with the user (choose mode, choose chapters, etc.). No direct network logic
+here; all data fetching goes through the `api` module.
 """
 import os
 import pathlib
@@ -15,7 +15,7 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from rich.prompt import (  # noqa: F401 - IntPrompt dipakai via cli.IntPrompt di app.py
+from rich.prompt import (  # noqa: F401 - IntPrompt is used via cli.IntPrompt in app.py
     Confirm,
     IntPrompt,
     Prompt,
@@ -52,14 +52,14 @@ _CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"
 
 
 def reset_steps() -> None:
-    """Reset nomor tahap ke awal. Dipanggil tiap sesi (interaktif/non-interaktif) baru dimulai,
-    supaya penomoran tidak terus menumpuk kalau app dipakai berkali-kali dalam satu proses Python
-    (misalnya saat test, atau dipanggil berulang lewat import)."""
+    """Reset the step number to the start. Called whenever a new (interactive/non-interactive)
+    session begins, so the numbering does not keep accumulating if the app is used many times in one Python process
+    (for example during tests, or called repeatedly via import)."""
     _step_counter["n"] = 0
 
 
 def step_rule(title: str) -> None:
-    """Tampilkan pembatas antar tahap dengan nomor otomatis."""
+    """Show a divider between steps with an automatic number."""
     idx = _step_counter["n"]
     num = _CIRCLED[idx] if idx < len(_CIRCLED) else str(idx + 1)
     _step_counter["n"] += 1
@@ -69,10 +69,10 @@ def step_rule(title: str) -> None:
 
 def get_default_download_dir() -> pathlib.Path:
     """
-    Kembalikan folder Downloads bawaan sistem operasi:
+    Return the operating system's default Downloads folder:
       - Windows : C:\\Users\\<user>\\Downloads
       - macOS   : /Users/<user>/Downloads
-      - Linux   : /home/<user>/Downloads  (atau XDG_DOWNLOAD_DIR)
+      - Linux   : /home/<user>/Downloads  (or XDG_DOWNLOAD_DIR)
     """
     xdg = os.environ.get("XDG_DOWNLOAD_DIR", "").strip()
     if xdg and pathlib.Path(xdg).is_dir():
@@ -84,14 +84,14 @@ def get_default_download_dir() -> pathlib.Path:
 
 
 def confirm_overwrite(path: pathlib.Path) -> bool:
-    """Tanya user apakah file yang sudah ada di folder tujuan boleh ditimpa.
-    Kembalikan True kalau boleh lanjut (timpa), False kalau mau di-skip."""
+    """Ask the user whether the file that already exists in the target folder may be overwritten.
+    Return True to continue (overwrite), False to skip."""
     console.print(f"\n[warning]{t('warn.file_exists')}[/warning] [accent]{path}[/accent]")
     return Confirm.ask(f"[value]{t('prompt.overwrite')}[/value]", default=False)
 
 
 def format_duration(seconds: float) -> str:
-    """Ubah detik jadi format menit:detik yang enak dibaca."""
+    """Turn seconds into a readable minutes:seconds format."""
     seconds = int(seconds)
     minutes, secs = divmod(seconds, 60)
     unit = t("unit.seconds")
@@ -101,7 +101,7 @@ def format_duration(seconds: float) -> str:
 
 
 def show_chapter_list(parts: list) -> None:
-    """Tampilkan tabel nomor + judul semua chapter."""
+    """Show a table of the number + title of every chapter."""
     from rich import box
     from rich.table import Table
 
@@ -114,7 +114,7 @@ def show_chapter_list(parts: list) -> None:
 
 
 def parse_chapter_selection(raw: str, total: int) -> list:
-    """Terima input seperti '1,3,5-8' dan kembalikan list nomor chapter unik & urut."""
+    """Accept input like '1,3,5-8' and return a list of unique, sorted chapter numbers."""
     raw = raw.replace(" ", "")
     if not raw:
         raise ValueError(t("err.empty_input"))
@@ -130,11 +130,11 @@ def parse_chapter_selection(raw: str, total: int) -> list:
             start, end = int(start_s), int(end_s)
             if start > end:
                 start, end = end, start
-            # Pangkas dulu ke rentang valid [1, total] SEBELUM bikin range().
-            # Kalau tidak, range(start, end+1) akan mengiterasi tiap angka dari
-            # start ke end walau nantinya difilter, untuk angka besar (mis. salah
-            # ketik kelebihan nol, atau lewat --chapters di script otomatisasi)
-            # ini bisa bikin CLI hang lama padahal ceritanya cuma beberapa chapter.
+            # Clamp to the valid range [1, total] BEFORE building range().
+            # Otherwise, range(start, end+1) would iterate over every number from
+            # start to end even though it is filtered afterwards, and for large numbers (e.g. a typo
+            # with too many zeros, or via --chapters in an automation script)
+            # this can make the CLI hang for a long time even though the story only has a few chapters.
             lo, hi = max(start, 1), min(end, total)
             if lo <= hi:
                 selected.update(range(lo, hi + 1))
@@ -151,7 +151,7 @@ def parse_chapter_selection(raw: str, total: int) -> list:
 
 
 def select_multiple_chapters(parts: list) -> list:
-    """Tampilkan daftar chapter, minta user memilih beberapa. Kembalikan list (nomor, part)."""
+    """Show the chapter list and ask the user to pick several. Return a list of (number, part)."""
     step_rule(t("step.pick_chapter"))
     show_chapter_list(parts)
     while True:
@@ -169,7 +169,7 @@ def select_multiple_chapters(parts: list) -> list:
 
 
 def select_single_chapter(parts: list) -> tuple:
-    """Tampilkan daftar chapter, minta user memilih satu. Kembalikan (nomor, part)."""
+    """Show the chapter list and ask the user to pick one. Return (number, part)."""
     step_rule(t("step.pick_chapter"))
     show_chapter_list(parts)
     while True:
@@ -192,26 +192,26 @@ def download_chapters(
     include_images: bool = False,
 ) -> tuple:
     """
-    Unduh sekumpulan chapter dengan progress bar.
-    indexed_parts: list of (nomor_chapter, part_dict)
-    story_id: kalau diisi, chapter yang sudah berhasil diunduh sebelumnya
-        (tersimpan dari sesi yang macet/terhenti) akan dipakai ulang dari
-        cache tanpa fetch ulang ke server, lihat modul `progress`.
-    max_workers: jumlah chapter yang diunduh bersamaan (paralel). 1 = berurutan
-        (default, paling aman/paling lambat). >1 mempercepat unduhan cerita
-        panjang, tapi tetap dijaga oleh `rate_limiter` supaya tidak membanjiri
-        server Wattpad.
-    rate_limiter: instance `api.AdaptiveRateLimiter` opsional, dibagi antar
-        semua chapter (dan semua worker) supaya jeda otomatis melambat kalau
-        server mulai balikin rate-limit. Dibuat baru kalau tidak diisi.
-    include_images: kalau True, ekstrak & unduh juga gambar inline (<img>) di
-        setiap chapter. Catatan: gambar inline TIDAK ikut disimpan di progress
-        resume (cuma teksnya), kalau proses diresume, gambar chapter yang
-        sempat gagal di tengah jalan akan diunduh ulang, bukan dari cache.
+    Download a set of chapters with a progress bar.
+    indexed_parts: list of (chapter_number, part_dict)
+    story_id: if given, chapters that were already downloaded successfully before
+        (saved from a session that hung/stopped) are reused from the
+        cache without fetching from the server again, see the `progress` module.
+    max_workers: number of chapters downloaded at the same time (parallel). 1 = sequential
+        (default, safest/slowest). >1 speeds up long story downloads,
+        but is still guarded by `rate_limiter` so Wattpad's server is not
+        flooded.
+    rate_limiter: optional `api.AdaptiveRateLimiter` instance, shared across
+        all chapters (and all workers) so the delay slows down automatically when the
+        server starts returning rate limits. Created fresh if not given.
+    include_images: if True, also extract & download inline images (<img>) in
+        every chapter. Note: inline images are NOT saved in the resume
+        progress (only the text), so if the process is resumed, images for chapters that
+        failed midway are downloaded again, not taken from the cache.
 
     Return: (results, failed_chapters, images_by_idx)
-      results = list of (nomor_chapter, judul_chapter, teks)
-      images_by_idx = {nomor_chapter: [bytes_gambar, ...]}, kosong kalau
+      results = list of (chapter_number, chapter_title, text)
+      images_by_idx = {chapter_number: [image_bytes, ...]}, empty if
         include_images=False.
     """
     import threading
@@ -237,17 +237,17 @@ def download_chapters(
             )
 
     def fetch_one(idx, part):
-        """Kerjakan 1 chapter: pakai cache kalau ada, atau unduh + retry.
-        Aman dipanggil dari banyak thread sekaligus (tidak ada shared mutable
-        state kecuali lewat `store`/`rate_limiter`, yang sudah thread-safe).
+        """Handle 1 chapter: use the cache if present, or download + retry.
+        Safe to call from many threads at once (no shared mutable
+        state except through `store`/`rate_limiter`, which are already thread-safe).
 
-        Jeda `rate_limiter.wait()` sengaja dipanggil DI SINI (bukan di
-        caller/loop luar) supaya konsisten berlaku baik di jalur sequential
-        maupun paralel, sebelumnya jeda cuma diterapkan di jalur sequential,
-        jadi mode `--workers > 1` menembak API tanpa throttle adaptif sama
-        sekali. Gambar inline juga ikut kena jeda yang sama per item, karena
-        sebelumnya unduhan gambar tidak pernah melalui rate limiter sama sekali
-        di kedua jalur."""
+        The `rate_limiter.wait()` delay is deliberately called HERE (not in the
+        caller/outer loop) so it applies consistently on both the sequential
+        and the parallel path. Previously the delay was only applied on the sequential path,
+        so `--workers > 1` mode hit the API without any adaptive throttle at
+        all. Inline images are also subject to the same per-item delay, because
+        image downloads previously never went through the rate limiter at all
+        on either path."""
         part_id = part["id"]
         chapter_title = part.get("title", f"Chapter {idx}")
 
@@ -270,13 +270,13 @@ def download_chapters(
                 store.mark_done(part_id, chapter_title, text)
             return idx, chapter_title, text, images, False, None
         except Exception as e:
-            # Chapter gagal total (retry di get_chapter_html sudah habis). Tetap
-            # panggil wait() di sini juga, tanpa ini, begitu 1 chapter gagal,
-            # eksekusi lompat ke chapter berikutnya TANPA jeda sama sekali,
-            # padahal rate_limiter._level sudah naik gara-gara kegagalan ini
-            # (dilaporkan lewat report_throttled() di get_chapter_html kalau
-            # sebabnya 429/503). Request beruntun tanpa jeda pasca-kegagalan
-            # justru bisa memperparah rate-limiting di server.
+            # The chapter failed completely (the retries in get_chapter_html are used up). Still
+            # call wait() here too: without it, as soon as 1 chapter fails,
+            # execution jumps to the next chapter with NO delay at all,
+            # even though rate_limiter._level has already gone up because of this failure
+            # (reported via report_throttled() in get_chapter_html when
+            # the cause is 429/503). Back-to-back requests with no delay after a failure
+            # can actually make the server's rate limiting worse.
             rate_limiter.wait()
             return idx, chapter_title, t("chapter.failed_placeholder"), [], False, e
 
@@ -296,10 +296,10 @@ def download_chapters(
         task = progress.add_task(t("progress.preparing"), total=len(indexed_parts))
 
         if max_workers <= 1:
-            # Jalur sederhana berurutan (default), dipertahankan terpisah dari
-            # jalur paralel di bawah supaya perilakunya persis sama seperti
-            # sebelumnya (termasuk urutan pesan di layar), bukan cuma kasus
-            # khusus dari ThreadPoolExecutor(max_workers=1).
+            # Simple sequential path (default), kept separate from
+            # the parallel path below so its behavior is exactly the same as
+            # before (including the order of messages on screen), not just a special
+            # case of ThreadPoolExecutor(max_workers=1).
             for idx, part in indexed_parts:
                 chapter_title = part.get("title", f"Chapter {idx}")
                 short_title = (chapter_title[:26] + "…") if len(chapter_title) > 26 else chapter_title
@@ -317,9 +317,9 @@ def download_chapters(
                     images_by_idx[idx] = images
                 progress.advance(task)
         else:
-            # Jalur paralel, beberapa chapter diunduh bersamaan lewat thread
-            # pool. Urutan penyelesaian tidak dijamin sama dengan urutan
-            # chapter, jadi `results` disortir ulang berdasarkan idx di akhir.
+            # Parallel path, several chapters are downloaded at the same time through a thread
+            # pool. The completion order is not guaranteed to match the
+            # chapter order, so `results` is sorted again by idx at the end.
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {executor.submit(fetch_one, idx, part): (idx, part) for idx, part in indexed_parts}
                 for future in as_completed(futures):
@@ -345,10 +345,10 @@ def download_chapters(
             f"[muted]{t('info.resumed', n=resumed_count)}[/muted]"
         )
 
-    # `failed` dikumpulkan sbg (idx, label) supaya bisa disortir NUMERIK
-    # berdasarkan nomor chapter, bukan alfabetis. Sort string biasa bikin
-    # "Chapter 10" muncul sebelum "Chapter 2" di ringkasan mode paralel
-    # (urutan penyelesaian ThreadPoolExecutor tidak berurutan).
+    # `failed` is collected as (idx, label) so it can be sorted NUMERICALLY
+    # by chapter number, not alphabetically. A plain string sort would put
+    # "Chapter 10" before "Chapter 2" in the summary of parallel mode
+    # (the completion order of ThreadPoolExecutor is not sequential).
     failed = [label for _, label in sorted(failed, key=lambda item: item[0])]
 
     return results, failed, images_by_idx

@@ -54,7 +54,7 @@ pip install -e .[dev]
    ```
 3. Kalau menambah fungsi baru yang bisa dites tanpa koneksi internet (parsing, formatting, validasi), tambahkan unit test-nya di `tests/test_wattpdl.py`.
 4. Update `README.md` (English) **dan** `README.id.md` (Indonesia) kalau ada perubahan cara pakai atau fitur baru.
-5. Dokumentasi default-nya English; versi Indonesia ada di file `*.id.md`. Jangan pakai em dash di dokumen maupun kode.
+5. Dokumentasi default-nya English; versi Indonesia ada di file `*.id.md`. Komentar kode, docstring, dan pesan commit ditulis dalam bahasa Inggris. Jangan pakai em dash di dokumen maupun kode.
 
 ## Alur Kontribusi
 

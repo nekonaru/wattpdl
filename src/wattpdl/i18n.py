@@ -1,16 +1,16 @@
 """
-Modul terjemahan (i18n) untuk tampilan CLI: English (default) dan Bahasa Indonesia.
+Translation module (i18n) for the CLI display: English (default) and Bahasa Indonesia.
 
-Murni data + fungsi kecil, tidak boleh tahu soal `rich`, jaringan, atau CLI,
-supaya bisa dipakai dari modul mana pun (api, writers, cli, app).
+Pure data + small functions. It must not know about `rich`, the network, or the CLI,
+so it can be used from any module (api, writers, cli, app).
 
-Urutan penentuan bahasa tampilan (yang paling atas menang):
-  1. argumen  --ui-lang id|en
-  2. env var  WATTPDL_LANG=id|en
-  3. config   "ui_lang" di ~/.wattpdl/config.json
-  4. default  "en"
+Order for determining the display language (the topmost wins):
+  1. argument  --ui-lang id|en
+  2. env var   WATTPDL_LANG=id|en
+  3. config    "ui_lang" in ~/.wattpdl/config.json
+  4. default   "en"
 
-Catatan: ini BEDA dengan `--lang`, yang hanya mengatur metadata bahasa di file EPUB.
+Note: this is DIFFERENT from `--lang`, which only sets the language metadata in EPUB files.
 """
 import os
 
@@ -21,7 +21,7 @@ _current = {"lang": DEFAULT_LANG}
 
 
 def normalize(code) -> str:
-    """Ubah input apa pun ('EN', 'en_US', 'id-ID', None) jadi 'id'/'en'. Tidak dikenal -> None."""
+    """Turn any input ('EN', 'en_US', 'id-ID', None) into 'id'/'en'. Unrecognized -> None."""
     if not code:
         return None
     base = str(code).strip().lower().replace("_", "-").split("-")[0]
@@ -29,7 +29,7 @@ def normalize(code) -> str:
 
 
 def resolve_language(cli_value=None, config_value=None, env=None) -> str:
-    """Tentukan bahasa tampilan dari argumen > env > config > default (en)."""
+    """Determine the display language from argument > env > config > default (en)."""
     env = os.environ if env is None else env
     for candidate in (cli_value, env.get("WATTPDL_LANG"), config_value):
         lang = normalize(candidate)
@@ -49,7 +49,7 @@ def get_language() -> str:
 
 
 def t(key: str, **kwargs) -> str:
-    """Ambil teks untuk `key` di bahasa aktif. Fallback: Indonesia, lalu key itu sendiri."""
+    """Get the text for `key` in the active language. Fallback: the default language (English), then the key itself."""
     table = MESSAGES.get(_current["lang"], {})
     text = table.get(key)
     if text is None:
@@ -121,7 +121,7 @@ MESSAGES = {
         "hint.check_connection": "    Pastikan koneksi internet stabil, dan coba lagi beberapa saat.",
         "err.no_chapters": "❌  Tidak ada chapter ditemukan. Cek lagi ID/link ceritanya.",
 
-        # ---------- app.py : info cerita ----------
+        # ---------- app.py : story info ----------
         "step.story_info": "Info Cerita",
         "info.title": "📌 Judul",
         "info.author": "✍️  Penulis",
@@ -129,7 +129,7 @@ MESSAGES = {
 
         # ---------- app.py : interaktif ----------
         "tagline": "📖 Wattpad Story Downloader",
-        "tagline_sub": "-  simpan cerita jadi file .txt/.docx offline",
+        "tagline_sub": "-  simpan cerita jadi file .txt/.docx/.epub/.md/.pdf offline",
         "step.enter_story": "Masukkan Cerita",
         "prompt.story": "Link atau ID cerita Wattpad",
         "step.pick_mode": "Pilih Mode Unduh",
@@ -361,7 +361,7 @@ MESSAGES = {
 
         # ---------- app.py : interactive ----------
         "tagline": "📖 Wattpad Story Downloader",
-        "tagline_sub": "-  save stories as offline .txt/.docx files",
+        "tagline_sub": "-  save stories as offline .txt/.docx/.epub/.md/.pdf files",
         "step.enter_story": "Enter Story",
         "prompt.story": "Wattpad story link or ID",
         "step.pick_mode": "Select Download Mode",

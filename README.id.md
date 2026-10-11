@@ -2,7 +2,7 @@
 
 # 📖 WattPDL: Wattpad Story Downloader
 
-**Simpan cerita favoritmu jadi file `.txt`, `.docx`, `.epub`, atau `.md`, lengkap atau per chapter, secara offline.**
+**Simpan cerita favoritmu jadi file `.txt`, `.docx`, `.epub`, `.md`, atau `.pdf`, lengkap atau per chapter, secara offline.**
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![PyPI](https://img.shields.io/pypi/v/wattpdl?style=flat-square&color=blue)
@@ -17,7 +17,7 @@
 
 ## ✨ Tentang Project
 
-**WattPDL** adalah script Python ringan yang mengunduh chapter dari cerita Wattpad pilihanmu, lalu menyimpannya sebagai file `.txt` polos, dokumen Word `.docx`, ebook `.epub`, atau Markdown `.md` yang bersih dan rapi. Kamu bisa unduh seluruh cerita jadi satu file, semua chapter terpisah dalam satu `.zip`, atau cukup chapter tertentu yang kamu pilih sendiri, lengkap dengan cover cerita yang otomatis disisipkan ke `.docx`/`.epub`. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
+**WattPDL** adalah script Python ringan yang mengunduh chapter dari cerita Wattpad pilihanmu, lalu menyimpannya sebagai file `.txt` polos, dokumen Word `.docx`, ebook `.epub`, Markdown `.md`, atau `.pdf` yang bersih dan rapi. Kamu bisa unduh seluruh cerita jadi satu file, semua chapter terpisah dalam satu `.zip`, atau cukup chapter tertentu yang kamu pilih sendiri, lengkap dengan cover cerita yang otomatis disisipkan ke `.docx`/`.epub`/`.pdf`. Tidak perlu login, tidak perlu API key, cukup link atau ID ceritanya.
 
 > _"Karena cerita yang bagus layak dibaca kapan saja, bahkan tanpa internet."_
 
@@ -27,8 +27,8 @@
 |-------|------------|
 | 🎨 **Tampilan CLI rapi** | Panel, tabel info cerita, dan warna berkat library `rich` |
 | 🧩 **4 mode unduh** | Semua jadi 1 file, semua terpisah dalam `.zip`, pilih beberapa chapter, atau cukup 1 chapter |
-| 📄 **4 pilihan format** | Simpan sebagai `.txt` polos, dokumen Word `.docx`, ebook `.epub`, atau Markdown `.md` |
-| 🖼️ **Cover otomatis** | Gambar sampul cerita disisipkan ke file `.docx`/`.epub` (bisa dimatikan lewat `--no-cover`) |
+| 📄 **5 pilihan format** | Simpan sebagai `.txt` polos, dokumen Word `.docx`, ebook `.epub`, Markdown `.md`, atau `.pdf` |
+| 🖼️ **Cover otomatis** | Gambar sampul cerita disisipkan ke file `.docx`/`.epub`/`.pdf` (bisa dimatikan lewat `--no-cover`) |
 | 📚 **Metadata EPUB lengkap** | Genre/tag, deskripsi cerita, dan tanggal terbit ikut tersimpan sebagai metadata buku |
 | ⏭️ **Skip file yang sudah ada** | Lewati unduhan kalau file output sudah ada di folder tujuan, tidak menimpa tanpa sengaja |
 | 📁 **Pilih folder simpan** | Default ke folder `Downloads` sistem, bisa dikustomisasi |
@@ -39,9 +39,8 @@
 | 🔗 **Link sumber tersimpan** | URL cerita dicantumkan di header file hasil |
 | ⚡ **Tanpa login** | Pakai endpoint publik Wattpad, jadi tidak butuh akun |
 | ↻ **Resume otomatis** | Kalau proses terhenti di tengah jalan, jalankan ulang cerita yang sama, chapter yang sudah berhasil tidak diunduh ulang |
-| ⚙️ **Ingat preferensi** | Folder simpan & format file terakhir otomatis dipakai lagi di sesi berikutnya |
+| ⚙️ **Ingat preferensi** | Folder simpan, format file, dan bahasa tampilan terakhir otomatis dipakai lagi di sesi berikutnya |
 | 🤖 **Mode non-interaktif** | Bisa dijalankan lewat argumen command line untuk scripting/otomatisasi, tanpa perlu jawab prompt |
-| 📄 **5 pilihan format** | `.txt`, `.docx`, `.epub`, `.md`, dan sekarang **`.pdf`** |
 | 🖼️ **Gambar inline** | Opsional (`--include-images`) ikut unduh & sisipkan gambar di dalam teks chapter, bukan cuma cover |
 | ⚡ **Unduh paralel** | `--workers N` mengunduh beberapa chapter sekaligus, mempercepat cerita panjang secara signifikan |
 | 🐢 **Rate-limit adaptif** | Jeda antar chapter otomatis melambat kalau Wattpad mulai membatasi (429/503), lalu pelan-pelan cepat lagi |
@@ -276,6 +275,16 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--output-dir` | Folder penyimpanan custom. Default: dari config tersimpan, atau folder `Downloads` |
 | `--skip-existing` | Lewati unduhan kalau file output tujuan sudah ada, alih-alih menimpanya |
 | `--no-cover` | Jangan sisipkan gambar sampul cerita ke file `.docx`/`.epub`/`.pdf` |
+| `--include-images` | Ikut unduh & sisipkan gambar inline di dalam chapter (menambah waktu unduh) |
+| `--workers N` | Jumlah chapter yang diunduh bersamaan (default 1) |
+| `--no-cache` | Jangan pakai cache metadata cerita, selalu ambil data terbaru |
+| `--lang` | Kode bahasa ISO 639-1 untuk metadata EPUB (default `id`) |
+| `--ui-lang {id,en}` | Bahasa tampilan CLI (default `en`, diingat setelah dipilih) |
+| `--user` / `--user-select` | Unduh dari daftar cerita seorang penulis, bisa memilih cerita tertentu |
+| `--check-updates` | Laporkan cerita yang sudah diunduh dan punya chapter baru |
+| `--watch` / `--watch-interval` | Pantau satu cerita dan unduh ulang kalau ada chapter baru (jeda cek default 1800 detik) |
+| `--no-update-check` | Jangan cek versi wattpdl terbaru di PyPI saat start |
+| `--version` | Tampilkan versi wattpdl |
 
 **Contoh lain:**
 
@@ -303,19 +312,19 @@ wattpdl --help
 
 Nama dan bentuk file yang dihasilkan tergantung mode & format yang kamu pilih:
 
-| Mode | Format `.txt` | Format `.docx` | Format `.epub` | Format `.md` |
-|------|----------------|-----------------|------------------|---------------|
-| 1 - Semua, gabungan | `Judul_Cerita.txt` | `Judul_Cerita.docx` | `Judul_Cerita.epub` | `Judul_Cerita.md` |
-| 2 - Semua, terpisah | `Judul_Cerita.zip` (isi: `.txt` per chapter) | `Judul_Cerita.zip` (isi: `.docx` per chapter) | `Judul_Cerita.zip` (isi: `.epub` per chapter) | `Judul_Cerita.zip` (isi: `.md` per chapter) |
-| 3 - Beberapa chapter | `Judul_Cerita_pilihan.txt` | `Judul_Cerita_pilihan.docx` | `Judul_Cerita_pilihan.epub` | `Judul_Cerita_pilihan.md` |
-| 4 - Satu chapter | `Judul_Cerita_Ch003_Nama_Chapter.txt` | `Judul_Cerita_Ch003_Nama_Chapter.docx` | `Judul_Cerita_Ch003_Nama_Chapter.epub` | `Judul_Cerita_Ch003_Nama_Chapter.md` |
+| Mode | Format `.txt` | Format `.docx` | Format `.epub` | Format `.md` | Format `.pdf` |
+|------|----------------|-----------------|------------------|---------------|---------------|
+| 1 - Semua, gabungan | `Judul_Cerita.txt` | `Judul_Cerita.docx` | `Judul_Cerita.epub` | `Judul_Cerita.md` | `Judul_Cerita.pdf` |
+| 2 - Semua, terpisah | `Judul_Cerita.zip` (isi: `.txt` per chapter) | `Judul_Cerita.zip` (isi: `.docx` per chapter) | `Judul_Cerita.zip` (isi: `.epub` per chapter) | `Judul_Cerita.zip` (isi: `.md` per chapter) | `Judul_Cerita.zip` (isi: `.pdf` per chapter) |
+| 3 - Beberapa chapter | `Judul_Cerita_selected.txt` | `Judul_Cerita_selected.docx` | `Judul_Cerita_selected.epub` | `Judul_Cerita_selected.md` | `Judul_Cerita_selected.pdf` |
+| 4 - Satu chapter | `Judul_Cerita_Ch003_Nama_Chapter.txt` | `Judul_Cerita_Ch003_Nama_Chapter.docx` | `Judul_Cerita_Ch003_Nama_Chapter.epub` | `Judul_Cerita_Ch003_Nama_Chapter.md` | `Judul_Cerita_Ch003_Nama_Chapter.pdf` |
 
 **Isi file gabungan (mode 1 & 3):** judul cerita, penulis, dan sumber di bagian atas, lalu tiap chapter dipisah dengan penanda `#####`.
 
 ```
 Judul Cerita
-oleh Nama Penulis
-Sumber : https://www.wattpad.com/story/123456789
+by Nama Penulis
+Source: https://www.wattpad.com/story/123456789
 
 ==================================================
 
@@ -334,9 +343,9 @@ Di versi `.epub`, cerita jadi ebook standar dengan daftar isi (table of contents
 
 Di versi `.md`, cerita ditulis pakai heading Markdown standar (`#` untuk judul, `##` per chapter), enak dibuka di editor apa pun atau di-render langsung di GitHub/Obsidian/Notion.
 
-Kalau cerita punya cover, gambarnya otomatis disisipkan di halaman/paragraf pertama file `.docx`/`.epub` (kecuali dijalankan dengan `--no-cover`). Genre/tag, deskripsi, dan tanggal terbit cerita juga ikut tersimpan sebagai metadata resmi di file `.epub`, biasa muncul di halaman detail buku pada aplikasi pembaca ebook.
+Kalau cerita punya cover, gambarnya otomatis disisipkan di halaman/paragraf pertama file `.docx`/`.epub`/`.pdf` (kecuali dijalankan dengan `--no-cover`). Genre/tag, deskripsi, dan tanggal terbit cerita juga ikut tersimpan sebagai metadata resmi di file `.epub`, biasa muncul di halaman detail buku pada aplikasi pembaca ebook.
 
-**Isi zip (mode 2):** satu file per chapter, bernomor urut sesuai posisi di cerita, plus `000_info.txt`/`000_info.docx`/`000_info.epub` berisi judul, penulis, dan sumber. Ekstensi file di dalam zip mengikuti format yang dipilih saat menjalankan script (`.txt`, `.docx`, atau `.epub`):
+**Isi zip (mode 2):** satu file per chapter, bernomor urut sesuai posisi di cerita, plus `000_info.txt`/`000_info.md`/`000_info.docx`/`000_info.epub`/`000_info.pdf` (sesuai format) berisi judul, penulis, dan sumber. Ekstensi file di dalam zip mengikuti format yang dipilih saat menjalankan script (`.txt`, `.docx`, atau `.epub`):
 
 ```
 Judul_Cerita.zip
@@ -362,6 +371,7 @@ Judul_Cerita.zip
 | `ModuleNotFoundError: No module named 'rich'` | Jalankan `pip install rich` |
 | `Library 'python-docx' belum terinstall` (atau `is not installed` di tampilan English) | Jalankan `pip install python-docx` (cuma dibutuhkan kalau memilih format `.docx`) |
 | `Library 'EbookLib' belum terinstall` | Jalankan `pip install EbookLib` (cuma dibutuhkan kalau memilih format `.epub`) |
+| `Library 'reportlab' belum terinstall` (atau `is not installed` di tampilan English) | Jalankan `pip install reportlab` (hanya perlu kalau memilih format `.pdf`) |
 | Error `404` / "Tidak ada chapter ditemukan" | Pastikan ID/link benar & cerita tidak di-private |
 | Folder tidak bisa dibuat | Cek path valid & kamu punya izin tulis di sana |
 | Proses macet di satu chapter | Cek koneksi internet, jalankan ulang, progress akan lanjut |
@@ -391,7 +401,7 @@ wattpdl/
 │       ├── __main__.py       # entry untuk `python -m wattpdl`
 │       ├── app.py            # orkestrasi alur program (main())
 │       ├── api.py            # komunikasi ke Wattpad public API
-│       ├── writers.py        # konversi teks & penulisan file .txt/.docx/.zip
+│       ├── writers.py        # konversi teks & penulisan file .txt/.docx/.epub/.md/.pdf/.zip
 │       ├── cli.py            # tampilan terminal (rich), interaksi dengan user
 │       ├── cli_args.py       # parsing argumen untuk mode non-interaktif
 │       ├── config.py         # simpan preferensi user (folder simpan, format, bahasa)

@@ -1,10 +1,10 @@
 """
-Modul resume/progress: menyimpan chapter yang sudah berhasil diunduh untuk
-suatu cerita, supaya kalau proses terhenti di tengah jalan (macet, koneksi
-putus, terminal ditutup), menjalankan ulang dengan cerita yang sama akan
-melanjutkan dari chapter terakhir yang berhasil, bukan mengulang dari awal.
+Resume/progress module: saves the chapters that were already downloaded successfully for
+a story, so that if the process stops midway (hangs, connection
+lost, terminal closed), running again with the same story will
+continue from the last successful chapter instead of starting over.
 
-Disimpan per cerita di ~/.wattpdl/progress/<story_id>.json
+Stored per story in ~/.wattpdl/progress/<story_id>.json
 """
 import json
 import pathlib
@@ -19,9 +19,9 @@ def _progress_path(story_id: str) -> pathlib.Path:
 
 def load_progress(story_id: str) -> dict:
     """
-    Kembalikan chapter yang sudah tersimpan untuk cerita ini:
+    Return the chapters already saved for this story:
     {part_id (str): {"title": ..., "text": ...}}
-    Kosong kalau belum pernah ada progress atau filenya rusak.
+    Empty if there has never been any progress or the file is corrupt.
     """
     path = _progress_path(story_id)
     if not path.exists():
@@ -33,14 +33,14 @@ def load_progress(story_id: str) -> dict:
 
 
 def save_chapter_progress(story_id: str, part_id, title: str, text: str) -> None:
-    """Simpan satu chapter yang baru berhasil diunduh ke file progress cerita ini.
+    """Save one chapter that was just downloaded successfully to this story's progress file.
 
-    Dipertahankan sebagai fungsi berdiri sendiri untuk kompatibilitas & pemakaian
-    sederhana (baca-ubah-tulis sekali). Untuk sesi unduh banyak chapter
-    berturut-turut, pakai `ProgressStore` di bawah, itu baca file cuma sekali
-    di awal lalu simpan state di memori, supaya nggak perlu baca ulang seluruh
-    JSON tiap 1 chapter selesai (O(n) per save, bukan O(n) baca + O(n) tulis
-    berulang untuk tiap chapter = O(n^2) total untuk cerita panjang).
+    Kept as a standalone function for compatibility & simple use
+    (read-modify-write once). For a session that downloads many chapters
+    in a row, use `ProgressStore` below: it reads the file only once
+    at the start and then keeps the state in memory, so the whole
+    JSON does not need to be re-read each time 1 chapter finishes (O(n) per save, instead of O(n) read + O(n) write
+    repeated for every chapter = O(n^2) total for a long story).
     """
     data = load_progress(story_id)
     data[str(part_id)] = {"title": title, "text": text}
@@ -49,20 +49,20 @@ def save_chapter_progress(story_id: str, part_id, title: str, text: str) -> None
 
 
 def clear_progress(story_id: str) -> None:
-    """Hapus file progress cerita ini (dipanggil setelah semua chapter berhasil diunduh)."""
+    """Delete this story's progress file (called after all chapters were downloaded successfully)."""
     path = _progress_path(story_id)
     if path.exists():
         path.unlink()
 
 
 class ProgressStore:
-    """Pegang progress satu cerita di memori selama satu sesi unduh berlangsung.
+    """Hold one story's progress in memory for the duration of one download session.
 
-    Dipakai oleh `cli.download_chapters()` supaya tiap chapter yang selesai
-    diunduh cukup update dict di memori + tulis ulang ke disk sekali (tanpa
-    baca ulang file dari awal tiap kali), jauh lebih ringan untuk cerita
-    dengan ratusan/ribuan chapter. Sudah thread-safe (pakai lock) supaya aman
-    dipanggil dari beberapa worker unduhan paralel sekaligus.
+    Used by `cli.download_chapters()` so each chapter that finishes
+    downloading only needs to update the dict in memory + write to disk once (without
+    re-reading the file from the start each time), which is much lighter for stories
+    with hundreds/thousands of chapters. Already thread-safe (uses a lock) so it is safe to
+    call from several parallel download workers at once.
     """
 
     def __init__(self, story_id: str):

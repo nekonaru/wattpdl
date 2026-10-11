@@ -35,6 +35,7 @@ If a new feature needs several modules together, put the orchestration in `app.p
 ## Documentation and Style
 
 - Documentation is **English by default** (`README.md`, `CONTRIBUTING.md`). Indonesian versions live in `README.id.md` and `CONTRIBUTING.id.md`. When you change one, update the other.
+- Write code comments, docstrings, commit messages, and test descriptions in English.
 - Do not use em dashes in documents or code. Use a comma, a colon, or a hyphen instead.
 
 ## Local Setup

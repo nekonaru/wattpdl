@@ -1,22 +1,22 @@
 """
-Modul cache metadata cerita jangka pendek (TTL beberapa menit).
+Short-term story metadata cache module (TTL of a few minutes).
 
-Dipakai supaya kalau user menjalankan wattpdl beberapa kali berturut-turut
-untuk cerita yang sama dalam waktu singkat (mis. lagi coba-coba beberapa
-pilihan mode/format sebelum benar-benar unduh, atau script otomatisasi yang
-memanggil wattpdl berkali-kali untuk cerita yang sama), tidak perlu fetch API
-Wattpad ulang tiap kali, cukup pakai hasil fetch sebelumnya yang masih segar.
+Used so that when the user runs wattpdl several times in a row
+for the same story in a short time (e.g. trying out a few
+mode/format choices before actually downloading, or an automation script that
+calls wattpdl many times for the same story), there is no need to fetch the Wattpad
+API again each time; the previous fetch result that is still fresh is enough.
 
-TIDAK dipakai untuk keperluan jangka panjang (itu urusan modul `library`),
-TTL sengaja pendek supaya info cerita (jumlah chapter dst.) tetap akurat
-kalau memang ada perubahan di Wattpad.
+NOT used for long-term purposes (that is the job of the `library` module);
+the TTL is deliberately short so story info (chapter count, etc.) stays accurate
+if anything does change on Wattpad.
 """
 import json
 import pathlib
 import time
 
 CACHE_DIR = pathlib.Path.home() / ".wattpdl" / "cache"
-TTL_SECONDS = 300  # 5 menit
+TTL_SECONDS = 300  # 5 minutes
 
 
 def _cache_path(story_id: str) -> pathlib.Path:
@@ -24,8 +24,8 @@ def _cache_path(story_id: str) -> pathlib.Path:
 
 
 def get_cached_story(story_id: str):
-    """Kembalikan (title, author, parts, meta) dari cache kalau masih segar
-    (belum lewat TTL_SECONDS), None kalau belum ada/sudah kedaluwarsa/rusak."""
+    """Return (title, author, parts, meta) from the cache if still fresh
+    (TTL_SECONDS not yet passed), None if absent/expired/corrupt."""
     path = _cache_path(story_id)
     if not path.exists():
         return None
@@ -42,9 +42,9 @@ def get_cached_story(story_id: str):
 
 
 def save_story_cache(story_id: str, title: str, author: str, parts: list, meta: dict) -> None:
-    """Simpan hasil fetch info cerita ke cache. Kegagalan tulis (disk penuh,
-    tidak ada izin, dll) tidak boleh mengganggu alur utama, cache cuma
-    optimisasi, bukan bagian penting."""
+    """Save the story info fetch result to the cache. A write failure (disk full,
+    no permission, etc.) must not disturb the main flow; the cache is only an
+    optimization, not an essential part."""
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         _cache_path(story_id).write_text(

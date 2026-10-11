@@ -22,7 +22,7 @@ env/
 .coverage
 htmlcov/
 
-# ── Hasil unduhan wattpdl (jangan ikut ke-commit) ──
+# ── wattpdl downloaded output (do not commit) ──
 *.txt
 *.docx
 *.epub

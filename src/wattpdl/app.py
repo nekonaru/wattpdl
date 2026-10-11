@@ -1,11 +1,11 @@
 """
 WattPDL: Wattpad Story Downloader
-Entry point utama. Dua mode:
-  - Interaktif  : python wattpdl.py           (tanpa argumen, tanya-jawab di terminal)
-  - Non-interaktif : python wattpdl.py --id ... --mode ... (untuk scripting/otomatisasi)
-Alur: ambil input (prompt atau argumen) -> fetch data (api.py) -> tulis file
-(writers.py) -> tampilkan progres (cli.py). Preferensi tersimpan lewat
-config.py, dan progress unduhan lewat progress.py untuk fitur resume.
+Main entry point. Two modes:
+  - Interactive     : wattpdl                       (no arguments, question and answer in the terminal)
+  - Non-interactive : wattpdl --id ... --mode ...     (for scripting/automation)
+Flow: take input (prompt or arguments) -> fetch data (api.py) -> write the file
+(writers.py) -> show progress (cli.py). Preferences are saved through
+config.py, and download progress through progress.py for the resume feature.
 """
 import pathlib
 import sys
@@ -49,14 +49,14 @@ def resolve_save_dir(custom_path: str, config: dict) -> pathlib.Path:
 
 
 def should_skip_existing(full_path: pathlib.Path, skip_existing: bool) -> bool:
-    """True kalau file output sudah ada dan mode skip-existing aktif,
-    dipakai mode non-interaktif supaya tidak menimpa/mengunduh ulang tanpa perlu.
-    Dipisah jadi fungsi murni supaya gampang ditest tanpa perlu mock filesystem penuh."""
+    """True if the output file already exists and skip-existing mode is on,
+    used by non-interactive mode so it does not overwrite/download again unnecessarily.
+    Split into a pure function so it is easy to test without mocking a full filesystem."""
     return skip_existing and full_path.exists()
 
 
 def resolve_chapters(mode: str, parts: list, chapters_arg: str = None, chapter_arg: int = None) -> list:
-    """Tentukan chapter yang diunduh, dari argumen (non-interaktif) atau prompt (interaktif)."""
+    """Determine which chapters to download, from arguments (non-interactive) or a prompt (interactive)."""
     if mode == "3":
         if chapters_arg is not None:
             numbers = cli.parse_chapter_selection(chapters_arg, len(parts))
@@ -82,7 +82,7 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                   chapters_arg=None, chapter_arg=None, meta=None, cover_bytes=None,
                   skip_existing=False, interactive=False, workers=1, include_images=False,
                   language="id"):
-    """Alur unduh bersama untuk mode interaktif maupun non-interaktif."""
+    """Shared download flow for both interactive and non-interactive modes."""
     indexed_parts = resolve_chapters(mode, parts, chapters_arg, chapter_arg)
 
     ext = {"2": "docx", "3": "epub", "4": "md", "5": "pdf"}.get(file_format, "txt")
@@ -93,7 +93,7 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
     elif mode == "2":
         full_path = save_dir / f"{base_name}.zip"
     elif mode == "3":
-        full_path = save_dir / f"{base_name}_pilihan.{ext}"
+        full_path = save_dir / f"{base_name}_selected.{ext}"
     else:
         chap_no, chap_part = indexed_parts[0]
         chap_title = writers.safe_filename(chap_part.get("title", f"Chapter {chap_no}"))
@@ -102,10 +102,10 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
     try:
         path_exists = full_path.exists()
     except OSError as e:
-        # Bisa kejadian kalau nama file gabungan (judul cerita + judul chapter
-        # untuk mode 4, atau folder tujuan yang dipilih user sudah panjang)
-        # tetap melebihi batas panjang path sistem operasi walau sudah dipotong
-        # oleh safe_filename(). Tampilkan pesan rapi, jangan biarkan traceback mentah.
+        # This can happen if the combined file name (story title + chapter title
+        # for mode 4, or the target folder chosen by the user is already long)
+        # still exceeds the operating system's path length limit even after being truncated
+        # by safe_filename(). Show a tidy message, do not let a raw traceback through.
         console.print(f"[danger]{t('err.path_invalid')}[/danger] {e}")
         console.print(f"[muted]{t('info.path_tried', path=full_path)}[/muted]")
         console.print(f"[muted]{t('hint.shorter_path')}[/muted]")
@@ -166,10 +166,10 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
             else:
                 writers.write_combined_txt(full_path, title, author, story_id, results)
     except OSError as e:
-        # Chapter sudah terlanjur diunduh (dan progress-nya sudah tersimpan lewat
-        # progress.py), jangan sampai kegagalan MENULIS file di detik terakhir
-        # (path terlalu panjang, disk penuh, tidak ada izin tulis, dst.) muncul
-        # sebagai traceback mentah. Beri tahu user progress tidak hilang.
+        # The chapters were already downloaded (and their progress already saved through
+        # progress.py), so a failure to WRITE the file at the last second
+        # (path too long, disk full, no write permission, etc.) must not appear
+        # as a raw traceback. Tell the user their progress is not lost.
         console.print(f"[danger]{t('err.write_failed')}[/danger] {e}")
         console.print(f"[muted]{t('info.path_tried', path=full_path)}[/muted]")
         console.print(f"[muted]{t('hint.progress_kept')}[/muted]")
@@ -200,11 +200,11 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         ))
         console.print(f"[muted]{t('sum.partial_hint')}[/muted]\n")
     else:
-        # Semua chapter berhasil -> file progress resume cerita ini tidak diperlukan lagi.
+        # All chapters succeeded -> this story's resume progress file is no longer needed.
         progress_mod.clear_progress(story_id)
         if mode in ("1", "2"):
-            # Catat ke library supaya --check-updates / --watch bisa mendeteksi
-            # kalau nanti ada chapter baru di cerita ini.
+            # Record it in the library so --check-updates / --watch can detect
+            # when this story gets new chapters later.
             library.remember_story(story_id, title, len(parts))
         console.print(Panel(
             summary,
@@ -215,7 +215,7 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         ))
         console.print()
 
-    # simpan preferensi format & folder simpan untuk sesi berikutnya
+    # save the format & save folder preferences for the next session
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
 
 
@@ -229,7 +229,7 @@ def fetch_story_or_exit(story_id: str, use_cache: bool = True):
         try:
             title, author, parts, meta = api.get_story_info(story_id)
         except (api.StoryNotFoundError, api.StoryAccessError) as e:
-            # Pesan sudah spesifik dari api.py (bedain 404 vs 403/401), tampilkan apa adanya.
+            # The message is already specific from api.py (distinguishes 404 vs 403/401), show it as-is.
             console.print(f"[danger]❌  {e}[/danger]")
             sys.exit(1)
         except requests.RequestException as e:
@@ -371,11 +371,11 @@ def run_interactive():
             default=False,
         )
 
-    # Pemilihan chapter aktual (termasuk prompt utk mode 3/4) terjadi di dalam
-    # run_download() -> resolve_chapters(). Di sini cukup pakai len(parts) sbg
-    # perkiraan kasar utk menawarkan mode paralel, cukup akurat karena mode 1/2
-    # memang mengunduh semua chapter, dan menanyakan ini tidak berbahaya
-    # walau nanti user pilih sedikit chapter saja di mode 3/4.
+    # The actual chapter selection (including the prompt for mode 3/4) happens inside
+    # run_download() -> resolve_chapters(). Here len(parts) is enough as a
+    # rough estimate for offering parallel mode, accurate enough because modes 1/2
+    # do download every chapter, and asking this is harmless
+    # even if the user later picks only a few chapters in mode 3/4.
     workers = 1
     if len(parts) > 3:
         use_parallel = cli.Confirm.ask(
@@ -403,10 +403,10 @@ def run_interactive():
 
 
 def run_user_mode(args) -> None:
-    """Unduh semua/cerita pilihan dari satu penulis Wattpad sekaligus (--user).
-    Selalu non-interaktif: cerita mana yang diunduh ditentukan lewat --user-select,
-    dan tiap cerita diunduh mode 1 (gabungan) atau 2 (zip terpisah), mode 3/4
-    (pilih chapter tertentu) tidak relevan untuk banyak cerita sekaligus.
+    """Download all/selected stories from one Wattpad author at once (--user).
+    Always non-interactive: which stories are downloaded is decided through --user-select,
+    and each story is downloaded in mode 1 (combined) or 2 (separate zip); modes 3/4
+    (picking specific chapters) do not apply to many stories at once.
     """
     cli.reset_steps()
     mode = args.mode or "1"
@@ -461,7 +461,7 @@ def run_user_mode(args) -> None:
     for n, story_index in enumerate(chosen_indices, start=1):
         story_summary = stories[story_index - 1]
         console.print(f"[primary]{t('info.story_progress', n=n, total=len(chosen_indices), title=story_summary['title'])}[/primary]")
-        cli.reset_steps()  # reset penomoran ①②③ tiap ganti cerita, bukan terus nambah lintas cerita
+        cli.reset_steps()  # reset the ①②③ numbering for every new story, instead of keeping on counting across stories
         title, author, parts, meta = fetch_story_or_exit(story_summary["id"], use_cache=not args.no_cache)
 
         cover_bytes = None
@@ -478,10 +478,10 @@ def run_user_mode(args) -> None:
 
 
 def run_check_updates() -> None:
-    """Cek semua cerita yang pernah diunduh penuh (tercatat di library.json)
-    apakah ada chapter baru di Wattpad sekarang. Tidak mengunduh apa pun,
-    cuma melaporkan, user tinggal jalankan ulang unduhan normal kalau ada
-    yang mau di-update.
+    """Check every story that was fully downloaded before (recorded in library.json)
+    for new chapters on Wattpad right now. It downloads nothing,
+    only reports; the user just runs the normal download again for the stories
+    they want to update.
     """
     cli.reset_steps()
     step_rule(t("step.check_updates"))
@@ -522,11 +522,11 @@ def run_check_updates() -> None:
 
 
 def run_watch(args) -> None:
-    """Pantau 1 cerita terus-menerus (--watch), otomatis unduh ulang penuh
-    begitu jumlah chapter bertambah. Cocok untuk cerita ongoing yang rutin
-    update. Berhenti dengan Ctrl+C, atau otomatis berhenti setelah
-    --watch-max-iterations kali cek (dipakai untuk testing, biasanya tidak diisi
-    oleh user sehingga berjalan tanpa batas)."""
+    """Monitor 1 story continuously (--watch), automatically re-download in full
+    as soon as the chapter count increases. Suitable for ongoing stories that update
+    regularly. Stop with Ctrl+C, or it stops automatically after
+    --watch-max-iterations checks (used for testing, normally not set
+    by users so it runs without limit)."""
     cli.reset_steps()
     try:
         cli_args.validate_non_interactive_args(args)
@@ -593,10 +593,10 @@ def run_watch(args) -> None:
 
 
 def main():
-    args = cli_args.parse_args()  # parse_args juga menetapkan bahasa tampilan (i18n)
+    args = cli_args.parse_args()  # parse_args also sets the display language (i18n)
 
     if args.ui_lang:
-        # Pilihan eksplisit --ui-lang diingat untuk sesi berikutnya.
+        # The explicit --ui-lang choice is remembered for the next session.
         config_mod.save_config(ui_lang=args.ui_lang)
 
     if not args.no_update_check:
@@ -608,7 +608,7 @@ def main():
                     "[accent]pip install --upgrade wattpdl[/accent]\n"
                 )
         except Exception:
-            pass  # cek update tidak boleh pernah menghentikan aplikasi utama
+            pass  # the update check must never stop the main application
 
     if args.check_updates:
         run_check_updates()
