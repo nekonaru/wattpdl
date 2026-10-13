@@ -156,6 +156,20 @@ pip install -e .
 
 This also registers the `wattpdl` command, but it loads the code directly from this folder, which is ideal if you want to modify the code and see the result right away without reinstalling.
 
+### Option C: Arch Linux (AUR)
+
+Arch Linux users can install it from the AUR. The package is community maintained by [@Vaishnav-Sabari-Girish](https://github.com/Vaishnav-Sabari-Girish): [`wattpdl` on the AUR](https://aur.archlinux.org/packages/wattpdl).
+
+```bash
+# Using yay
+yay -S wattpdl
+
+# Using paru
+paru -S wattpdl
+```
+
+> The AUR package is maintained separately, so a new version may show up there a little after the PyPI release.
+
 ## 🖥️ Usage
 
 **Run:**
