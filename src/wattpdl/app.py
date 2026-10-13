@@ -133,6 +133,12 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         rate_limiter=rate_limiter, include_images=include_images,
     )
     elapsed = cli.format_duration(time.time() - start_time)
+    if include_images:
+        n_images = sum(len(v) for v in images_by_idx.values())
+        if n_images:
+            console.print(f"[muted]{t('info.images_downloaded', n=n_images)}[/muted]")
+        else:
+            console.print(f"[warning]{t('warn.no_images')}[/warning]")
 
     try:
         if mode == "2":
@@ -219,10 +225,29 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
 
 
+def warn_if_parts_missing(parts: list, meta: dict) -> None:
+    """Wattpad reports how many chapters a story has (numParts). If fewer are
+    actually listed, some are hidden, paid, or unpublished and cannot be
+    downloaded. Tell the user instead of silently producing an incomplete file."""
+    reported = (meta or {}).get("num_parts")
+    if isinstance(reported, int) and reported > len(parts):
+        console.print(f"[warning]{t('warn.parts_mismatch', reported=reported, accessible=len(parts))}[/warning]")
+
+
+def fetch_cover(meta: dict, no_cover: bool, file_format: str):
+    """Download the story cover (only for formats that embed it), with a spinner so
+    the program never looks frozen while waiting for the network."""
+    if no_cover or file_format not in ("2", "3", "5") or not meta.get("cover_url"):
+        return None
+    with console.status(f"[accent]{t('status.downloading_cover')}[/accent]", spinner="dots"):
+        return api.download_cover_image(meta["cover_url"])
+
+
 def fetch_story_or_exit(story_id: str, use_cache: bool = True):
     if use_cache:
         cached = metacache.get_cached_story(story_id)
         if cached:
+            warn_if_parts_missing(cached[2], cached[3])
             return cached
 
     with console.status(f"[accent]{t('status.fetching_story', story_id=story_id)}[/accent]", spinner="dots"):
@@ -241,6 +266,7 @@ def fetch_story_or_exit(story_id: str, use_cache: bool = True):
         console.print(f"[danger]{t('err.no_chapters')}[/danger]")
         sys.exit(1)
 
+    warn_if_parts_missing(parts, meta)
     if use_cache:
         metacache.save_story_cache(story_id, title, author, parts, meta)
     return title, author, parts, meta
@@ -282,9 +308,7 @@ def run_non_interactive(args):
 
     save_dir = resolve_save_dir(args.output_dir, config)
 
-    cover_bytes = None
-    if not args.no_cover and file_format in ("2", "3", "5") and meta.get("cover_url"):
-        cover_bytes = api.download_cover_image(meta["cover_url"])
+    cover_bytes = fetch_cover(meta, args.no_cover, file_format)
 
     run_download(
         story_id, title, author, parts, args.mode, file_format, save_dir,
@@ -360,10 +384,6 @@ def run_interactive():
     elif file_format == "5":
         writers.check_pdf_available(console)
 
-    cover_bytes = None
-    if file_format in ("2", "3", "5") and meta.get("cover_url"):
-        cover_bytes = api.download_cover_image(meta["cover_url"])
-
     include_images = False
     if file_format in ("2", "3", "5"):
         include_images = cli.Confirm.ask(
@@ -396,6 +416,10 @@ def run_interactive():
         show_default=False,
     ).strip()
     save_dir = resolve_save_dir(custom, config)
+
+    # Fetched after every question was answered: a silent network wait between
+    # prompts makes people press Enter again, which then answers the next prompts.
+    cover_bytes = fetch_cover(meta, False, file_format)
 
     run_download(story_id, title, author, parts, mode, file_format, save_dir,
                  meta=meta, cover_bytes=cover_bytes, interactive=True,
@@ -464,9 +488,7 @@ def run_user_mode(args) -> None:
         cli.reset_steps()  # reset the ①②③ numbering for every new story, instead of keeping on counting across stories
         title, author, parts, meta = fetch_story_or_exit(story_summary["id"], use_cache=not args.no_cache)
 
-        cover_bytes = None
-        if not args.no_cover and file_format in ("2", "3", "5") and meta.get("cover_url"):
-            cover_bytes = api.download_cover_image(meta["cover_url"])
+        cover_bytes = fetch_cover(meta, args.no_cover, file_format)
 
         run_download(
             story_summary["id"], title, author, parts, mode, file_format, save_dir,
@@ -569,9 +591,7 @@ def run_watch(args) -> None:
                 elif file_format == "5":
                     writers.check_pdf_available(console)
                 save_dir = resolve_save_dir(args.output_dir, config)
-                cover_bytes = None
-                if not args.no_cover and file_format in ("2", "3", "5") and meta.get("cover_url"):
-                    cover_bytes = api.download_cover_image(meta["cover_url"])
+                cover_bytes = fetch_cover(meta, args.no_cover, file_format)
                 run_download(
                     story_id, title, author, parts, args.mode, file_format, save_dir,
                     chapters_arg=args.chapters, chapter_arg=args.chapter,

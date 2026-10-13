@@ -154,6 +154,7 @@ def get_story_info(story_id: str) -> tuple[str, str, list, dict]:
         "tags": [t for t in (data.get("tags") or []) if t],
         "create_date": data.get("createDate", ""),
         "completed": bool(data.get("completed", False)),
+        "num_parts": data.get("numParts"),
     }
     return title, author, parts, meta
 
@@ -254,7 +255,11 @@ def get_chapter_html(
             time.sleep(wait)
 
 
-_IMG_SRC_RE = re.compile(r'<img[^>]+src=["\']([^"\']+)["\']', re.IGNORECASE)
+_IMG_TAG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+_IMG_ATTR_RES = [
+    re.compile(rf'(?<![\w-]){attr}\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE)
+    for attr in ("src", "data-src", "data-original")
+]
 
 
 def extract_chapter_images(html: str) -> list:
@@ -262,4 +267,16 @@ def extract_chapter_images(html: str) -> list:
     the order they appear in the text. Used by the inline image download
     feature (not just the cover) for .docx/.epub/.pdf.
     """
-    return _IMG_SRC_RE.findall(html or "")
+    urls = []
+    for tag in _IMG_TAG_RE.findall(html or ""):
+        for attr_re in _IMG_ATTR_RES:  # src first, then lazy-load attributes
+            m = attr_re.search(tag)
+            if not m:
+                continue
+            url = m.group(1).strip()
+            if url.startswith("//"):
+                url = "https:" + url
+            if url.lower().startswith(("http://", "https://")):
+                urls.append(url)
+                break
+    return urls

@@ -5,6 +5,7 @@ here; all data fetching goes through the `api` module.
 """
 import os
 import pathlib
+import sys
 
 from rich.console import Console
 from rich.progress import (
@@ -15,16 +16,53 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from rich.prompt import (  # noqa: F401 - IntPrompt is used via cli.IntPrompt in app.py
-    Confirm,
-    IntPrompt,
-    Prompt,
-)
+from rich.prompt import Confirm as _RichConfirm
+from rich.prompt import IntPrompt as _RichIntPrompt
+from rich.prompt import Prompt as _RichPrompt
 from rich.rule import Rule
 from rich.theme import Theme
 
 from . import api
 from .i18n import t
+
+
+def flush_input() -> None:
+    """Discard keystrokes typed ahead (e.g. extra Enter presses while the program
+    was busy), so they cannot silently answer the next prompt with its default.
+    Does nothing when stdin is not a terminal (pipes, tests, scripts)."""
+    try:
+        if not sys.stdin.isatty():
+            return
+        if os.name == "nt":
+            import msvcrt
+            while msvcrt.kbhit():
+                msvcrt.getwch()
+        else:
+            import termios
+            termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
+    except Exception:
+        pass  # flushing is a nicety, it must never break a prompt
+
+
+class Prompt(_RichPrompt):
+    @classmethod
+    def ask(cls, *args, **kwargs):
+        flush_input()
+        return super().ask(*args, **kwargs)
+
+
+class Confirm(_RichConfirm):
+    @classmethod
+    def ask(cls, *args, **kwargs):
+        flush_input()
+        return super().ask(*args, **kwargs)
+
+
+class IntPrompt(_RichIntPrompt):
+    @classmethod
+    def ask(cls, *args, **kwargs):
+        flush_input()
+        return super().ask(*args, **kwargs)
 
 THEME = Theme({
     "primary":   "bold cyan",

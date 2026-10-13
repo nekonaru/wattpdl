@@ -20,6 +20,7 @@ from wattpdl import cli_args, i18n, metacache, updater
 from wattpdl import config as config_mod
 from wattpdl import library as library_mod
 from wattpdl import progress as progress_mod
+from wattpdl import writers as writers_mod
 from wattpdl.api import extract_story_id, get_chapter_html
 from wattpdl.cli import format_duration, parse_chapter_selection
 from wattpdl.writers import (
@@ -799,15 +800,38 @@ class TestExtractChapterImages:
         assert api_mod.extract_chapter_images(html) == ["https://example.com/a.jpg"]
 
     def test_extracts_multiple_images_in_order(self):
-        html = '<img src="a.jpg"><p>x</p><img src="b.png">'
-        assert api_mod.extract_chapter_images(html) == ["a.jpg", "b.png"]
+        html = '<img src="https://example.com/a.jpg"><p>x</p><img src="https://example.com/b.png">'
+        assert api_mod.extract_chapter_images(html) == ["https://example.com/a.jpg", "https://example.com/b.png"]
 
     def test_no_images_returns_empty_list(self):
         assert api_mod.extract_chapter_images("<p>Tidak ada gambar di sini.</p>") == []
 
     def test_handles_single_quotes(self):
-        html = "<img src='single-quoted.jpg'>"
-        assert api_mod.extract_chapter_images(html) == ["single-quoted.jpg"]
+        html = "<img src='https://example.com/single-quoted.jpg'>"
+        assert api_mod.extract_chapter_images(html) == ["https://example.com/single-quoted.jpg"]
+
+    def test_lazy_load_attributes(self):
+        html = (
+            '<img data-src="https://example.com/lazy.jpg">'
+            '<img src="" data-original="https://example.com/orig.jpg">'
+        )
+        assert api_mod.extract_chapter_images(html) == [
+            "https://example.com/lazy.jpg",
+            "https://example.com/orig.jpg",
+        ]
+
+    def test_src_wins_over_data_src(self):
+        html = '<img data-src="https://example.com/b.jpg" src="https://example.com/a.jpg">'
+        assert api_mod.extract_chapter_images(html) == ["https://example.com/a.jpg"]
+
+    def test_protocol_relative_url_gets_https(self):
+        assert api_mod.extract_chapter_images('<img src="//img.example.com/a.jpg">') == [
+            "https://img.example.com/a.jpg"
+        ]
+
+    def test_non_http_sources_are_skipped(self):
+        html = '<img src="data:image/png;base64,AAAA"><img src="relative/path.jpg">'
+        assert api_mod.extract_chapter_images(html) == []
 
 
 class TestProgressStore:
@@ -1149,7 +1173,7 @@ class TestDownloadChaptersRateLimiting:
         """Another bug that was found: inline image downloads did not go through
         the rate limiter at all on either path. Now every image must also be
         subject to wait()."""
-        html_with_2_images = '<img src="a.jpg"><img src="b.jpg"><p>teks</p>'
+        html_with_2_images = '<img src="https://example.com/a.jpg"><img src="https://example.com/b.jpg"><p>teks</p>'
         monkeypatch.setattr(api_mod, "get_chapter_html", lambda *a, **kw: html_with_2_images)
         monkeypatch.setattr(api_mod, "download_image", lambda url: b"fake-image-bytes")
         rl = api_mod.AdaptiveRateLimiter(base_delay=0.0)
@@ -1332,3 +1356,95 @@ class TestI18n:
 
     def test_config_default_has_ui_lang(self):
         assert config_mod.load_config()["ui_lang"] is None
+
+
+class TestInteractiveInputSafety:
+    """Bug report: extra Enter presses typed while the program waited on the network
+    silently answered the next prompts with their defaults (so 'include images'
+    was skipped). Stale keystrokes are now discarded before each prompt, and the
+    cover is downloaded after all questions, with a spinner."""
+
+    def test_flush_input_is_noop_without_a_terminal(self, monkeypatch):
+        monkeypatch.setattr(cli_mod.sys.stdin, "isatty", lambda: False, raising=False)
+        cli_mod.flush_input()  # must not raise
+
+    def test_flush_input_never_raises(self, monkeypatch):
+        monkeypatch.setattr(cli_mod.sys.stdin, "isatty", lambda: (_ for _ in ()).throw(OSError("boom")), raising=False)
+        cli_mod.flush_input()
+
+    @pytest.mark.parametrize("prompt_cls, answer", [("Prompt", "x"), ("Confirm", "y"), ("IntPrompt", "1")])
+    def test_every_prompt_flushes_before_asking(self, monkeypatch, prompt_cls, answer):
+        calls = []
+        monkeypatch.setattr(cli_mod, "flush_input", lambda: calls.append("flush"))
+        # a valid answer for each prompt type, otherwise rich would re-ask forever
+        monkeypatch.setattr("builtins.input", lambda *a, **kw: calls.append("input") or answer)
+        getattr(cli_mod, prompt_cls).ask("question?")
+        assert calls == ["flush", "input"]
+
+    def test_fetch_cover_skips_network_when_not_needed(self, monkeypatch):
+        monkeypatch.setattr(app_mod.api, "download_cover_image",
+                            lambda url: pytest.fail("must not download"))
+        assert app_mod.fetch_cover({"cover_url": "https://x/c.jpg"}, True, "5") is None   # --no-cover
+        assert app_mod.fetch_cover({"cover_url": "https://x/c.jpg"}, False, "1") is None  # .txt has no cover
+        assert app_mod.fetch_cover({"cover_url": None}, False, "5") is None              # no cover url
+
+    def test_fetch_cover_downloads_for_pdf(self, monkeypatch):
+        monkeypatch.setattr(app_mod.api, "download_cover_image", lambda url: b"cover-bytes")
+        assert app_mod.fetch_cover({"cover_url": "https://x/c.jpg"}, False, "5") == b"cover-bytes"
+
+
+class TestPartsMismatchWarning:
+    """Wattpad reports numParts. If fewer chapters are listed, warn the user."""
+
+    def test_warns_when_fewer_parts_than_reported(self, capsys):
+        app_mod.warn_if_parts_missing([{"id": 1}] * 73, {"num_parts": 80})
+        out = capsys.readouterr().out
+        assert "80" in out and "73" in out
+
+    def test_silent_when_counts_match(self, capsys):
+        app_mod.warn_if_parts_missing([{"id": 1}] * 5, {"num_parts": 5})
+        assert capsys.readouterr().out == ""
+
+    def test_silent_when_numparts_unknown(self, capsys):
+        app_mod.warn_if_parts_missing([{"id": 1}] * 5, {})
+        app_mod.warn_if_parts_missing([{"id": 1}] * 5, {"num_parts": None})
+        assert capsys.readouterr().out == ""
+
+    def test_get_story_info_exposes_num_parts(self):
+        with responses_lib.RequestsMock() as rsps:
+            rsps.add(responses_lib.GET, api_mod.STORY_INFO_URL.format(story_id="1"),
+                     json={"title": "T", "user": {"name": "A"}, "parts": [{"id": 1, "title": "c"}], "numParts": 3})
+            _, _, parts, meta = api_mod.get_story_info("1")
+        assert len(parts) == 1 and meta["num_parts"] == 3
+
+
+class TestPdfTallImages:
+    """Webtoon/comic strips are very tall. They must be sliced across pages instead of
+    being shrunk until unreadable."""
+
+    @staticmethod
+    def _png(width, height):
+        import io
+
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.new("RGB", (width, height), (200, 30, 30)).save(buf, format="PNG")
+        return buf.getvalue()
+
+    def test_tall_image_is_split_into_several_flowables(self):
+        flowables = writers_mod._pdf_image_flowables(self._png(100, 2000), 300.0, 400.0)
+        assert len(flowables) > 1
+        assert all(f.drawWidth <= 300.0 + 0.01 and f.drawHeight <= 400.0 + 0.01 for f in flowables)
+
+    def test_normal_image_stays_single(self):
+        assert len(writers_mod._pdf_image_flowables(self._png(300, 200), 300.0, 400.0)) == 1
+
+    def test_corrupt_image_returns_empty_list(self):
+        assert writers_mod._pdf_image_flowables(b"not an image", 300.0, 400.0) == []
+
+    def test_combined_pdf_with_tall_images_is_valid(self, tmp_path):
+        out = tmp_path / "comic.pdf"
+        results = [(1, "Chapter 1", "text")]
+        writers_mod.write_combined_pdf(out, "Comic", "Author", "1", results,
+                                       images_by_idx={1: [self._png(200, 3000)]})
+        assert out.read_bytes().startswith(b"%PDF")

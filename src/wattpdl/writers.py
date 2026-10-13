@@ -455,6 +455,40 @@ def _pdf_image_flowable(img_bytes: bytes, max_width: float, max_height: float):
         return None
 
 
+def _pdf_image_flowables(img_bytes: bytes, max_width: float, max_height: float) -> list:
+    """Like _pdf_image_flowable, but returns a list. A very tall image (typical for
+    webtoon/comic strips) is cut into page-sized slices that keep the full width,
+    instead of being shrunk until it is unreadable. Falls back to a single scaled
+    image if slicing is not possible. Returns [] for a corrupt image."""
+    import io
+
+    try:
+        from PIL import Image as PILImage
+
+        with PILImage.open(io.BytesIO(img_bytes)) as img:
+            img.load()
+            iw, ih = img.size
+            slice_h = int(iw * max_height / max_width) if max_width > 0 else 0
+            if iw > 0 and slice_h > 0 and ih > slice_h * 1.25:
+                flowables = []
+                rgb = img.convert("RGB")
+                top = 0
+                while top < ih:
+                    bottom = min(top + slice_h, ih)
+                    buf = io.BytesIO()
+                    rgb.crop((0, top, iw, bottom)).save(buf, format="JPEG", quality=90)
+                    flowable = _pdf_image_flowable(buf.getvalue(), max_width, max_height)
+                    if flowable:
+                        flowables.append(flowable)
+                    top = bottom
+                if flowables:
+                    return flowables
+    except Exception:
+        pass  # fall back to the single-image path below
+    single = _pdf_image_flowable(img_bytes, max_width, max_height)
+    return [single] if single else []
+
+
 def _text_to_pdf_flowables(text: str, styles) -> list:
     """Turn chapter text into a list of reportlab Paragraph flowables, keeping the spacing
     between paragraphs & lines. Special characters are escaped so they are not interpreted
@@ -516,9 +550,7 @@ def write_combined_pdf(path: pathlib.Path, title: str, author: str, story_id: st
         story.append(_pdf_chapter_heading(chapter_title, styles))
         story.extend(_text_to_pdf_flowables(text, styles))
         for img_bytes in images_by_idx.get(idx) or []:
-            flowable = _pdf_image_flowable(img_bytes, doc.width, doc.height * 0.7)
-            if flowable:
-                story.append(flowable)
+            story.extend(_pdf_image_flowables(img_bytes, doc.width, doc.height * 0.9))
         story.append(PageBreak())
 
     doc.build(story)
@@ -561,9 +593,7 @@ def write_separate_pdf_zip(path: pathlib.Path, title: str, author: str, story_id
             chap_story = [_pdf_chapter_heading(chapter_title, styles)]
             chap_story.extend(_text_to_pdf_flowables(text, styles))
             for img_bytes in images_by_idx.get(idx) or []:
-                flowable = _pdf_image_flowable(img_bytes, chap_doc.width, chap_doc.height * 0.7)
-                if flowable:
-                    chap_story.append(flowable)
+                chap_story.extend(_pdf_image_flowables(img_bytes, chap_doc.width, chap_doc.height * 0.9))
             chap_doc.build(chap_story)
             chapter_files.append(fname)
 

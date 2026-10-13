@@ -13,7 +13,7 @@
 
 </div>
 
-**English** | [Bahasa Indonesia](README.id.md)
+**English** | [Bahasa Indonesia](https://github.com/nekonaru/wattpdl/blob/main/README.id.md)
 
 ## ✨ About
 
@@ -30,7 +30,7 @@
 | 🧩 **4 download modes** | Everything in 1 file, everything separate in a `.zip`, pick several chapters, or just 1 chapter |
 | 📄 **5 file formats** | Save as plain `.txt`, Word `.docx`, `.epub` ebook, Markdown `.md`, or `.pdf` |
 | 🖼️ **Automatic cover** | The story cover is embedded in `.docx`/`.epub`/`.pdf` files (can be turned off with `--no-cover`) |
-| 🖼️ **Inline images** | Optional (`--include-images`) download & embed of images inside chapter text, not just the cover |
+| 🖼️ **Inline images** | Optional (`--include-images`) download & embed of images inside chapter text, not just the cover. Very tall images (webtoon/comic strips) are sliced across PDF pages so they stay readable |
 | 📚 **Rich EPUB metadata** | Genre/tags, story description, and publish date are saved as book metadata |
 | ⏭️ **Skip existing files** | Skip the download if the output file already exists in the target folder, so nothing is overwritten by accident |
 | 📁 **Choose the save folder** | Defaults to the system `Downloads` folder, customizable |
@@ -442,7 +442,7 @@ ruff check .
 
 ## 🤝 Contributing
 
-Want to help improve WattPDL? Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the project structure and contribution flow.
+Want to help improve WattPDL? Read [`CONTRIBUTING.md`](https://github.com/nekonaru/wattpdl/blob/main/CONTRIBUTING.md) for the project structure and contribution flow.
 
 ## ❓ FAQ
 
@@ -500,7 +500,7 @@ There is a 0.5 second delay between chapters (on purpose, so Wattpad's servers a
 
 ## 📄 License
 
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
+Distributed under the **MIT License**. See [`LICENSE`](https://github.com/nekonaru/wattpdl/blob/main/LICENSE) for more information.
 
 <div align="center">
 

@@ -117,6 +117,17 @@ MESSAGES = {
         ),
         "sum.title_done": "🎉 Berhasil!  Semua chapter tersimpan",
         "status.fetching_story": "Mengambil info cerita (ID: {story_id})…",
+        "warn.parts_mismatch": (
+            "⚠  Wattpad mencatat {reported} chapter, tapi hanya {accessible} yang tersedia. "
+            "Sebagian chapter mungkin disembunyikan, berbayar, atau belum dipublikasikan, "
+            "sehingga tidak bisa diunduh."
+        ),
+        "status.downloading_cover": "Mengunduh cover…",
+        "info.images_downloaded": "🖼  {n} gambar inline berhasil diunduh.",
+        "warn.no_images": (
+            "⚠  Tidak ada gambar inline yang berhasil diunduh dari chapter ini. "
+            "Kalau ceritanya berbasis gambar, mungkin gambarnya tidak tersedia atau diblokir Wattpad."
+        ),
         "err.api_access": "❌  Gagal mengakses API Wattpad:",
         "hint.check_connection": "    Pastikan koneksi internet stabil, dan coba lagi beberapa saat.",
         "err.no_chapters": "❌  Tidak ada chapter ditemukan. Cek lagi ID/link ceritanya.",
@@ -349,6 +360,16 @@ MESSAGES = {
         ),
         "sum.title_done": "🎉 Success!  All chapters saved",
         "status.fetching_story": "Fetching story info (ID: {story_id})…",
+        "warn.parts_mismatch": (
+            "⚠  Wattpad reports {reported} chapters, but only {accessible} are available. "
+            "Some chapters may be hidden, paid, or unpublished, so they cannot be downloaded."
+        ),
+        "status.downloading_cover": "Downloading cover…",
+        "info.images_downloaded": "🖼  {n} inline image(s) downloaded.",
+        "warn.no_images": (
+            "⚠  No inline images were downloaded from these chapters. "
+            "If the story is image-based, the images may be unavailable or blocked by Wattpad."
+        ),
         "err.api_access": "❌  Failed to reach the Wattpad API:",
         "hint.check_connection": "    Make sure your internet connection is stable, then try again in a moment.",
         "err.no_chapters": "❌  No chapters found. Double-check the story ID/link.",

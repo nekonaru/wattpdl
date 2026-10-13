@@ -41,7 +41,7 @@
 | ↻ **Resume otomatis** | Kalau proses terhenti di tengah jalan, jalankan ulang cerita yang sama, chapter yang sudah berhasil tidak diunduh ulang |
 | ⚙️ **Ingat preferensi** | Folder simpan, format file, dan bahasa tampilan terakhir otomatis dipakai lagi di sesi berikutnya |
 | 🤖 **Mode non-interaktif** | Bisa dijalankan lewat argumen command line untuk scripting/otomatisasi, tanpa perlu jawab prompt |
-| 🖼️ **Gambar inline** | Opsional (`--include-images`) ikut unduh & sisipkan gambar di dalam teks chapter, bukan cuma cover |
+| 🖼️ **Gambar inline** | Opsional (`--include-images`) ikut unduh & sisipkan gambar di dalam teks chapter, bukan cuma cover. Gambar yang sangat tinggi (strip webtoon/komik) dipotong per halaman PDF supaya tetap terbaca |
 | ⚡ **Unduh paralel** | `--workers N` mengunduh beberapa chapter sekaligus, mempercepat cerita panjang secara signifikan |
 | 🐢 **Rate-limit adaptif** | Jeda antar chapter otomatis melambat kalau Wattpad mulai membatasi (429/503), lalu pelan-pelan cepat lagi |
 | 👤 **Unduh per penulis** | `--user <username>` mengunduh semua/cerita pilihan dari satu penulis sekaligus |
