@@ -504,11 +504,15 @@ Story_Title.zip
 
 ## Built With
 
+<div align="center">
+
 ![Python](https://img.shields.io/badge/-Python-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Requests](https://img.shields.io/badge/-Requests-FF6B6B?style=flat-square)
 ![Rich](https://img.shields.io/badge/-Rich-FAE742?style=flat-square)
 ![python--docx](https://img.shields.io/badge/-python--docx-2B579A?style=flat-square)
 ![Wattpad API](https://img.shields.io/badge/-Wattpad%20Public%20API-FF6122?style=flat-square)
+
+</div>
 
 ---
 
