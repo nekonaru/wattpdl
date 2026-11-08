@@ -13,6 +13,10 @@ Connection pooling for faster downloads, Pillow is now a declared dependency, an
 - **Clearer chapter errors.** A chapter that is deleted or restricted (404/403 when fetching its text) now shows the same clear message style as the story-level errors.
 - **Internal cleanup.** Shared HTTP session, deduplicated helpers, and tidied modules. Command-line behavior is unchanged.
 
+### Bug fixes
+
+- **Python 3.9 installs no longer pull a broken reportlab.** reportlab 5 declares Python 3.9 support in its metadata but fails to import on 3.9; installs on Python 3.9 are now pinned to reportlab 4.x.
+
 ## v1.5.0
 
 WattPDL now speaks English by default and ships with fully bilingual English and Indonesian documentation.

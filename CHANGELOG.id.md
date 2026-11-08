@@ -13,6 +13,10 @@ Connection pooling untuk unduhan lebih cepat, Pillow kini dependency resmi, dan 
 - **Error chapter lebih jelas.** Chapter yang sudah dihapus atau dibatasi (404/403 saat fetch teksnya) sekarang menampilkan pesan sejelas error level cerita.
 - **Pembersihan internal.** Shared HTTP session, helper yang diduplikasi diringkas, dan modul dirapikan. Perilaku command line tidak berubah.
 
+### Perbaikan bug
+
+- **Install di Python 3.9 tidak lagi menarik reportlab yang rusak.** reportlab 5 menyatakan mendukung Python 3.9 di metadata-nya tapi gagal import di 3.9; install di Python 3.9 sekarang di-pin ke reportlab 4.x.
+
 ## v1.5.0
 
 WattPDL sekarang tampil dalam English secara default dan hadir dengan dokumentasi bilingual English dan Indonesia.
