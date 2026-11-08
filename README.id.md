@@ -117,6 +117,7 @@
 | **python-docx** | 1.1 | Output `.docx` |
 | **EbookLib** | 0.18 | Output `.epub` |
 | **reportlab** | 4.0 | Output `.pdf` |
+| **pillow** | 10.0 | Pemrosesan gambar untuk output `.pdf` |
 
 Library-library ini otomatis terinstall bareng `wattpdl`, tidak perlu diinstall manual.
 
@@ -562,7 +563,7 @@ wattpdl/
 
 ## Pengembangan
 
-Dibuat dengan Python, `requests`, `rich`, `python-docx`, `EbookLib`, dan `reportlab`.
+Dibuat dengan Python, `requests`, `rich`, `python-docx`, `EbookLib`, `reportlab`, dan `pillow`.
 
 ### Menambahkan string baru yang tampil ke pengguna
 
@@ -603,7 +604,7 @@ Aturan lint ada di `pyproject.toml` di bagian `[tool.ruff]` (line-length 110, ta
 
 | Workflow | Purpose |
 |----------|---------|
-| `tests.yml` | ruff lint, pytest di Python 3.9-3.12, dan package build dengan `twine check` di setiap push dan pull request ke `main` |
+| `tests.yml` | ruff lint, pytest di Python 3.9-3.12, dan package build dengan `twine check` di setiap push ke `main`, pull request ke `main`, dan push tag `v*` |
 | `publish.yml` | build dan publish ke PyPI lewat trusted publishing (OIDC) setiap GitHub Release dipublish |
 
 Lint, test, dan build check harus hijau sebelum setiap push. Publish ke PyPI hanya terjadi lewat GitHub Release yang dipublish.
@@ -619,6 +620,7 @@ Lint, test, dan build check harus hijau sebelum setiap push. Publish ke PyPI han
 | `Library 'python-docx' is not installed` | Jalankan `pip install python-docx` (hanya dibutuhkan kalau memilih format `.docx`) |
 | `Library 'EbookLib' is not installed` | Jalankan `pip install EbookLib` (hanya dibutuhkan kalau memilih format `.epub`) |
 | `Library 'reportlab' is not installed` | Jalankan `pip install reportlab` (hanya dibutuhkan kalau memilih format `.pdf`) |
+| `ModuleNotFoundError: No module named 'PIL'` | Jalankan `pip install pillow` (hanya dibutuhkan kalau memilih format `.pdf`) |
 | Error `404` / "Tidak ada chapter ditemukan" | Pastikan ID/link benar & cerita tidak di-private |
 | Folder tidak bisa dibuat | Cek path valid & kamu punya izin tulis di sana |
 | Proses macet di satu chapter | Cek koneksi internet, jalankan ulang, progress akan lanjut |

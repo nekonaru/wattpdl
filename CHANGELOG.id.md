@@ -2,6 +2,17 @@
 
 Semua perubahan penting project ini didokumentasikan di file ini. Formatnya mengikuti release notes; lihat [CHANGELOG.md](CHANGELOG.md) untuk versi English.
 
+## v1.6.0
+
+Connection pooling untuk unduhan lebih cepat, Pillow kini dependency resmi, dan pembersihan internal.
+
+### Peningkatan
+
+- **Connection pooling.** Request HTTP sekarang memakai ulang koneksi TCP/TLS per thread alih-alih handshake baru tiap chapter, mempercepat unduhan panjang, terutama dengan `--workers`.
+- **Pillow kini dependency resmi.** Sebelumnya dipakai untuk pemrosesan gambar PDF tapi hanya datang transitive lewat reportlab; `pip install wattpdl` sekarang menjaminnya.
+- **Error chapter lebih jelas.** Chapter yang sudah dihapus atau dibatasi (404/403 saat fetch teksnya) sekarang menampilkan pesan sejelas error level cerita.
+- **Pembersihan internal.** Shared HTTP session, helper yang diduplikasi diringkas, dan modul dirapikan. Perilaku command line tidak berubah.
+
 ## v1.5.0
 
 WattPDL sekarang tampil dalam English secara default dan hadir dengan dokumentasi bilingual English dan Indonesia.

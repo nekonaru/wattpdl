@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file. The format follows the release notes; see [CHANGELOG.id.md](CHANGELOG.id.md) for the Bahasa Indonesia version.
 
+## v1.6.0
+
+Connection pooling for faster downloads, Pillow is now a declared dependency, and an internal cleanup.
+
+### Improvements
+
+- **Connection pooling.** HTTP requests now reuse TCP/TLS connections per thread instead of a fresh handshake per chapter, which speeds up long downloads, especially with `--workers`.
+- **Pillow is now a declared dependency.** It was already used for PDF image processing but only arrived transitively through reportlab; `pip install wattpdl` now guarantees it.
+- **Clearer chapter errors.** A chapter that is deleted or restricted (404/403 when fetching its text) now shows the same clear message style as the story-level errors.
+- **Internal cleanup.** Shared HTTP session, deduplicated helpers, and tidied modules. Command-line behavior is unchanged.
+
 ## v1.5.0
 
 WattPDL now speaks English by default and ships with fully bilingual English and Indonesian documentation.

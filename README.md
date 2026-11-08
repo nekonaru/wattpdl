@@ -117,6 +117,7 @@
 | **python-docx** | 1.1 | `.docx` output |
 | **EbookLib** | 0.18 | `.epub` output |
 | **reportlab** | 4.0 | `.pdf` output |
+| **pillow** | 10.0 | Image processing for `.pdf` output |
 
 The libraries are installed automatically together with `wattpdl`, no manual install needed.
 
@@ -560,7 +561,7 @@ wattpdl/
 
 ## Development
 
-Built with Python, `requests`, `rich`, `python-docx`, `EbookLib`, and `reportlab`.
+Built with Python, `requests`, `rich`, `python-docx`, `EbookLib`, `reportlab`, and `pillow`.
 
 ### Adding a new user-facing string
 
@@ -601,7 +602,7 @@ Lint rules live in `pyproject.toml` under `[tool.ruff]` (line-length 110, target
 
 | Workflow | Purpose |
 |----------|---------|
-| `tests.yml` | ruff lint, pytest on Python 3.9-3.12, and a package build with `twine check` on every push and pull request to `main` |
+| `tests.yml` | ruff lint, pytest on Python 3.9-3.12, and a package build with `twine check` on every push to `main`, pull request to `main`, and push to a `v*` tag |
 | `publish.yml` | builds and publishes to PyPI via trusted publishing (OIDC) when a GitHub Release is published |
 
 Lint, tests, and the build check must be green before every push. Publishing to PyPI happens only through a published GitHub Release.
@@ -617,6 +618,7 @@ Lint, tests, and the build check must be green before every push. Publishing to 
 | `Library 'python-docx' is not installed` | Run `pip install python-docx` (only needed if you choose the `.docx` format) |
 | `Library 'EbookLib' is not installed` | Run `pip install EbookLib` (only needed if you choose the `.epub` format) |
 | `Library 'reportlab' is not installed` | Run `pip install reportlab` (only needed if you choose the `.pdf` format) |
+| `ModuleNotFoundError: No module named 'PIL'` | Run `pip install pillow` (only needed if you choose the `.pdf` format) |
 | `404` error / "No chapters found" | Make sure the ID/link is correct & the story is not private |
 | Folder cannot be created | Check that the path is valid & you have write permission there |
 | The process hangs on one chapter | Check your internet connection and run again, progress will continue |
