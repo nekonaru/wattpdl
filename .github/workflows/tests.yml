@@ -25,7 +25,9 @@ jobs:
         run: ruff check .
 
   test:
-    runs-on: ubuntu-latest
+    # ubuntu-22.04 still ships the Python 3.9 build; the newer runner image
+    # (ubuntu-latest / 26.04) no longer provides it.
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
