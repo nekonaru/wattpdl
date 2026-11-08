@@ -522,10 +522,11 @@ class TestCoverImage:
         assert api_mod.download_cover_image("") is None
 
     def test_download_cover_image_returns_none_on_request_failure(self, monkeypatch):
-        def fake_get(*args, **kwargs):
-            raise requests.ConnectionError("gagal konek")
+        class FakeSession:
+            def get(self, *args, **kwargs):
+                raise requests.ConnectionError("gagal konek")
 
-        monkeypatch.setattr(api_mod.requests, "get", fake_get)
+        monkeypatch.setattr(api_mod, "_http_session", lambda: FakeSession())
         # A cover download failure must NOT stop the process (the cover is only a nice-to-have).
         assert api_mod.download_cover_image("https://example.com/cover.jpg") is None
 
@@ -724,7 +725,7 @@ class TestAdaptiveRateLimiter:
         rl.report_success()
         assert rl.current_delay == 0.5  # back to normal after enough successes
 
-    def test_get_chapter_html_reports_429_to_limiter(self):
+    def test_get_chapter_html_reports_429_to_limiter(self, monkeypatch):
         rl = api_mod.AdaptiveRateLimiter(base_delay=0.1, max_delay=1.0)
 
         class FakeResp:
@@ -749,15 +750,15 @@ class TestAdaptiveRateLimiter:
             resp.text = "<p>OK</p>"
             return resp
 
-        orig_get = api_module.requests.get
-        api_module.requests.get = fake_get
-        try:
-            html = api_mod.get_chapter_html(1, retries=3, rate_limiter=rl)
-            assert html == "<p>OK</p>"
-            # after 1 throttled then 1 success, the level goes up to 1 then back down to 0
-            assert rl.current_delay == 0.1
-        finally:
-            api_module.requests.get = orig_get
+        class FakeSession:
+            def get(self, *args, **kwargs):
+                return fake_get(*args, **kwargs)
+
+        monkeypatch.setattr(api_module, "_http_session", lambda: FakeSession())
+        html = api_mod.get_chapter_html(1, retries=3, rate_limiter=rl)
+        assert html == "<p>OK</p>"
+        # after 1 throttled then 1 success, the level goes up to 1 then back down to 0
+        assert rl.current_delay == 0.1
 
 
 class TestAuthorStories:
@@ -1448,3 +1449,53 @@ class TestPdfTallImages:
         writers_mod.write_combined_pdf(out, "Comic", "Author", "1", results,
                                        images_by_idx={1: [self._png(200, 3000)]})
         assert out.read_bytes().startswith(b"%PDF")
+
+
+class TestChapterHttpErrors:
+    """Chapter fetches map 404/403/401 to the same specific errors as story
+    fetches, so a deleted chapter shows a clean message instead of a raw
+    requests.HTTPError."""
+
+    @responses_lib.activate
+    def test_chapter_404_raises_story_not_found(self):
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.CHAPTER_TEXT_URL.format(part_id=123),
+            status=404,
+        )
+        with pytest.raises(api_mod.StoryNotFoundError):
+            api_mod.get_chapter_html(123, retries=1)
+
+    @responses_lib.activate
+    def test_chapter_403_raises_story_access_error(self):
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.CHAPTER_TEXT_URL.format(part_id=123),
+            status=403,
+        )
+        with pytest.raises(api_mod.StoryAccessError):
+            api_mod.get_chapter_html(123, retries=1)
+
+    @responses_lib.activate
+    def test_chapter_500_still_raises_raw(self):
+        responses_lib.add(
+            responses_lib.GET,
+            api_mod.CHAPTER_TEXT_URL.format(part_id=123),
+            status=500,
+        )
+        with pytest.raises(requests.HTTPError):
+            api_mod.get_chapter_html(123, retries=1)
+
+
+class TestHttpSession:
+    """The module hands out one shared requests.Session per thread, so
+    chapter downloads reuse TCP/TLS connections instead of a handshake
+    per request."""
+
+    def test_session_is_reused_per_thread(self):
+        assert api_mod._http_session() is api_mod._http_session()
+
+    def test_session_has_pool_adapter(self):
+        session = api_mod._http_session()
+        adapter = session.get_adapter("https://example.com")
+        assert adapter._pool_maxsize >= 10

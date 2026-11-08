@@ -225,6 +225,7 @@ MESSAGES = {
         ),
         "api.context_story": "cerita",
         "api.context_author": "akun penulis",
+        "api.context_chapter": "chapter",
         "api.not_found": (
             "{context} tidak ditemukan. Kemungkinan sudah dihapus "
             "penulisnya, akun penulisnya sudah nonaktif, atau ID/link yang "
@@ -467,6 +468,7 @@ MESSAGES = {
         ),
         "api.context_story": "story",
         "api.context_author": "author account",
+        "api.context_chapter": "chapter",
         "api.not_found": (
             "{context} not found. It may have been deleted by the author, "
             "the author's account may be deactivated, or the ID/link "

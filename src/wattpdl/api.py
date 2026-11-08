@@ -20,6 +20,25 @@ HEADERS = {
     )
 }
 
+# One shared `requests.Session` per thread, so chapter downloads reuse TCP/TLS
+# connections instead of a full handshake per request. The downloads can run on
+# several threads (--workers), so the session is kept thread-local (sessions are
+# not documented as thread-safe). Requests to the same host reuse the pooled
+# connection either way; that is where almost all of the time is saved.
+_thread_local = threading.local()
+
+
+def _http_session() -> requests.Session:
+    session = getattr(_thread_local, "session", None)
+    if session is None:
+        session = requests.Session()
+        session.headers.update(HEADERS)
+        adapter = requests.adapters.HTTPAdapter(pool_connections=1, pool_maxsize=10)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        _thread_local.session = session
+    return session
+
 STORY_INFO_URL = (
     "https://www.wattpad.com/api/v3/stories/{story_id}"
     "?fields=id,title,description,cover,tags,createDate,completed,"
@@ -139,7 +158,7 @@ def get_story_info(story_id: str) -> tuple[str, str, list, dict]:
     requests.HTTPError.
     """
     url = STORY_INFO_URL.format(story_id=story_id)
-    resp = requests.get(url, headers=HEADERS, timeout=20)
+    resp = _http_session().get(url, timeout=20)
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
@@ -168,7 +187,7 @@ def get_author_stories(username: str) -> list:
     from one author at once, without looking up IDs one by one).
     """
     url = AUTHOR_STORIES_URL.format(username=username)
-    resp = requests.get(url, headers=HEADERS, timeout=20)
+    resp = _http_session().get(url, timeout=20)
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
@@ -186,36 +205,28 @@ def get_author_stories(username: str) -> list:
     ]
 
 
-def download_cover_image(cover_url: str) -> Optional[bytes]:
-    """
-    Download the story cover image. Used to embed the cover in .docx/.epub files.
-    A failure here must not stop the story download: the cover is only a
-    nice-to-have, not an essential part, so always return None on failure
-    and never raise an exception.
-    """
-    if not cover_url:
-        return None
-    try:
-        resp = requests.get(cover_url, headers=HEADERS, timeout=20)
-        resp.raise_for_status()
-        return resp.content
-    except requests.RequestException:
-        return None
-
-
 def download_image(image_url: str) -> Optional[bytes]:
-    """Download 1 generic image (used for inline images inside a chapter).
-    Same as download_cover_image: a failure must not break the whole
-    process, inline images are only extras, return None on failure.
+    """Download 1 image (used for inline images inside a chapter, and for the
+    story cover). A failure must not break the whole process, images are only
+    extras, so always return None on failure and never raise an exception.
     """
     if not image_url:
         return None
     try:
-        resp = requests.get(image_url, headers=HEADERS, timeout=20)
+        resp = _http_session().get(image_url, timeout=20)
         resp.raise_for_status()
         return resp.content
     except requests.RequestException:
         return None
+
+
+def download_cover_image(cover_url: str) -> Optional[bytes]:
+    """Download the story cover image. Used to embed the cover in .docx/.epub files.
+    Same contract as download_image: a failure must not stop the story download,
+    return None on failure instead of raising. Kept as a separate name for
+    backwards compatibility.
+    """
+    return download_image(cover_url)
 
 
 def get_chapter_html(
@@ -233,12 +244,13 @@ def get_chapter_html(
     themselves to the rate limiter so the delay between chapters slows down automatically.
     """
     if retries < 1:
-        raise ValueError("retries harus >= 1")
+        raise ValueError("retries must be >= 1")
 
     url = CHAPTER_TEXT_URL.format(part_id=part_id)
+    session = _http_session()
     for attempt in range(1, retries + 1):
         try:
-            resp = requests.get(url, headers=HEADERS, timeout=20)
+            resp = session.get(url, timeout=20)
             resp.raise_for_status()
             if rate_limiter:
                 rate_limiter.report_success()
@@ -248,6 +260,8 @@ def get_chapter_html(
             if rate_limiter and status in (429, 503):
                 rate_limiter.report_throttled()
             if attempt == retries:
+                if status in (404, 401, 403):
+                    _raise_specific_http_error(e, context=t("api.context_chapter"))
                 raise
             wait = attempt * 2
             if on_retry:
