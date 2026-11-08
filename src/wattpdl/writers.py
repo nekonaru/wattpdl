@@ -14,7 +14,7 @@ from .i18n import t
 
 
 def html_to_text(raw_html: str) -> str:
-    """Konversi HTML Wattpad ke teks bersih."""
+    """Convert Wattpad HTML to clean plain text."""
     text = re.sub(r"</p>",       "\n\n", raw_html, flags=re.IGNORECASE)
     text = re.sub(r"<br\s*/?>",  "\n",   text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>",   "",     text)
@@ -82,12 +82,21 @@ def check_epub_available(console=None) -> None:
         sys.exit(1)
 
 
+def _story_header_lines(title: str, author: str, story_id: str) -> list:
+    """The title / author / source header used by every plain-text style output
+    (.txt combined, 000_info.txt in zip mode)."""
+    return [
+        title,
+        f"by {author}",
+        f"Source: https://www.wattpad.com/story/{story_id}",
+    ]
+
+
 def write_combined_txt(path: pathlib.Path, title: str, author: str, story_id: str, results: list) -> None:
     """Write all the given chapters into one .txt file."""
     with open(path, "w", encoding="utf-8") as f:
-        f.write(f"{title}\n")
-        f.write(f"by {author}\n")
-        f.write(f"Source: https://www.wattpad.com/story/{story_id}\n")
+        for line in _story_header_lines(title, author, story_id):
+            f.write(f"{line}\n")
         f.write(f"\n{'=' * 50}\n\n")
         for _, chapter_title, text in results:
             f.write(f"\n\n{'#' * 5} {chapter_title} {'#' * 5}\n\n")
@@ -137,11 +146,7 @@ def write_separate_md_zip(path: pathlib.Path, title: str, author: str, story_id:
 def write_separate_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list) -> None:
     """Write each chapter as a separate .txt file, packed into one .zip."""
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
-        info = (
-            f"{title}\n"
-            f"by {author}\n"
-            f"Source: https://www.wattpad.com/story/{story_id}\n"
-        )
+        info = "\n".join(_story_header_lines(title, author, story_id)) + "\n"
         zf.writestr("000_info.txt", info)
         for idx, chapter_title, text in results:
             fname = f"{idx:03d}_{safe_filename(chapter_title)}.txt"
@@ -603,13 +608,27 @@ def write_separate_pdf_zip(path: pathlib.Path, title: str, author: str, story_id
 
 
 def check_pdf_available(console=None) -> None:
-    """Make sure the reportlab library is installed before it is used."""
+    """Make sure the reportlab and Pillow libraries are installed before they are used."""
     try:
+        import PIL  # noqa: F401
         import reportlab  # noqa: F401
-    except ImportError:
+    except ImportError as e:
+        missing = "reportlab" if getattr(e, "name", "PIL") == "reportlab" else "pillow"
         if console:
-            console.print(f"[danger]{t('lib.missing', lib='reportlab')}[/danger]")
-            console.print(f"[muted]{t('lib.run')}[/muted] [accent]pip install reportlab[/accent]")
+            console.print(f"[danger]{t('lib.missing', lib=missing)}[/danger]")
+            console.print(f"[muted]{t('lib.run')}[/muted] [accent]pip install {missing}[/accent]")
         else:
-            print(t("lib.missing_plain", lib="reportlab"))
+            print(t("lib.missing_plain", lib=missing))
         sys.exit(1)
+
+
+def check_format_libraries(file_format: str, console=None) -> None:
+    """Make sure the library required by the chosen output format is installed.
+    Calls the matching check_*_available() helper, which prints a tidy message
+    and exits if the library is missing. Text-based formats (.txt, .md) need nothing."""
+    if file_format == "2":
+        check_docx_available(console)
+    elif file_format == "3":
+        check_epub_available(console)
+    elif file_format == "5":
+        check_pdf_available(console)

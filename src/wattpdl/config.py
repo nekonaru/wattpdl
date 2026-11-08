@@ -31,7 +31,7 @@ def load_config() -> dict:
 
 
 def save_config(**updates) -> None:
-    """Simpan/gabungkan preferensi baru ke config di disk."""
+    """Save/merge new preferences into the on-disk config."""
     config = load_config()
     config.update(updates)
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)

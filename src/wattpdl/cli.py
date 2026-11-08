@@ -6,7 +6,10 @@ here; all data fetching goes through the `api` module.
 import os
 import pathlib
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from rich import box
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -20,10 +23,13 @@ from rich.prompt import Confirm as _RichConfirm
 from rich.prompt import IntPrompt as _RichIntPrompt
 from rich.prompt import Prompt as _RichPrompt
 from rich.rule import Rule
+from rich.table import Table
 from rich.theme import Theme
 
 from . import api
+from . import progress as progress_mod
 from .i18n import t
+from .writers import html_to_text
 
 
 def flush_input() -> None:
@@ -140,9 +146,6 @@ def format_duration(seconds: float) -> str:
 
 def show_chapter_list(parts: list) -> None:
     """Show a table of the number + title of every chapter."""
-    from rich import box
-    from rich.table import Table
-
     table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
     table.add_column(t("table.no"), style="muted", justify="right", width=5)
     table.add_column(t("table.chapter_title"), style="value")
@@ -252,12 +255,6 @@ def download_chapters(
       images_by_idx = {chapter_number: [image_bytes, ...]}, empty if
         include_images=False.
     """
-    import threading
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    from . import progress as progress_mod
-    from .writers import html_to_text
-
     if rate_limiter is None:
         rate_limiter = api.AdaptiveRateLimiter()
 

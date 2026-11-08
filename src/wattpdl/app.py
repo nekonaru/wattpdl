@@ -24,8 +24,20 @@ from .cli import console, step_rule
 from .i18n import t
 
 
+def print_story_info(title: str, author: str, parts: list) -> None:
+    """Print the story info panel (title, author, chapter count) shown before
+    any download starts. Shared by the interactive and non-interactive flows."""
+    info_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
+    info_table.add_column(style="muted")
+    info_table.add_column(style="value")
+    info_table.add_row(t("info.title"), title)
+    info_table.add_row(t("info.author"), author)
+    info_table.add_row(t("info.chapter_count"), str(len(parts)))
+    console.print(Panel(info_table, border_style="success", box=box.ROUNDED, padding=(1, 2)))
+
+
 def resolve_save_dir(custom_path: str, config: dict) -> pathlib.Path:
-    """Tentukan folder simpan: argumen/input custom > config tersimpan > folder Downloads default."""
+    """Resolve the save folder: custom path/argument wins, then the saved config, then the default Downloads folder."""
     if custom_path:
         save_dir = pathlib.Path(custom_path).expanduser().resolve()
     elif config.get("save_dir"):
@@ -290,21 +302,10 @@ def run_non_interactive(args):
     title, author, parts, meta = fetch_story_or_exit(story_id, use_cache=not args.no_cache)
 
     step_rule(t("step.story_info"))
-    info_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
-    info_table.add_column(style="muted")
-    info_table.add_column(style="value")
-    info_table.add_row(t("info.title"), title)
-    info_table.add_row(t("info.author"), author)
-    info_table.add_row(t("info.chapter_count"), str(len(parts)))
-    console.print(Panel(info_table, border_style="success", box=box.ROUNDED, padding=(1, 2)))
+    print_story_info(title, author, parts)
 
     file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
-    if file_format == "2":
-        writers.check_docx_available(console)
-    elif file_format == "3":
-        writers.check_epub_available(console)
-    elif file_format == "5":
-        writers.check_pdf_available(console)
+    writers.check_format_libraries(file_format, console)
 
     save_dir = resolve_save_dir(args.output_dir, config)
 
@@ -341,13 +342,7 @@ def run_interactive():
     title, author, parts, meta = fetch_story_or_exit(story_id)
 
     step_rule(t("step.story_info"))
-    info_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
-    info_table.add_column(style="muted")
-    info_table.add_column(style="value")
-    info_table.add_row(t("info.title"), title)
-    info_table.add_row(t("info.author"), author)
-    info_table.add_row(t("info.chapter_count"), str(len(parts)))
-    console.print(Panel(info_table, border_style="success", box=box.ROUNDED, padding=(1, 2)))
+    print_story_info(title, author, parts)
 
     step_rule(t("step.pick_mode"))
     mode_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
@@ -377,12 +372,7 @@ def run_interactive():
         choices=["1", "2", "3", "4", "5"],
         default=config.get("file_format", "1"),
     )
-    if file_format == "2":
-        writers.check_docx_available(console)
-    elif file_format == "3":
-        writers.check_epub_available(console)
-    elif file_format == "5":
-        writers.check_pdf_available(console)
+    writers.check_format_libraries(file_format, console)
 
     include_images = False
     if file_format in ("2", "3", "5"):
@@ -474,12 +464,7 @@ def run_user_mode(args) -> None:
 
     config = config_mod.load_config()
     file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
-    if file_format == "2":
-        writers.check_docx_available(console)
-    elif file_format == "3":
-        writers.check_epub_available(console)
-    elif file_format == "5":
-        writers.check_pdf_available(console)
+    writers.check_format_libraries(file_format, console)
     save_dir = resolve_save_dir(args.output_dir, config)
 
     for n, story_index in enumerate(chosen_indices, start=1):
@@ -584,12 +569,7 @@ def run_watch(args) -> None:
                     )
                 config = config_mod.load_config()
                 file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
-                if file_format == "2":
-                    writers.check_docx_available(console)
-                elif file_format == "3":
-                    writers.check_epub_available(console)
-                elif file_format == "5":
-                    writers.check_pdf_available(console)
+                writers.check_format_libraries(file_format, console)
                 save_dir = resolve_save_dir(args.output_dir, config)
                 cover_bytes = fetch_cover(meta, args.no_cover, file_format)
                 run_download(
