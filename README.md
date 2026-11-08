@@ -1,11 +1,12 @@
 <div align="center">
+  <img src="assets/logo.png" alt="WattPDL logo" width="120" />
   <h1>WattPDL: Wattpad Story Downloader</h1>
-  <p><b>Save your favorite stories as <code>.txt</code>, <code>.docx</code>, <code>.epub</code>, <code>.md</code>, or <code>.pdf</code> files,<br/>
-  whole or chapter by chapter, for offline reading.</b></p>
+  <p><b>Download Wattpad stories as offline .txt, .docx, .epub, .md, or .pdf files,<br/>
+  whole or chapter by chapter, with no login or API key.</b></p>
 
-  <a href="https://pypi.org/project/wattpdl/"><img src="https://img.shields.io/pypi/v/wattpdl?style=flat-square&color=blue" alt="PyPI" /></a>
-  <a href="https://github.com/nekonaru/wattpdl/actions/workflows/tests.yml"><img src="https://github.com/nekonaru/wattpdl/actions/workflows/tests.yml/badge.svg" alt="Tests" /></a>
-  <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
+  <a href="https://github.com/nekonaru/wattpdl/releases"><img src="https://img.shields.io/github/v/release/nekonaru/wattpdl?style=flat-square&color=blue" alt="Release" /></a>
+  <a href="https://github.com/nekonaru/wattpdl/actions/workflows/tests.yml"><img src="https://github.com/nekonaru/wattpdl/actions/workflows/tests.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.9+" />
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square" alt="Status" />
@@ -13,10 +14,10 @@
 
 <br />
 
-**English** | [Bahasa Indonesia](https://github.com/nekonaru/wattpdl/blob/main/README.id.md)
+**English** | [Bahasa Indonesia](README.id.md)
 
-> [!CAUTION]
-> This script is only for reading your own stories or public stories offline. Respect the authors' copyright. Do not redistribute or sell other people's stories.
+> [!NOTE]
+> WattPDL is only for reading your own or publicly available stories offline. Respect the authors' copyright: do not redistribute or sell downloaded stories.
 
 ---
 
@@ -27,21 +28,16 @@
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Automatic Resume](#automatic-resume)
-- [Saved Preferences](#saved-preferences)
 - [Display Language](#display-language)
-- [Non-Interactive Mode (Scripting/Automation)](#non-interactive-mode-scriptingautomation)
-- [Output Structure](#output-structure)
-- [Default Folder per OS](#default-folder-per-os)
-- [Troubleshooting](#troubleshooting)
-- [Important Notes](#important-notes)
-- [Built With](#built-with)
+- [Data Sources](#data-sources)
 - [Project Structure](#project-structure)
+- [Development](#development)
 - [Testing](#testing)
 - [Continuous Integration](#continuous-integration)
-- [Contributing](#contributing)
+- [Troubleshooting](#troubleshooting)
 - [FAQ](#faq)
 - [Author](#author)
+- [Disclaimer](#disclaimer)
 - [License](#license)
 
 ---
@@ -56,40 +52,49 @@
 
 ## Features
 
-### Downloading
+### Download Modes
 
 | Feature | Description |
 |---------|-------------|
 | **4 download modes** | Everything in 1 file, everything separate in a `.zip`, pick several chapters, or just 1 chapter |
-| **5 file formats** | Save as plain `.txt`, Word `.docx`, `.epub` ebook, Markdown `.md`, or `.pdf` |
-| **No login** | Uses Wattpad's public endpoint, so no account is needed |
 | **Download by author** | `--user <username>` downloads all or selected stories from one author at once |
-| **Choose the save folder** | Defaults to the system `Downloads` folder, customizable |
+| **Non-interactive mode** | Run with command line arguments for scripting/automation, no prompts to answer |
+| **Automatic resume** | If the process stops midway, run the same story again: chapters that already succeeded are not downloaded again |
 | **Skip existing files** | Skip the download if the output file already exists in the target folder, so nothing is overwritten by accident |
-| **Safe file names** | Illegal characters are removed from file names automatically |
 
-### Output Content
+### Formats and Output
 
 | Feature | Description |
 |---------|-------------|
+| **5 file formats** | Save as plain `.txt`, Word `.docx`, `.epub` ebook, Markdown `.md`, or `.pdf` |
 | **Automatic cover** | The story cover is embedded in `.docx`/`.epub`/`.pdf` files (can be turned off with `--no-cover`) |
 | **Inline images** | Optional (`--include-images`) download & embed of images inside chapter text, not just the cover. Very tall images (webtoon/comic strips) are sliced across PDF pages so they stay readable |
 | **Rich EPUB metadata** | Genre/tags, story description, and publish date are saved as book metadata |
-| **Source link saved** | The story URL is included in the header of the resulting file |
 | **`--lang`** | Sets the EPUB metadata language code (default `id`) for stories in other languages |
+| **Source link saved** | The story URL is included in the header of the resulting file |
+| **Safe file names** | Illegal characters are removed from file names automatically |
+| **Choose the save folder** | Defaults to the system `Downloads` folder, customizable |
 
-### Reliability and Speed
+### Reliability and Performance
 
 | Feature | Description |
 |---------|-------------|
+| **No login** | Uses Wattpad's public endpoint, so no account is needed |
 | **Auto-retry** | A failed chapter is retried up to 3 times before being skipped |
-| **Automatic resume** | If the process stops midway, run the same story again: chapters that already succeeded are not downloaded again |
 | **Parallel download** | `--workers N` downloads several chapters at once, speeding up long stories significantly |
 | **Adaptive rate limit** | The delay between chapters slows down automatically when Wattpad starts limiting requests (429/503), then gradually speeds up again |
 | **Metadata cache** | Story info is cached briefly so repeated attempts in a short time do not always hit the API |
 | **Specific error messages** | Different messages for a deleted story (404) vs a private/restricted one (403) |
 
-### Interface
+### Automation
+
+| Feature | Description |
+|---------|-------------|
+| **New chapter detection** | `--check-updates` reports which ongoing stories already have new chapters |
+| **Watch mode** | `--watch` monitors 1 story continuously and re-downloads as soon as a new chapter appears |
+| **wattpdl update check** | Notifies you automatically when a newer wattpdl version is on PyPI |
+
+### Interface and Experience
 
 | Feature | Description |
 |---------|-------------|
@@ -99,24 +104,24 @@
 | **Final summary** | A report panel listing failed chapters (if any) when finished |
 | **Remembers preferences** | The last save folder, file format, and language are reused in the next session |
 
-### Automation and Updates
-
-| Feature | Description |
-|---------|-------------|
-| **Non-interactive mode** | Run with command line arguments for scripting/automation, no prompts to answer |
-| **New chapter detection** | `--check-updates` reports which ongoing stories already have new chapters |
-| **Watch mode** | `--watch` monitors 1 story continuously and re-downloads as soon as a new chapter appears |
-| **wattpdl update check** | Notifies you automatically when a newer wattpdl version is on PyPI |
-
 ---
 
 ## Requirements
 
 | Dependency | Minimum Version | Notes |
 |------------|-----------------|-------|
-| **Python** | 3.9 | Required |
-| **Internet connection** | any | Required |
-| **Libraries** | see notes | `requests`, `rich`, `python-docx`, `EbookLib`, `reportlab`, installed automatically together with `wattpdl`, no manual install needed |
+| **Python** | 3.9 | Runtime; Windows, macOS, or Linux |
+| **Internet connection** | - | Required to reach Wattpad's public API |
+| **requests** | 2.31 | HTTP client |
+| **rich** | 13.7 | Terminal display |
+| **python-docx** | 1.1 | `.docx` output |
+| **EbookLib** | 0.18 | `.epub` output |
+| **reportlab** | 4.0 | `.pdf` output |
+
+The libraries are installed automatically together with `wattpdl`, no manual install needed.
+
+> [!TIP]
+> If you only want to use wattpdl, you do not need to install the libraries by hand. `pip install wattpdl` pulls in everything.
 
 ### Never used a terminal? Start here
 
@@ -147,7 +152,7 @@ Press **Ctrl + Alt + T**, or search for the "Terminal" app in your application m
 ### Don't have Python yet?
 
 1. Go to [python.org/downloads](https://www.python.org/downloads/) and download the latest version
-2. **Windows only**: during installation, tick the **"Add Python to PATH"** box on the first screen before clicking Install
+2. **Windows only**: during installation, tick the **"Add Python to PATH"** box on the first screen before clicking Install. If you miss this, the `python` command will not be recognized later
 3. After installing, open a terminal (see the guide above) and check with:
 
 ```bash
@@ -158,31 +163,38 @@ python3 --version
 
 If a version number appears (for example `Python 3.12.1`), you are ready.
 
-> [!WARNING]
-> On Windows, if you miss the **"Add Python to PATH"** box during installation, the `python` command will not be recognized later.
-
 ---
 
 ## Installation
 
 ### Option A: Install from PyPI (easiest)
 
+1. Open a terminal (see [Never used a terminal? Start here](#never-used-a-terminal-start-here))
+2. Install wattpdl:
+
 ```bash
 pip install wattpdl
 ```
 
-> [!TIP]
-> If `pip` is not recognized, try `python -m pip install wattpdl`.
+3. Verify the install:
 
-> [!NOTE]
-> If you get an `externally-managed-environment` error (usually on Linux), run:
+```bash
+wattpdl --version
+```
+
+> If `pip` is not recognized, try:
+> ```bash
+> python -m pip install wattpdl
+> ```
+
+> If you get an `externally-managed-environment` error (usually on Linux):
 > ```bash
 > pip install wattpdl --break-system-packages
 > ```
 
 Once installed, the `wattpdl` command works from any terminal. Continue to [Usage](#usage).
 
-### Option B: Install from source (for development / to read or change the code)
+### Option B: Build from source (for development / to read or change the code)
 
 #### 1. Get the project code
 
@@ -200,7 +212,7 @@ cd wattpdl
 <summary><b>I don't have Git</b></summary>
 
 1. Open the repository page on GitHub
-2. Click the green **`Code`** button, then choose **`Download ZIP`**
+2. Click the green **`Code`** button, choose **`Download ZIP`**
 3. Extract the downloaded ZIP file to a folder of your choice
 4. In the terminal, go into the extracted folder, for example:
 
@@ -210,16 +222,24 @@ cd Downloads/wattpdl-main
 
 </details>
 
-#### 2. Install in "editable" mode
+#### 2. Install dependencies and verify
 
 ```bash
 pip install -e .
+wattpdl --version
 ```
 
-> [!NOTE]
 > Same as Option A, add `--break-system-packages` at the end if you get an `externally-managed-environment` error.
 
 This also registers the `wattpdl` command, but it loads the code directly from this folder, which is ideal if you want to modify the code and see the result right away without reinstalling.
+
+#### 3. Run the tests
+
+```bash
+pip install -e .[dev]
+pytest tests/ -v
+ruff check .
+```
 
 ### Option C: Arch Linux (AUR)
 
@@ -233,23 +253,21 @@ yay -S wattpdl
 paru -S wattpdl
 ```
 
-> [!NOTE]
 > The AUR package is maintained separately, so a new version may show up there a little after the PyPI release.
 
 ---
 
 ## Usage
 
-**Run:**
+### First launch
+
+1. Run:
 
 ```bash
 wattpdl
 ```
 
-> [!NOTE]
-> If you installed from source without `pip install -e .`, run it with `python -m wattpdl` from inside the `src/` folder. The editable install above is recommended, though.
-
-**Enter the story link or ID when asked:**
+2. Enter the story link or ID when asked:
 
 ```
 Wattpad story link or ID: https://www.wattpad.com/story/123456789-story-title
@@ -261,25 +279,25 @@ or just the ID:
 Wattpad story link or ID: 123456789
 ```
 
-**Choose the download mode:**
+The story ID is the number in the Wattpad URL, right after `/story/`.
+
+3. Choose the download mode:
 
 ```
-  1  All chapters → 1 combined file
-  2  All chapters → separate file per chapter, packed as .zip
-  3  Select several chapters → 1 combined file
+  1  All chapters -> 1 combined file
+  2  All chapters -> separate file per chapter, packed as .zip
+  3  Select several chapters -> 1 combined file
   4  Select 1 chapter only
 
 Select mode [1/2/3/4] (1):
 ```
 
-| Mode | Description |
-|------|-------------|
-| **Mode 1** | The most common way, the whole story as one tidy file from the first to the last chapter |
-| **Mode 2** | Good if you want to read chapter by chapter, producing one `.zip` with a file per chapter |
-| **Mode 3** | A numbered list of all chapter titles appears, then type the numbers you want, combining commas and ranges, for example: `1,3,5-8` |
-| **Mode 4** | A list of all chapter titles appears, type a single number to download only that chapter |
+- **Mode 1**: the most common way, the whole story as one tidy file from the first to the last chapter
+- **Mode 2**: good if you want to read chapter by chapter, producing one `.zip` with a file per chapter
+- **Mode 3**: a numbered list of all chapter titles appears, then type the numbers you want, combining commas and ranges, for example: `1,3,5-8`
+- **Mode 4**: a list of all chapter titles appears, type a single number to download only that chapter
 
-**Choose the file format:**
+4. Choose the file format:
 
 ```
   1  Plain text (.txt)
@@ -291,7 +309,7 @@ Select mode [1/2/3/4] (1):
 Select file format [1/2/3/4/5] (1):
 ```
 
-**Choose the save folder:**
+5. Choose the save folder:
 
 ```
 Default folder: C:\Users\user\Downloads
@@ -299,66 +317,102 @@ Press Enter to use that folder, or type another path:
 ```
 
 Press **Enter** to save in `Downloads`, or type a custom path such as:
+
 - Windows: `D:\Stories\Wattpad`
 - Linux/macOS: `/home/user/stories`
 
-**Wait for it to finish:**
+6. Wait for it to finish:
 
 ```
 ⠋ Chapter 24...              ████████████████░░░░░░░░░░░░░░  53.3%  24/45  0:00:12  left 0:00:11
 ```
 
-**Done!**
+7. When it finishes, a summary panel is shown with the path of the saved file and the number of succeeded chapters (for example `45/45`). If some chapters failed, the panel lists them.
+
+> [!NOTE]
+> The CLI display is in English by default. Run `wattpdl --ui-lang id` once to switch to Bahasa Indonesia; the choice is remembered for next runs (see [Display Language](#display-language)). If you installed from source without `pip install -e .`, run `python -m wattpdl` from inside the `src/` folder instead.
+
+### Everyday use
+
+- Download a whole story as one `.epub` for the most comfortable reading in ebook apps
+- Download a long story in Mode 2 to read it chapter by chapter, or use `--workers` to speed it up
+- Schedule `--mode 1 --skip-existing` with cron or Task Scheduler for ongoing stories you re-download often
+- Use `--check-updates` to see which downloaded ongoing stories have new chapters
+- Use `--watch` to re-download automatically as soon as a new chapter appears
+
+### Output structure
+
+The name and shape of the generated files depend on the mode & format you choose:
+
+| Mode | `.txt` format | `.docx` format | `.epub` format | `.md` format | `.pdf` format |
+|------|----------------|-----------------|------------------|---------------|---------------|
+| 1 - All, combined | `Story_Title.txt` | `Story_Title.docx` | `Story_Title.epub` | `Story_Title.md` | `Story_Title.pdf` |
+| 2 - All, separate | `Story_Title.zip` (contains: one `.txt` per chapter) | `Story_Title.zip` (contains: one `.docx` per chapter) | `Story_Title.zip` (contains: one `.epub` per chapter) | `Story_Title.zip` (contains: one `.md` per chapter) | `Story_Title.zip` (contains: one `.pdf` per chapter) |
+| 3 - Several chapters | `Story_Title_selected.txt` | `Story_Title_selected.docx` | `Story_Title_selected.epub` | `Story_Title_selected.md` | `Story_Title_selected.pdf` |
+| 4 - One chapter | `Story_Title_Ch003_Chapter_Name.txt` | `Story_Title_Ch003_Chapter_Name.docx` | `Story_Title_Ch003_Chapter_Name.epub` | `Story_Title_Ch003_Chapter_Name.md` | `Story_Title_Ch003_Chapter_Name.pdf` |
+
+**Content of the combined file (modes 1 & 3):** the story title, author, and source at the top, then each chapter separated by a `#####` marker.
 
 ```
-╔═════════════ Success!  All chapters saved ══════════════╗
-║ File saved to   C:\Users\user\Downloads\Story_Title.txt ║
-║ Succeeded       45/45                                   ║
-║ Total time      2m 18s                                  ║
-╚═════════════════════════════════════════════════════════╝
+Story Title
+by Author Name
+Source: https://www.wattpad.com/story/123456789
+
+==================================================
+
+##### Chapter 1 Title #####
+
+Text of chapter 1...
+
+##### Chapter 2 Title #####
+
+Text of chapter 2...
 ```
 
----
+In the `.docx` version, the story title becomes the main heading and each chapter automatically becomes a Heading 1 on a new page, so it is comfortable to read right away in Word or Google Docs.
 
-## Automatic Resume
+In the `.epub` version, the story becomes a standard ebook with an automatic table of contents per chapter, ready to open in your favorite ebook reader (Google Play Books, Apple Books, Calibre, and others).
+
+In the `.md` version, the story is written with standard Markdown headings (`#` for the title, `##` per chapter), which is pleasant to open in any editor or render directly on GitHub/Obsidian/Notion.
+
+If the story has a cover, the image is embedded automatically on the first page/paragraph of the `.docx`/`.epub`/`.pdf` file (unless run with `--no-cover`). The story's genre/tags, description, and publish date are also saved as official metadata in the `.epub` file, usually shown on the book detail page in ebook reader apps.
+
+**Zip content (mode 2):** one file per chapter, numbered by its position in the story, plus `000_info.txt`/`000_info.md`/`000_info.docx`/`000_info.epub`/`000_info.pdf` (matching the format) containing the title, author, and source. The file extension inside the zip follows the format you chose when running the script:
+
+```
+Story_Title.zip
+├── 000_info.txt
+├── 001_Chapter_1_Title.txt
+├── 002_Chapter_2_Title.txt
+└── ...
+```
+
+### Default save folder per OS
+
+| Operating System | Default Folder |
+|------------------|----------------|
+| Windows | `C:\Users\<username>\Downloads` |
+| macOS | `/Users/<username>/Downloads` |
+| Linux | `/home/<username>/Downloads` |
+
+### Automatic resume
 
 If the download stops midway (connection lost, terminal closed, laptop shut down), every chapter that **already succeeded** is saved automatically in `~/.wattpdl/progress/<story_id>.json`.
 
 Run again with the same story (same ID/link), and WattPDL will:
+
 - Skip chapters that already succeeded (used from the cache, not fetched again)
 - Download only the chapters that have not succeeded yet or failed earlier
 
 The progress file is deleted automatically once all chapters have been downloaded in a single session. To force a download from scratch, delete the `~/.wattpdl/progress/` folder manually.
 
-> [!NOTE]
 > **Not the same as `--skip-existing`:** the resume above works at the *chapter* level (continuing a download that stopped midway). `--skip-existing` works at the *output file* level: if the final file (for example `Story_Title.epub`) already exists in the target folder, the whole download is skipped entirely, which is handy together with `cron`/Task Scheduler so stories that were already downloaded are not downloaded again.
 
----
-
-## Saved Preferences
+### Saved preferences
 
 The last save folder, file format, and display language you chose are saved automatically in `~/.wattpdl/config.json` and reused as defaults in the next session, so there is no need to fill them in every time you run the script.
 
----
-
-## Display Language
-
-The CLI display (menus, prompts, error messages, and `--help` text) is available in **English** (default) and **Indonesian**.
-
-```bash
-wattpdl --ui-lang id              # Indonesian, this choice is remembered for next runs
-wattpdl --ui-lang en              # back to English
-WATTPDL_LANG=id wattpdl           # via environment variable
-```
-
-Priority order: `--ui-lang` → env `WATTPDL_LANG` → `ui_lang` in `~/.wattpdl/config.json` → default `en`.
-
-> [!IMPORTANT]
-> `--ui-lang` only changes the CLI display. Do not confuse it with `--lang`, which sets the language code in the EPUB metadata.
-
----
-
-## Non-Interactive Mode (Scripting/Automation)
+### Non-interactive mode (scripting/automation)
 
 Besides the question-and-answer mode, WattPDL can also be run through command line arguments, which is great for scheduling (cron/Task Scheduler) or calling from other scripts.
 
@@ -366,7 +420,7 @@ Besides the question-and-answer mode, WattPDL can also be run through command li
 wattpdl --id 398440633 --mode 1 --format docx
 ```
 
-### Available arguments
+**Available arguments:**
 
 | Argument | Description |
 |---|---|
@@ -389,7 +443,7 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--no-update-check` | Do not check for the latest wattpdl version on PyPI at startup |
 | `--version` | Show the wattpdl version |
 
-### More examples
+**More examples:**
 
 ```bash
 # Download all chapters as separate files in a .zip
@@ -413,68 +467,144 @@ wattpdl --help
 
 ---
 
-## Output Structure
+## Display Language
 
-The name and shape of the generated files depend on the mode & format you choose:
+The CLI display (menus, prompts, error messages, and `--help` text) is available in **English** (default) and **Indonesian**.
 
-| Mode | `.txt` format | `.docx` format | `.epub` format | `.md` format | `.pdf` format |
-|------|----------------|-----------------|------------------|---------------|---------------|
-| 1 - All, combined | `Story_Title.txt` | `Story_Title.docx` | `Story_Title.epub` | `Story_Title.md` | `Story_Title.pdf` |
-| 2 - All, separate | `Story_Title.zip` (contains: one `.txt` per chapter) | `Story_Title.zip` (contains: one `.docx` per chapter) | `Story_Title.zip` (contains: one `.epub` per chapter) | `Story_Title.zip` (contains: one `.md` per chapter) | `Story_Title.zip` (contains: one `.pdf` per chapter) |
-| 3 - Several chapters | `Story_Title_selected.txt` | `Story_Title_selected.docx` | `Story_Title_selected.epub` | `Story_Title_selected.md` | `Story_Title_selected.pdf` |
-| 4 - One chapter | `Story_Title_Ch003_Chapter_Name.txt` | `Story_Title_Ch003_Chapter_Name.docx` | `Story_Title_Ch003_Chapter_Name.epub` | `Story_Title_Ch003_Chapter_Name.md` | `Story_Title_Ch003_Chapter_Name.pdf` |
+1. Switch the display language once:
 
-### Combined file content (modes 1 and 3)
-
-The story title, author, and source at the top, then each chapter separated by a `#####` marker.
-
-```
-Story Title
-by Author Name
-Source: https://www.wattpad.com/story/123456789
-
-==================================================
-
-##### Chapter 1 Title #####
-
-Text of chapter 1...
-
-##### Chapter 2 Title #####
-
-Text of chapter 2...
+```bash
+wattpdl --ui-lang id              # Indonesian, this choice is remembered for next runs
+wattpdl --ui-lang en              # back to English
 ```
 
-### Format details
+2. Or set it through an environment variable:
 
-| Format | Details |
-|--------|---------|
-| `.docx` | The story title becomes the main heading and each chapter automatically becomes a Heading 1 on a new page, so it is comfortable to read right away in Word or Google Docs. |
-| `.epub` | The story becomes a standard ebook with an automatic table of contents per chapter, ready to open in your favorite ebook reader (Google Play Books, Apple Books, Calibre, and others). |
-| `.md` | The story is written with standard Markdown headings (`#` for the title, `##` per chapter), which is pleasant to open in any editor or render directly on GitHub/Obsidian/Notion. |
-
-If the story has a cover, the image is embedded automatically on the first page/paragraph of the `.docx`/`.epub`/`.pdf` file (unless run with `--no-cover`). The story's genre/tags, description, and publish date are also saved as official metadata in the `.epub` file, usually shown on the book detail page in ebook reader apps.
-
-### Zip content (mode 2)
-
-One file per chapter, numbered by its position in the story, plus `000_info.txt`/`000_info.md`/`000_info.docx`/`000_info.epub`/`000_info.pdf` (matching the format) containing the title, author, and source. The file extension inside the zip follows the format you chose when running the script:
-
+```bash
+WATTPDL_LANG=id wattpdl
 ```
-Story_Title.zip
-├── 000_info.txt
-├── 001_Chapter_1_Title.txt
-├── 002_Chapter_2_Title.txt
-└── ...
-```
+
+Priority order: `--ui-lang` -> env `WATTPDL_LANG` -> `ui_lang` in `~/.wattpdl/config.json` -> default `en`.
+
+> `--ui-lang` only changes the CLI display. Do not confuse it with `--lang`, which sets the language code in the EPUB metadata.
 
 ---
 
-## Default Folder per OS
+## Data Sources
 
-| Operating System | Default Folder |
-|------------------|----------------|
-| Windows | `C:\Users\<username>\Downloads` |
-| macOS | `/Users/<username>/Downloads` |
-| Linux | `/home/<username>/Downloads` |
+WattPDL talks to public endpoints only. No login or API key is needed.
+
+| Purpose | Source |
+|---------|--------|
+| Story metadata (title, author, chapter list, genres, description, publish date) | Wattpad public API v3 (`wattpad.com/api/v3`) |
+| Chapter text | Wattpad public story text endpoint (`wattpad.com/apiv2/storytext`) |
+| Author story list (`--user`) | Wattpad public API v3 (`wattpad.com/api/v3/users/{username}/stories/published`) |
+| wattpdl update check | PyPI JSON API (`pypi.org/pypi/wattpdl/json`) |
+
+> [!NOTE]
+> These are public endpoints, the same ones your browser uses when you read a story on wattpad.com. Access is read-only, and no account or cookie is sent.
+
+---
+
+## Project Structure
+
+```
+wattpdl/
+├── assets/
+│   └── logo.png             # project logo, used in the README
+├── src/
+│   └── wattpdl/
+│       ├── __init__.py       # package metadata (__version__)
+│       ├── __main__.py       # entry point for `python -m wattpdl`
+│       ├── app.py            # program flow orchestration (main())
+│       ├── api.py            # communication with the Wattpad public API
+│       ├── writers.py        # text conversion & writing .txt/.docx/.epub/.md/.pdf/.zip files
+│       ├── cli.py            # terminal display (rich), user interaction
+│       ├── cli_args.py       # argument parsing for non-interactive mode
+│       ├── config.py         # saves user preferences (save folder, format, language)
+│       ├── i18n.py           # CLI display translations (en/id)
+│       ├── library.py        # local library of downloaded stories (used by --check-updates)
+│       ├── metacache.py      # short-lived cache of story metadata
+│       ├── updater.py        # wattpdl update check on PyPI
+│       └── progress.py       # download progress cache for the resume feature
+├── requirements.txt          # dependency list (for manual reference)
+├── pyproject.toml            # package metadata + build config + ruff
+├── tests/
+│   ├── __init__.py
+│   └── test_wattpdl.py       # unit tests (pytest)
+├── .github/
+│   └── workflows/
+│       ├── tests.yml         # CI: automatic test, lint, & build check
+│       └── publish.yml       # auto-publish to PyPI on a new release
+├── CHANGELOG.md              # version history (English)
+├── CHANGELOG.id.md           # version history (Bahasa Indonesia)
+├── CONTRIBUTING.md           # contribution guide (English)
+├── CONTRIBUTING.id.md        # contribution guide (Bahasa Indonesia)
+├── SECURITY.md               # vulnerability reporting policy
+├── LICENSE
+├── README.md                 # main documentation (English)
+└── README.id.md              # documentation (Bahasa Indonesia)
+```
+
+**Module separation principles:**
+
+- `api.py`: knows nothing about the display (`rich`), purely fetches data
+- `writers.py`: makes no network requests, purely converts & writes files
+- `cli.py`: all user interaction & progress bar display
+- `cli_args.py`: command line argument parsing & validation, no business logic
+- `i18n.py`: display text dictionary (English/Indonesian), pure data, knows nothing about `rich` or the network
+- `config.py` / `progress.py`: read/write JSON files in `~/.wattpdl/`, know nothing about the CLI or the network
+- `app.py`: ties everything together, with no business logic of its own (invoked through the `wattpdl` command after install)
+
+---
+
+## Development
+
+Built with Python, `requests`, `rich`, `python-docx`, `EbookLib`, and `reportlab`.
+
+### Adding a new user-facing string
+
+1. Add the English and Indonesian strings next to each other in `src/wattpdl/i18n.py`
+2. Use `t("your_key")` in the code, never a raw string literal
+3. Run the tests; the test suite checks that both languages always have the same keys and placeholders
+
+### Keeping the docs in sync
+
+1. Update `README.md` first, then `README.id.md`, in the same commit
+2. Use the exact same section order, tables, and callouts in both files
+3. If the release changes user-facing behavior, update `CHANGELOG.md` and `CHANGELOG.id.md` too
+
+Want to help? Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the project structure and contribution flow.
+
+---
+
+## Testing
+
+There are unit tests for the core functions (story ID parsing, file name validation, chapter selection parsing, HTML to text conversion, config, progress/resume, CLI argument parsing, translations, and more).
+
+```bash
+pip install -e .[dev]
+pytest tests/ -v
+ruff check .
+```
+
+| Check | Requirement |
+|-------|-------------|
+| `pytest tests/ -v` | Must pass the full suite |
+| `ruff check .` | Must report zero issues |
+
+Lint rules live in `pyproject.toml` under `[tool.ruff]` (line-length 110, target Python 3.9).
+
+---
+
+## Continuous Integration
+
+| Workflow | Purpose |
+|----------|---------|
+| `tests.yml` | ruff lint, pytest on Python 3.9-3.12, and a package build with `twine check` on every push and pull request to `main` |
+| `publish.yml` | builds and publishes to PyPI via trusted publishing (OIDC) when a GitHub Release is published |
+
+Lint, tests, and the build check must be green before every push. Publishing to PyPI happens only through a published GitHub Release.
 
 ---
 
@@ -490,102 +620,6 @@ Story_Title.zip
 | `404` error / "No chapters found" | Make sure the ID/link is correct & the story is not private |
 | Folder cannot be created | Check that the path is valid & you have write permission there |
 | The process hangs on one chapter | Check your internet connection and run again, progress will continue |
-
----
-
-## Important Notes
-
-- The story ID is the number in the Wattpad URL, right after `/story/`
-- The script uses a public endpoint, no login or API key needed
-- The **0.5 second** delay between chapters is set to avoid server rate limits, please do not remove it
-- This script is only for reading your own stories or public stories offline. Respect the authors' copyright
-
----
-
-## Built With
-
-<div align="center">
-
-![Python](https://img.shields.io/badge/-Python-3776AB?style=flat-square&logo=python&logoColor=white)
-![Requests](https://img.shields.io/badge/-Requests-FF6B6B?style=flat-square)
-![Rich](https://img.shields.io/badge/-Rich-FAE742?style=flat-square)
-![python--docx](https://img.shields.io/badge/-python--docx-2B579A?style=flat-square)
-![Wattpad API](https://img.shields.io/badge/-Wattpad%20Public%20API-FF6122?style=flat-square)
-
-</div>
-
----
-
-## Project Structure
-
-```
-wattpdl/
-├── src/
-│   └── wattpdl/
-│       ├── __init__.py       # package metadata (__version__)
-│       ├── __main__.py       # entry point for `python -m wattpdl`
-│       ├── app.py            # program flow orchestration (main())
-│       ├── api.py            # communication with the Wattpad public API
-│       ├── writers.py        # text conversion & writing .txt/.docx/.epub/.md/.pdf/.zip files
-│       ├── cli.py            # terminal display (rich), user interaction
-│       ├── cli_args.py       # argument parsing for non-interactive mode
-│       ├── config.py         # saves user preferences (save folder, format, language)
-│       ├── i18n.py           # CLI display translations (en/id)
-│       └── progress.py       # download progress cache for the resume feature
-├── requirements.txt          # dependency list (for manual reference)
-├── pyproject.toml            # package metadata + build config + ruff
-├── tests/
-│   ├── __init__.py
-│   └── test_wattpdl.py       # unit tests (pytest)
-├── .github/
-│   └── workflows/
-│       ├── tests.yml         # CI: automatic test, lint, & build check
-│       └── publish.yml       # auto-publish to PyPI on a new release
-├── CONTRIBUTING.md           # contribution guide (English)
-├── CONTRIBUTING.id.md        # contribution guide (Indonesian)
-├── LICENSE
-├── README.md                 # main documentation (English)
-└── README.id.md              # documentation (Indonesian)
-```
-
-### Module separation principles
-
-| Module | Principle |
-|--------|-----------|
-| `api.py` | Knows nothing about the display (`rich`), purely fetches data |
-| `writers.py` | Makes no network requests, purely converts & writes files |
-| `cli.py` | All user interaction & progress bar display |
-| `cli_args.py` | Command line argument parsing & validation, no business logic |
-| `i18n.py` | Display text dictionary (English/Indonesian), pure data, knows nothing about `rich` or the network |
-| `config.py` / `progress.py` | Read/write JSON files in `~/.wattpdl/`, know nothing about the CLI or the network |
-| `app.py` | Ties everything together, with no business logic of its own (invoked through the `wattpdl` command after install) |
-
----
-
-## Testing
-
-There are unit tests for the core functions (story ID parsing, file name validation, chapter selection parsing, HTML to text conversion, config, progress/resume, CLI argument parsing, translations, and more).
-
-```bash
-pip install -e .[dev]
-pytest tests/ -v
-ruff check .
-```
-
----
-
-## Continuous Integration
-
-| Workflow | Purpose |
-|----------|---------|
-| `tests.yml` | Automatic test, lint, & build check |
-| `publish.yml` | Auto-publish to PyPI on a new release |
-
----
-
-## Contributing
-
-Want to help improve WattPDL? Read [`CONTRIBUTING.md`](https://github.com/nekonaru/wattpdl/blob/main/CONTRIBUTING.md) for the project structure and contribution flow.
 
 ---
 
@@ -638,7 +672,7 @@ There is a 0.5 second delay between chapters (on purpose, so Wattpad's servers a
 
 <div align="center">
 
-| [![Nicolas Dwi Dharma](https://github.com/github.png?size=100)](https://github.com/nekonaru) |
+| [![Nicolas Dwi Dharma](https://github.com/nekonaru.png?size=100)](https://github.com/nekonaru) |
 |:---:|
 | **Nicolas Dwi Dharma** |
 | [github.com/nekonaru](https://github.com/nekonaru) |
@@ -647,6 +681,12 @@ There is a 0.5 second delay between chapters (on purpose, so Wattpad's servers a
 
 ---
 
+## Disclaimer
+
+WattPDL is an independent open-source project and is not affiliated with or endorsed by Wattpad. It reads publicly available story data through Wattpad's public endpoints, for personal offline reading only. Respect the authors' copyright: do not redistribute, upload, or sell downloaded stories.
+
+---
+
 ## License
 
-Distributed under the **MIT License**. See [`LICENSE`](https://github.com/nekonaru/wattpdl/blob/main/LICENSE) for more information.
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
