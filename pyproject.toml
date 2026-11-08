@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "wattpdl"
 dynamic = ["version"]
-description = "Python script with a Rich CLI to download Wattpad stories as offline .txt/.docx/.epub/.md/.pdf files"
+description = "Download Wattpad stories as offline .txt, .docx, .epub, .md, or .pdf files (Python) with a Rich CLI. No login needed."
 readme = "README.md"
 license = { text = "MIT" }
-authors = [{ name = "nekonaru" }]
+authors = [{ name = "Nicolas Dwi Dharma" }]
 requires-python = ">=3.9"
 keywords = ["wattpad", "downloader", "cli", "scraper", "offline-reading"]
 classifiers = [
