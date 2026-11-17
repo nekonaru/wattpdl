@@ -7,6 +7,7 @@ Flow: take input (prompt or arguments) -> fetch data (api.py) -> write the file
 (writers.py) -> show progress (cli.py). Preferences are saved through
 config.py, and download progress through progress.py for the resume feature.
 """
+import json
 import pathlib
 import sys
 import time
@@ -36,8 +37,9 @@ def print_story_info(title: str, author: str, parts: list) -> None:
     console.print(Panel(info_table, border_style="success", box=box.ROUNDED, padding=(1, 2)))
 
 
-def resolve_save_dir(custom_path: str, config: dict) -> pathlib.Path:
-    """Resolve the save folder: custom path/argument wins, then the saved config, then the default Downloads folder."""
+def resolve_save_dir(custom_path: str, config: dict, create_dirs: bool = True) -> pathlib.Path:
+    """Resolve the save folder: custom path/argument wins, then the saved config, then the default Downloads folder.
+    With create_dirs=False (used by --dry-run), no folder is created on disk."""
     if custom_path:
         save_dir = pathlib.Path(custom_path).expanduser().resolve()
     elif config.get("save_dir"):
@@ -45,6 +47,8 @@ def resolve_save_dir(custom_path: str, config: dict) -> pathlib.Path:
     else:
         save_dir = cli.get_default_download_dir()
 
+    if not create_dirs:
+        return save_dir
     try:
         save_dir.mkdir(parents=True, exist_ok=True)
     except OSError as e:
@@ -93,7 +97,8 @@ def resolve_chapters(mode: str, parts: list, chapters_arg: str = None, chapter_a
 def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                   chapters_arg=None, chapter_arg=None, meta=None, cover_bytes=None,
                   skip_existing=False, interactive=False, workers=1, include_images=False,
-                  language="id"):
+                  language="id", retries=None, timeout=None, dry_run=False,
+                  keep_progress_on_success=False):
     """Shared download flow for both interactive and non-interactive modes."""
     indexed_parts = resolve_chapters(mode, parts, chapters_arg, chapter_arg)
 
@@ -123,6 +128,27 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         console.print(f"[muted]{t('hint.shorter_path')}[/muted]")
         sys.exit(1)
 
+    if dry_run:
+        reused, to_download = 0, 0
+        if story_id:
+            store = progress_mod.ProgressStore(story_id)
+            for _, part in indexed_parts:
+                if store.has(part["id"]):
+                    reused += 1
+                else:
+                    to_download += 1
+        else:
+            to_download = len(indexed_parts)
+        ext = {"2": "docx", "3": "epub", "4": "md", "5": "pdf"}.get(file_format, "txt")
+        console.print(f"[warning]{t('dryrun.title')}[/warning]")
+        console.print(f"[muted]{t('dryrun.path')}[/muted] [accent]{full_path}[/accent]")
+        console.print(f"[muted]{t('dryrun.exists')}[/muted] [accent]{str(path_exists).lower()}[/accent]")
+        console.print(f"[muted]{t('dryrun.mode')}[/muted] [accent]{mode} ({ext})[/accent]")
+        console.print(f"[muted]{t('dryrun.chapters')}[/muted] [accent]{len(indexed_parts)}[/accent]")
+        console.print(f"[muted]{t('dryrun.reused')}[/muted] [accent]{reused}[/accent]")
+        console.print(f"[muted]{t('dryrun.to_download')}[/muted] [accent]{to_download}[/accent]")
+        return
+
     if path_exists:
         if interactive:
             if not cli.confirm_overwrite(full_path):
@@ -143,6 +169,7 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
     results, failed_chapters, images_by_idx = cli.download_chapters(
         indexed_parts, story_id=story_id, max_workers=workers,
         rate_limiter=rate_limiter, include_images=include_images,
+        retries=retries, timeout=timeout,
     )
     elapsed = cli.format_duration(time.time() - start_time)
     if include_images:
@@ -218,8 +245,11 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         ))
         console.print(f"[muted]{t('sum.partial_hint')}[/muted]\n")
     else:
-        # All chapters succeeded -> this story's resume progress file is no longer needed.
-        progress_mod.clear_progress(story_id)
+        # All chapters succeeded -> this story's resume progress file is no longer needed,
+        # unless the caller wants to keep it (used by --update-library so the next update
+        # only fetches the chapters that were added since).
+        if not keep_progress_on_success:
+            progress_mod.clear_progress(story_id)
         if mode in ("1", "2"):
             # Record it in the library so --check-updates / --watch can detect
             # when this story gets new chapters later.
@@ -246,16 +276,16 @@ def warn_if_parts_missing(parts: list, meta: dict) -> None:
         console.print(f"[warning]{t('warn.parts_mismatch', reported=reported, accessible=len(parts))}[/warning]")
 
 
-def fetch_cover(meta: dict, no_cover: bool, file_format: str):
+def fetch_cover(meta: dict, no_cover: bool, file_format: str, timeout: int = None):
     """Download the story cover (only for formats that embed it), with a spinner so
     the program never looks frozen while waiting for the network."""
     if no_cover or file_format not in ("2", "3", "5") or not meta.get("cover_url"):
         return None
     with console.status(f"[accent]{t('status.downloading_cover')}[/accent]", spinner="dots"):
-        return api.download_cover_image(meta["cover_url"])
+        return api.download_cover_image(meta["cover_url"], timeout=timeout)
 
 
-def fetch_story_or_exit(story_id: str, use_cache: bool = True):
+def fetch_story_or_exit(story_id: str, use_cache: bool = True, timeout: int = None):
     if use_cache:
         cached = metacache.get_cached_story(story_id)
         if cached:
@@ -264,7 +294,7 @@ def fetch_story_or_exit(story_id: str, use_cache: bool = True):
 
     with console.status(f"[accent]{t('status.fetching_story', story_id=story_id)}[/accent]", spinner="dots"):
         try:
-            title, author, parts, meta = api.get_story_info(story_id)
+            title, author, parts, meta = api.get_story_info(story_id, timeout=timeout)
         except (api.StoryNotFoundError, api.StoryAccessError) as e:
             # The message is already specific from api.py (distinguishes 404 vs 403/401), show it as-is.
             console.print(f"[danger]❌  {e}[/danger]")
@@ -299,28 +329,33 @@ def run_non_interactive(args):
         sys.exit(1)
 
     config = config_mod.load_config()
-    title, author, parts, meta = fetch_story_or_exit(story_id, use_cache=not args.no_cache)
+    title, author, parts, meta = fetch_story_or_exit(story_id, use_cache=not args.no_cache, timeout=args.timeout)
 
     step_rule(t("step.story_info"))
     print_story_info(title, author, parts)
 
     file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
-    writers.check_format_libraries(file_format, console)
+    if not args.dry_run:
+        writers.check_format_libraries(file_format, console)
 
-    save_dir = resolve_save_dir(args.output_dir, config)
+    save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
 
-    cover_bytes = fetch_cover(meta, args.no_cover, file_format)
+    cover_bytes = None if args.dry_run else fetch_cover(meta, args.no_cover, file_format, timeout=args.timeout)
 
     run_download(
         story_id, title, author, parts, args.mode, file_format, save_dir,
         chapters_arg=args.chapters, chapter_arg=args.chapter,
         meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
         workers=args.workers, include_images=args.include_images, language=args.lang,
+        retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
     )
 
 
-def run_interactive():
+def run_interactive(args=None):
     cli.reset_steps()
+    dry_run = args.dry_run if args else False
+    retries = args.retries if args else None
+    timeout = args.timeout if args else None
     console.print()
     console.print(Align.center(cli.LOGO))
     console.print(
@@ -339,7 +374,7 @@ def run_interactive():
         console.print(f"\n[danger]❌  {e}[/danger]")
         sys.exit(1)
 
-    title, author, parts, meta = fetch_story_or_exit(story_id)
+    title, author, parts, meta = fetch_story_or_exit(story_id, timeout=timeout)
 
     step_rule(t("step.story_info"))
     print_story_info(title, author, parts)
@@ -372,7 +407,8 @@ def run_interactive():
         choices=["1", "2", "3", "4", "5"],
         default=config.get("file_format", "1"),
     )
-    writers.check_format_libraries(file_format, console)
+    if not dry_run:
+        writers.check_format_libraries(file_format, console)
 
     include_images = False
     if file_format in ("2", "3", "5"):
@@ -405,15 +441,16 @@ def run_interactive():
         default="",
         show_default=False,
     ).strip()
-    save_dir = resolve_save_dir(custom, config)
+    save_dir = resolve_save_dir(custom, config, create_dirs=not dry_run)
 
     # Fetched after every question was answered: a silent network wait between
     # prompts makes people press Enter again, which then answers the next prompts.
-    cover_bytes = fetch_cover(meta, False, file_format)
+    cover_bytes = None if dry_run else fetch_cover(meta, False, file_format, timeout=timeout)
 
     run_download(story_id, title, author, parts, mode, file_format, save_dir,
                  meta=meta, cover_bytes=cover_bytes, interactive=True,
-                 workers=workers, include_images=include_images)
+                 workers=workers, include_images=include_images,
+                 retries=retries, timeout=timeout, dry_run=dry_run)
 
 
 def run_user_mode(args) -> None:
@@ -431,7 +468,7 @@ def run_user_mode(args) -> None:
     step_rule(t("step.story_list", user=args.user))
     try:
         with console.status(f"[accent]{t('status.fetching_user_stories', user=args.user)}[/accent]", spinner="dots"):
-            stories = api.get_author_stories(args.user)
+            stories = api.get_author_stories(args.user, timeout=args.timeout)
     except (api.StoryNotFoundError, api.StoryAccessError) as e:
         console.print(f"[danger]❌  {e}[/danger]")
         sys.exit(1)
@@ -464,68 +501,232 @@ def run_user_mode(args) -> None:
 
     config = config_mod.load_config()
     file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
-    writers.check_format_libraries(file_format, console)
-    save_dir = resolve_save_dir(args.output_dir, config)
+    if not args.dry_run:
+        writers.check_format_libraries(file_format, console)
+    save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
 
     for n, story_index in enumerate(chosen_indices, start=1):
         story_summary = stories[story_index - 1]
         console.print(f"[primary]{t('info.story_progress', n=n, total=len(chosen_indices), title=story_summary['title'])}[/primary]")
-        cli.reset_steps()  # reset the ①②③ numbering for every new story, instead of keeping on counting across stories
-        title, author, parts, meta = fetch_story_or_exit(story_summary["id"], use_cache=not args.no_cache)
+        cli.reset_steps()  # reset the step numbering for every new story, instead of keeping on counting across stories
+        title, author, parts, meta = fetch_story_or_exit(story_summary["id"], use_cache=not args.no_cache, timeout=args.timeout)
 
-        cover_bytes = fetch_cover(meta, args.no_cover, file_format)
+        cover_bytes = None if args.dry_run else fetch_cover(meta, args.no_cover, file_format, timeout=args.timeout)
 
         run_download(
             story_summary["id"], title, author, parts, mode, file_format, save_dir,
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
+            retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
         )
 
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
 
 
-def run_check_updates() -> None:
+def run_check_updates(args=None) -> None:
     """Check every story that was fully downloaded before (recorded in library.json)
     for new chapters on Wattpad right now. It downloads nothing,
     only reports; the user just runs the normal download again for the stories
-    they want to update.
+    they want to update. With `--json`, prints a machine-readable JSON array
+    to stdout instead of the table (for scripting).
     """
     cli.reset_steps()
-    step_rule(t("step.check_updates"))
+    as_json = bool(args and args.json)
+    timeout = args.timeout if args else None
+    if not as_json:
+        step_rule(t("step.check_updates"))
     saved = library.load_library()
     if not saved:
+        if as_json:
+            print("[]")
+            return
         console.print(f"[muted]{t('info.library_empty')}[/muted]")
         return
 
-    table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
-    table.add_column(t("table.title"), style="value")
-    table.add_column(t("table.recorded_chapters"), style="muted", justify="right")
-    table.add_column(t("table.current_chapters"), style="muted", justify="right")
-    table.add_column(t("table.status"), style="value")
+    entries = []
+    table = None
+    if not as_json:
+        table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
+        table.add_column(t("table.title"), style="value")
+        table.add_column(t("table.recorded_chapters"), style="muted", justify="right")
+        table.add_column(t("table.current_chapters"), style="muted", justify="right")
+        table.add_column(t("table.status"), style="value")
 
     any_update = False
     for story_id, entry in saved.items():
+        title = entry.get("title", story_id)
         old_count = entry.get("num_parts", 0)
+        base = {"id": str(story_id), "title": title, "recorded_parts": old_count}
         try:
-            _, _, parts, _ = api.get_story_info(story_id)
+            _, _, parts, _ = api.get_story_info(story_id, timeout=timeout)
             new_count = len(parts)
         except api.StoryNotFoundError:
-            table.add_row(entry.get("title", story_id), str(old_count), "-", f"[danger]{t('status.deleted')}[/danger]")
+            entries.append({**base, "current_parts": None, "status": "deleted", "new_chapters": 0})
+            if not as_json:
+                table.add_row(title, str(old_count), "-", f"[danger]{t('status.deleted')}[/danger]")
             continue
         except (api.StoryAccessError, requests.RequestException):
-            table.add_row(entry.get("title", story_id), str(old_count), "?", f"[warning]{t('status.check_failed')}[/warning]")
+            entries.append({**base, "current_parts": None, "status": "check_failed", "new_chapters": 0})
+            if not as_json:
+                table.add_row(title, str(old_count), "?", f"[warning]{t('status.check_failed')}[/warning]")
             continue
 
         if new_count > old_count:
             any_update = True
-            status = f"[success]{t('status.new_chapters', n=new_count - old_count)}[/success]"
+            entries.append({**base, "current_parts": new_count, "status": "new_chapters", "new_chapters": new_count - old_count})
+            if not as_json:
+                status = f"[success]{t('status.new_chapters', n=new_count - old_count)}[/success]"
         else:
+            entries.append({**base, "current_parts": new_count, "status": "up_to_date", "new_chapters": 0})
             status = f"[muted]{t('status.up_to_date')}[/muted]"
-        table.add_row(entry.get("title", story_id), str(old_count), str(new_count), status)
+        if not as_json:
+            table.add_row(title, str(old_count), str(new_count), status)
 
+    if as_json:
+        print(json.dumps(entries, ensure_ascii=False, indent=2))
+        return
     console.print(table)
     if any_update:
         console.print(f"[muted]{t('info.updates_available')}[/muted]")
+
+
+def run_library(args) -> None:
+    """Print the library: every story recorded as fully downloaded (mode 1/2),
+    which is what --check-updates and --update-library use. With `--json`,
+    prints a machine-readable JSON array instead of the table."""
+    cli.reset_steps()
+    saved = library.load_library()
+    if args.json:
+        print(json.dumps(
+            [{"id": str(story_id), "title": entry.get("title", story_id),
+               "num_parts": entry.get("num_parts", 0)}
+             for story_id, entry in sorted(saved.items())],
+            ensure_ascii=False, indent=2,
+        ))
+        return
+    step_rule(t("step.library"))
+    if not saved:
+        console.print(f"[muted]{t('info.library_empty')}[/muted]")
+        return
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
+    table.add_column(t("table.title"), style="value")
+    table.add_column(t("table.chapters"), style="muted", justify="right")
+    table.add_column(t("table.story_id"), style="muted", justify="right")
+    for story_id, entry in saved.items():
+        table.add_row(entry.get("title", story_id), str(entry.get("num_parts", 0)), str(story_id))
+    console.print(table)
+    console.print(f"[muted]{t('hint.library_forget')}[/muted]")
+
+
+def run_library_forget(args) -> None:
+    """Remove one story from the library so it stops showing up in
+    --library, --check-updates and --update-library."""
+    cli.reset_steps()
+    try:
+        story_id = api.extract_story_id(args.library_forget)
+    except ValueError as e:
+        console.print(f"[danger]❌  {e}[/danger]")
+        sys.exit(1)
+    if library.forget_story(story_id):
+        console.print(f"[success]{t('ok.removed_from_library', id=story_id)}[/success]")
+    else:
+        console.print(f"[muted]{t('info.not_in_library', id=story_id)}[/muted]")
+
+
+def run_info(args) -> None:
+    """Show a story's details without downloading anything."""
+    cli.reset_steps()
+    try:
+        story_id = api.extract_story_id(args.id)
+    except ValueError as e:
+        console.print(f"[danger]❌  {e}[/danger]")
+        sys.exit(1)
+    title, author, parts, meta = fetch_story_or_exit(story_id, use_cache=not args.no_cache, timeout=args.timeout)
+    step_rule(t("step.story_info"))
+    table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
+    table.add_column(style="muted")
+    table.add_column(style="value")
+    table.add_row(t("info.title"), title)
+    table.add_row(t("info.author"), author)
+    table.add_row(t("info.chapter_count"), str(len(parts)))
+    table.add_row(t("info.status"), t("info.status_completed") if meta.get("completed") else t("info.status_ongoing"))
+    if meta.get("tags"):
+        table.add_row(t("info.genre"), ", ".join(meta["tags"]))
+    console.print(Panel(table, border_style="success", box=box.ROUNDED, padding=(1, 2)))
+    if meta.get("description"):
+        console.print(Panel(
+            meta["description"],
+            title=f"[muted]{t('info.description')}[/muted]",
+            box=box.ROUNDED,
+            padding=(1, 2),
+        ))
+
+
+def run_update_library(args) -> None:
+    """Re-download every recorded story that has new chapters on Wattpad.
+
+    Every story's file is rewritten in full (the whole document is always written).
+    The resume progress is KEPT on success (keep_progress_on_success=True), so
+    the next update only fetches the chapters that were added since; the full
+    chapter list is still what ends up in the output file.
+    """
+    cli.reset_steps()
+    mode = args.mode or "1"
+    saved = library.load_library()
+    if not saved:
+        console.print(f"[muted]{t('info.library_empty')}[/muted]")
+        return
+    step_rule(t("step.update_library"))
+
+    up_to_date = []
+    to_update = []
+    failed = []
+    for story_id, entry in saved.items():
+        title = entry.get("title", story_id)
+        old_count = entry.get("num_parts", 0)
+        try:
+            title, author, parts, meta = api.get_story_info(story_id, timeout=args.timeout)
+        except (api.StoryNotFoundError, api.StoryAccessError, requests.RequestException) as e:
+            failed.append((title, str(e)))
+            console.print(f"[warning]{t('update.check_failed', title=title, error=e)}[/warning]")
+            continue
+        new_count = len(parts)
+        if new_count > old_count:
+            to_update.append((story_id, title, author, parts, meta, old_count, new_count))
+        else:
+            up_to_date.append(title)
+
+    if not to_update:
+        console.print(f"[muted]{t('update.all_up_to_date', n=len(up_to_date), failed=len(failed))}[/muted]")
+        return
+
+    config = config_mod.load_config()
+    file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
+    if not args.dry_run:
+        writers.check_format_libraries(file_format, console)
+    save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
+
+    console.print(f"[success]{t('update.found', n=len(to_update))}[/success]")
+    if args.dry_run:
+        for _story_id, title, _author, _parts, _meta, old_count, new_count in to_update:
+            console.print(f"[muted]• {title}[/muted] [accent]{old_count} -> {new_count}[/accent]")
+        console.print(f"[muted]{t('dryrun.title')}[/muted]")
+        return
+
+    for i, (story_id, title, author, parts, meta, old_count, new_count) in enumerate(to_update, start=1):
+        console.print(
+            f"[primary]{t('update.story_progress', n=i, total=len(to_update), title=title, old=old_count, new=new_count)}[/primary]"
+        )
+        cli.reset_steps()  # reset the step numbering for every new story
+        cover_bytes = fetch_cover(meta, args.no_cover, file_format, timeout=args.timeout)
+        run_download(
+            story_id, title, author, parts, mode, file_format, save_dir,
+            meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
+            workers=args.workers, include_images=args.include_images, language=args.lang,
+            retries=args.retries, timeout=args.timeout,
+            keep_progress_on_success=True,
+        )
+    console.print(f"[success]{t('update.done', n=len(to_update), failed=len(failed))}[/success]")
 
 
 def run_watch(args) -> None:
@@ -554,7 +755,7 @@ def run_watch(args) -> None:
         while True:
             iteration += 1
             try:
-                title, author, parts, meta = api.get_story_info(story_id)
+                title, author, parts, meta = api.get_story_info(story_id, timeout=args.timeout)
             except (api.StoryNotFoundError, api.StoryAccessError) as e:
                 console.print(f"[danger]❌  {e}[/danger]")
                 sys.exit(1)
@@ -571,12 +772,13 @@ def run_watch(args) -> None:
                 file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
                 writers.check_format_libraries(file_format, console)
                 save_dir = resolve_save_dir(args.output_dir, config)
-                cover_bytes = fetch_cover(meta, args.no_cover, file_format)
+                cover_bytes = fetch_cover(meta, args.no_cover, file_format, timeout=args.timeout)
                 run_download(
                     story_id, title, author, parts, args.mode, file_format, save_dir,
                     chapters_arg=args.chapters, chapter_arg=args.chapter,
                     meta=meta, cover_bytes=cover_bytes, skip_existing=False,
                     workers=args.workers, include_images=args.include_images, language=args.lang,
+                    retries=args.retries, timeout=args.timeout,
                 )
                 last_known_parts = len(parts)
             elif parts is not None:
@@ -610,17 +812,31 @@ def main():
         except Exception:
             pass  # the update check must never stop the main application
 
-    if args.check_updates:
-        run_check_updates()
+    try:
+        cli_args.validate_common_args(args)
+    except ValueError as e:
+        console.print(f"[danger]❌  {e}[/danger]")
+        sys.exit(1)
+
+    if args.library:
+        run_library(args)
+    elif args.library_forget:
+        run_library_forget(args)
+    elif args.check_updates:
+        run_check_updates(args)
+    elif args.update_library:
+        run_update_library(args)
     elif args.user:
         run_user_mode(args)
     elif args.id:
-        if args.watch:
+        if args.info:
+            run_info(args)
+        elif args.watch:
             run_watch(args)
         else:
             run_non_interactive(args)
     else:
-        run_interactive()
+        run_interactive(args)
 
 
 if __name__ == "__main__":

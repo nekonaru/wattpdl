@@ -35,3 +35,18 @@ def remember_story(story_id: str, title: str, num_parts: int) -> None:
         LIBRARY_FILE.write_text(json.dumps(library, ensure_ascii=False, indent=2), encoding="utf-8")
     except OSError:
         pass
+
+
+def forget_story(story_id) -> bool:
+    """Remove 1 story from the library, so --check-updates / --update-library
+    stop tracking it. Return True if the story was present, False otherwise."""
+    library = load_library()
+    if str(story_id) not in library:
+        return False
+    library.pop(str(story_id))
+    try:
+        LIBRARY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        LIBRARY_FILE.write_text(json.dumps(library, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError:
+        return False
+    return True
