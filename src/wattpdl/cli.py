@@ -4,8 +4,22 @@ with the user (choose mode, choose chapters, etc.). No direct network logic
 here; all data fetching goes through the `api` module.
 """
 import os
-import pathlib
 import sys
+
+# Windows legacy consoles default stdout/stderr to cp1252, which cannot encode
+# the box-drawing characters used by the banner, step rules and progress bar
+# and used to crash with UnicodeEncodeError. Switch to UTF-8 with lossy
+# fallback once at startup; on modern terminals (and non-Windows) this is a
+# no-op. Never let this crash the app if the streams refuse it.
+try:
+    if sys.stdout is not None and hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if sys.stderr is not None and hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
+import pathlib
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -231,6 +245,8 @@ def download_chapters(
     max_workers: int = 1,
     rate_limiter=None,
     include_images: bool = False,
+    retries: int = None,
+    timeout: int = None,
 ) -> tuple:
     """
     Download a set of chapters with a progress bar.
@@ -249,6 +265,8 @@ def download_chapters(
         every chapter. Note: inline images are NOT saved in the resume
         progress (only the text), so if the process is resumed, images for chapters that
         failed midway are downloaded again, not taken from the cache.
+    retries: optional HTTP retry count per chapter (default: `api.MAX_RETRIES`).
+    timeout: optional HTTP timeout in seconds for every request (default: `api.DEFAULT_TIMEOUT`).
 
     Return: (results, failed_chapters, images_by_idx)
       results = list of (chapter_number, chapter_title, text)
@@ -291,13 +309,19 @@ def download_chapters(
             return idx, chapter_title, cached["text"], [], True, None
 
         try:
-            raw_html = api.get_chapter_html(part_id, on_retry=on_retry, rate_limiter=rate_limiter)
+            raw_html = api.get_chapter_html(
+                part_id,
+                retries=retries if retries is not None else api.MAX_RETRIES,
+                on_retry=on_retry,
+                rate_limiter=rate_limiter,
+                timeout=timeout,
+            )
             text = html_to_text(raw_html)
             rate_limiter.wait()
             images = []
             if include_images:
                 for img_url in api.extract_chapter_images(raw_html):
-                    img_bytes = api.download_image(img_url)
+                    img_bytes = api.download_image(img_url, timeout=timeout)
                     if img_bytes:
                         images.append(img_bytes)
                     rate_limiter.wait()
