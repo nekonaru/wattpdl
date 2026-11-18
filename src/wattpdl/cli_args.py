@@ -168,6 +168,8 @@ def validate_common_args(args: argparse.Namespace) -> None:
     Raise ValueError with a clear message on misuse."""
     if args.retries < 1:
         raise ValueError(t("val.retries_min"))
+    if args.retries > 10:
+        raise ValueError(t("val.retries_max"))
     if args.timeout < 1:
         raise ValueError(t("val.timeout_min"))
     if args.watch_interval < 1:
