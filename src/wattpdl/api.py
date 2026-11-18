@@ -7,6 +7,7 @@ import re
 import threading
 import time
 from typing import Optional
+from urllib.parse import urlparse
 
 import requests
 
@@ -60,6 +61,7 @@ AUTHOR_STORIES_URL = (
 DELAY_SECONDS = 0.5   # base delay between chapters (do not remove)
 MAX_RETRIES = 3       # default chapter download retry count
 DEFAULT_TIMEOUT = 20  # default HTTP timeout in seconds
+MAX_IMAGE_BYTES = 25 * 1024 * 1024  # max size of a downloaded image (cover or inline), 25 MB
 
 
 class WattpadAPIError(Exception):
@@ -206,6 +208,33 @@ def get_author_stories(username: str, timeout: Optional[int] = None) -> list:
     ]
 
 
+def _is_private_host(host) -> bool:
+    """True when `host` resolves to anything other than a globally routable,
+    non-multicast address (loopback, RFC1918, link-local like the cloud
+    metadata endpoint 169.254.169.254, CGNAT 100.64.0.0/10, unspecified,
+    reserved). Used to stop inline-image fetches, whose URLs come from
+    story HTML, from being aimed at internal networks."""
+    import ipaddress
+    import socket
+
+    host = (host or "").strip().rstrip(".").lower()
+    if not host or host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        addrinfos = socket.getaddrinfo(host, None)
+    except OSError:
+        # DNS failed; the request will fail anyway, no need to block it here
+        return False
+    for info in addrinfos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return True
+        if ip.is_multicast or not ip.is_global:
+            return True
+    return False
+
+
 def download_image(image_url: str, timeout: Optional[int] = None) -> Optional[bytes]:
     """Download 1 image (used for inline images inside a chapter, and for the
     story cover). A failure must not break the whole process, images are only
@@ -214,9 +243,24 @@ def download_image(image_url: str, timeout: Optional[int] = None) -> Optional[by
     if not image_url:
         return None
     try:
-        resp = _http_session().get(image_url, timeout=timeout or DEFAULT_TIMEOUT)
+        parsed = urlparse(image_url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return None
+        if _is_private_host(parsed.hostname):
+            return None
+        resp = _http_session().get(
+            image_url,
+            timeout=timeout or DEFAULT_TIMEOUT,
+            stream=True,
+        )
         resp.raise_for_status()
-        return resp.content
+        chunks, total = [], 0
+        for chunk in resp.iter_content(chunk_size=65536):
+            total += len(chunk)
+            if total > MAX_IMAGE_BYTES:
+                return None
+            chunks.append(chunk)
+        return b"".join(chunks)
     except requests.RequestException:
         return None
 

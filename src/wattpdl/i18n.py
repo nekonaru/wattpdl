@@ -247,6 +247,8 @@ MESSAGES = {
         "val.standalone_conflict": "--library, --library-forget, dan --update-library tidak bisa digabung dengan --id/--user.",
         "val.info_requires_id": "--info butuh --id.",
         "val.update_library_mode": "--update-library hanya untuk --mode 1 atau 2.",
+        "val.watch_interval_min": "--watch-interval minimal 1 detik.",
+        "val.username_invalid": "Nama pengguna Wattpad tidak valid: '{user}' (huruf, angka, '-', '_' saja).",
 
         # ---------- fitur library ----------
         "step.library": "Library",
@@ -537,6 +539,8 @@ MESSAGES = {
         "val.standalone_conflict": "--library, --library-forget, and --update-library cannot be combined with --id/--user.",
         "val.info_requires_id": "--info requires --id.",
         "val.update_library_mode": "--update-library only supports --mode 1 or 2.",
+        "val.watch_interval_min": "--watch-interval must be at least 1 second.",
+        "val.username_invalid": "Invalid Wattpad username: '{user}' (letters, digits, '-' and '_' only).",
 
         # ---------- library feature ----------
         "step.library": "Library",

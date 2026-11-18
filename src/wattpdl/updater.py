@@ -35,9 +35,12 @@ def _load_cache() -> dict:
     if not CACHE_FILE.exists():
         return {}
     try:
-        return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+        data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+    except Exception:
         return {}
+    if not isinstance(data, dict):
+        return {}
+    return data
 
 
 def _save_cache(data: dict) -> None:

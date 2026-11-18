@@ -532,7 +532,8 @@ class TestCoverImage:
         assert api_mod.download_cover_image("https://example.com/cover.jpg") is None
 
     @responses_lib.activate
-    def test_download_cover_image_returns_bytes_on_success(self):
+    def test_download_cover_image_returns_bytes_on_success(self, monkeypatch):
+        monkeypatch.setattr(api_mod, "_is_private_host", lambda host: False)
         responses_lib.add(
             responses_lib.GET, "https://example.com/cover.jpg",
             body=b"\xff\xd8\xff\xe0FAKEJPEGDATA", status=200,
@@ -1765,13 +1766,21 @@ class TestHttpTimeoutWiring:
 
     def test_download_image_passes_timeout(self, monkeypatch):
         captured = {}
+        monkeypatch.setattr(api_mod, "_is_private_host", lambda host: False)
+
+        class FakeResp:
+            status_code = 200
+
+            def raise_for_status(self):
+                return None
+
+            def iter_content(self, chunk_size=65536):
+                yield b"img"
 
         class FakeSession:
             def get(self, url, timeout=None, **kw):
                 captured["timeout"] = timeout
-                return type("R", (), {"status_code": 200,
-                                      "raise_for_status": lambda self: None,
-                                      "content": b"img"})()
+                return FakeResp()
 
         monkeypatch.setattr(api_mod, "_http_session", lambda: FakeSession())
         api_mod.download_image("https://example.com/x.jpg", timeout=11)

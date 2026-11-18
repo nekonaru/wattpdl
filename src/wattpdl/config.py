@@ -22,7 +22,9 @@ def load_config() -> dict:
         return dict(DEFAULT_CONFIG)
     try:
         data = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except Exception:
+        return dict(DEFAULT_CONFIG)
+    if not isinstance(data, dict):
         return dict(DEFAULT_CONFIG)
 
     merged = dict(DEFAULT_CONFIG)

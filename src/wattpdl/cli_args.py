@@ -4,6 +4,7 @@ If --id/--user is given, the script runs with no prompts at all, which is great 
 automation/scripting.
 """
 import argparse
+import re
 
 from . import __version__, i18n
 from . import config as config_mod
@@ -169,6 +170,8 @@ def validate_common_args(args: argparse.Namespace) -> None:
         raise ValueError(t("val.retries_min"))
     if args.timeout < 1:
         raise ValueError(t("val.timeout_min"))
+    if args.watch_interval < 1:
+        raise ValueError(t("val.watch_interval_min"))
     standalone = [args.library, bool(args.library_forget), args.update_library]
     if args.json and not (args.library or args.check_updates):
         raise ValueError(t("val.json_requires"))
@@ -178,6 +181,8 @@ def validate_common_args(args: argparse.Namespace) -> None:
         raise ValueError(t("val.info_requires_id"))
     if args.update_library and args.mode is not None and args.mode not in ("1", "2"):
         raise ValueError(t("val.update_library_mode"))
+    if args.user is not None and not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", args.user.strip()):
+        raise ValueError(t("val.username_invalid", user=args.user.strip()))
 
 
 def validate_non_interactive_args(args: argparse.Namespace) -> None:

@@ -20,9 +20,12 @@ def load_library() -> dict:
     if not LIBRARY_FILE.exists():
         return {}
     try:
-        return json.loads(LIBRARY_FILE.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+        data = json.loads(LIBRARY_FILE.read_text(encoding="utf-8"))
+    except Exception:
         return {}
+    if not isinstance(data, dict):
+        return {}
+    return data
 
 
 def remember_story(story_id: str, title: str, num_parts: int) -> None:
