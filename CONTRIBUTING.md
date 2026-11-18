@@ -17,8 +17,11 @@ src/wattpdl/
 ├── cli_args.py   # command line argument parsing & validation (non-interactive mode)
 ├── config.py     # saves user preferences (save folder, format, language) in ~/.wattpdl/config.json
 ├── i18n.py       # translations for the CLI display text (en/id)
+├── metacache.py  # short-lived cache of story metadata (few minutes)
+├── updater.py    # checks PyPI for a newer wattpdl version
+├── library.py    # registry of stories recorded as fully downloaded
 └── progress.py   # cache of successfully downloaded chapters, for the resume feature
-tests/            # unit tests (pytest)
+tests/            # unit tests (test_wattpdl.py) + security regression tests (test_security.py)
 ```
 
 Simple rules:
@@ -48,6 +51,13 @@ pip install -e .[dev]
 
 `pip install -e .[dev]` installs the project in "editable" mode (code changes take effect without reinstalling) together with the development dependencies (`pytest`, `ruff`, `build`, `twine`). After this, the `wattpdl` command in your terminal runs the code from this folder.
 
+Optional: install the pre-commit hooks (ruff + basic checks) so commits are linted before they are created:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
 ## Before Opening a Pull Request
 
 1. **Run the tests** and make sure they all pass:
@@ -58,6 +68,7 @@ pip install -e .[dev]
    ```bash
    ruff check .
    ```
+   The security regression tests live in `tests/test_security.py` and run as part of the same suite.
 3. If you add a new function that can be tested without an internet connection (parsing, formatting, validation), add its unit test in `tests/test_wattpdl.py`.
 4. Update `README.md` (English) **and** `README.id.md` (Indonesian) if usage changes or a new feature is added.
 
@@ -79,12 +90,11 @@ Open a [new Issue](https://github.com/nekonaru/wattpdl/issues/new) and include:
 
 ## Release Process (for maintainers)
 
-1. Update the version number in **two places** (they must match):
-   - `src/wattpdl/__init__.py` → `__version__ = "x.y.z"`
-   - `pyproject.toml` → `version = "x.y.z"`
-2. Commit the version change and push to `main`
-3. Create a new **GitHub Release** with the tag `vx.y.z`
-4. Publish the release → the `.github/workflows/publish.yml` workflow runs automatically, builds the package, and uploads it to PyPI through Trusted Publishing
-5. Check `https://pypi.org/project/wattpdl/`, the new version should appear within a few minutes
+1. Update the version number in **one place**: `src/wattpdl/__init__.py` -> `__version__ = "x.y.z"` (the package reads the version from there, so nothing else needs to change)
+2. Update `CHANGELOG.md` and `CHANGELOG.id.md` with the new version on top
+3. Commit the version change and push to `main`, and wait until CI is green on that commit
+4. Create a new **GitHub Release** with the tag `vx.y.z`, with bilingual notes (English first, then Bahasa Indonesia) and the same content as the changelog entry
+5. Publish the release -> the `.github/workflows/publish.yml` workflow runs automatically, builds the package, and uploads it to PyPI through Trusted Publishing
+6. Check `https://pypi.org/project/wattpdl/`, the new version should appear within a few minutes
 
 Trusted Publishing must be registered once in the PyPI project settings page (Publishing → Add a new publisher) before this workflow can run. See [docs.pypi.org/trusted-publishers](https://docs.pypi.org/trusted-publishers/).
