@@ -85,13 +85,17 @@
 | **Rate-limit adaptif** | Jeda antar chapter otomatis melambat kalau Wattpad mulai membatasi (429/503), lalu pelan-pelan cepat lagi |
 | **Cache metadata** | Info cerita di-cache singkat supaya percobaan berulang dalam waktu dekat tidak selalu hit API |
 | **Pesan error spesifik** | Bedakan pesan untuk cerita dihapus (404) vs private/dibatasi (403) |
+| **HTTP tuning** | `--retries N` mengatur jumlah retry per chapter sebelum dilewati (default 3, maksimal 10), `--timeout N` timeout dalam detik untuk setiap request HTTP |
 
 ### Otomatisasi
 
 | Fitur | Keterangan |
 |-------|------------|
 | **Deteksi chapter baru** | `--check-updates` melaporkan cerita ongoing mana saja yang sudah punya chapter baru |
+| **Update library** | `--update-library` unduh ulang semua cerita tercatat yang punya chapter baru, jadi seluruh daftar bacaanmu terbarui dengan satu perintah |
+| **Library commands** | `--library` menampilkan semua cerita yang tercatat, `--library-forget <id>` berhenti memantau satu cerita |
 | **Mode watch** | `--watch` memantau 1 cerita terus-menerus, otomatis unduh ulang begitu ada chapter baru |
+| **`--json` output** | `--library` dan `--check-updates` mencetak JSON untuk scripting dan otomatisasi |
 | **Cek update wattpdl** | Beri tahu otomatis kalau ada versi wattpdl lebih baru di PyPI |
 
 ### Antarmuka dan Pengalaman
@@ -103,6 +107,8 @@
 | **Progress bar animasi** | Spinner, persentase, jumlah chapter, dan estimasi waktu tersisa |
 | **Ringkasan akhir** | Panel laporan chapter yang gagal (jika ada) setelah selesai |
 | **Ingat preferensi** | Folder simpan, format file, dan bahasa tampilan terakhir otomatis dipakai lagi di sesi berikutnya |
+| **Info cerita** | `wattpdl --info --id <id>` menampilkan detail cerita (penulis, jumlah chapter, status, genre, deskripsi) tanpa mengunduh |
+| **Dry run** | `--dry-run` menampilkan apa yang akan dilakukan (file tujuan, chapter yang akan diunduh dan dipakai dari cache) tanpa menulis file apa pun |
 
 ---
 
@@ -341,6 +347,7 @@ Tekan **Enter** untuk simpan di `Downloads`, atau ketik path kustom seperti:
 - Unduh cerita panjang dengan Mode 2 supaya bisa baca per chapter, atau pakai `--workers` untuk mempercepatnya
 - Jadwalkan `--mode 1 --skip-existing` dengan cron atau Task Scheduler untuk cerita ongoing yang sering diunduh ulang
 - Pakai `--check-updates` untuk lihat cerita ongoing yang sudah diunduh mana saja yang punya chapter baru
+- Pakai `--update-library` untuk refresh semua cerita tercatat yang punya chapter baru dalam satu perintah
 - Pakai `--watch` untuk unduh ulang otomatis begitu ada chapter baru
 
 ### Struktur output
@@ -415,6 +422,30 @@ File progress otomatis dihapus setelah semua chapter berhasil diunduh dalam satu
 
 Folder simpan, format file, dan bahasa tampilan terakhir yang kamu pilih otomatis tersimpan di `~/.wattpdl/config.json`, dan dipakai lagi sebagai default di sesi berikutnya, gak perlu isi ulang tiap kali jalanin script.
 
+### Library dan update otomatis
+
+Cerita yang kamu unduh lewat Mode 1 atau Mode 2 tercatat otomatis di `~/.wattpdl/library.json`. Registry itu yang dipakai fitur update:
+
+```bash
+wattpdl --library                 # tampilkan semua cerita yang tercatat
+wattpdl --check-updates           # mana saja yang punya chapter baru sekarang?
+wattpdl --update-library          # unduh ulang semua yang berubah
+wattpdl --library --json          # daftar yang sama, sebagai JSON untuk script
+wattpdl --check-updates --json    # laporan update, sebagai JSON untuk script
+```
+
+`--update-library` menulis ulang file setiap cerita yang berubah secara utuh (semua format menulis dokumen lengkap) memakai format tersimpan dan folder simpan default. Progress resume untuk cerita yang diperbarui sengaja disimpan, jadi update berikutnya hanya mengunduh chapter yang baru; file hasilnya selalu berisi seluruh chapter, lama dan baru.
+
+File progress untuk cerita yang diperbarui tetap ada di `~/.wattpdl/progress/` supaya update selanjutnya murah; hapus folder itu kalau mau merebut kembali ruang disk. Cerita yang dihapus atau dijadikan private di Wattpad dilaporkan sebagai dihapus/gagal dan dilewati, tanpa menghentikan cerita-cerita lain.
+
+Untuk berhenti memantau satu cerita, hapus dari library:
+
+```bash
+wattpdl --library-forget 398440633
+```
+
+Beberapa cerita bisa dipantau sekaligus dengan `--watch`, yang unduh ulang begitu ada chapter baru (lihat `--help`).
+
 ### Mode non-interaktif (scripting/otomatisasi)
 
 Selain mode tanya-jawab, WattPDL juga bisa dijalankan lewat argumen command line, cocok buat dijadwalkan (cron/Task Scheduler) atau dipanggil dari script lain.
@@ -444,6 +475,14 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--check-updates` | Laporkan cerita yang sudah diunduh dan punya chapter baru |
 | `--watch` / `--watch-interval` | Pantau satu cerita dan unduh ulang kalau ada chapter baru (jeda cek default 1800 detik) |
 | `--no-update-check` | Jangan cek versi wattpdl terbaru di PyPI saat start |
+| `--library` | Tampilkan semua cerita yang pernah diunduh penuh (dengan `--json`, machine-readable) |
+| `--library-forget` | Hapus 1 cerita dari library |
+| `--update-library` | Unduh ulang semua cerita tercatat yang punya chapter baru (hanya mode 1 atau 2) |
+| `--json` | Untuk `--library` atau `--check-updates`, cetak JSON ke stdout |
+| `--info` | Tampilkan detail cerita tanpa mengunduh apa pun |
+| `--retries` | Jumlah retry per chapter sebelum dilewati (default 3, maksimal 10) |
+| `--timeout` | Timeout untuk setiap request HTTP dalam detik (default 20) |
+| `--dry-run` | Simulasi unduhan: tampilkan file tujuan dan jumlah chapter, tidak menulis apa pun |
 | `--version` | Tampilkan versi wattpdl |
 
 **Contoh lain:**
@@ -463,6 +502,15 @@ wattpdl --id 398440633 --mode 1 --format epub
 
 # Unduh sebagai Markdown, lewati kalau filenya sudah ada (cocok untuk dijadwalkan)
 wattpdl --id 398440633 --mode 1 --format md --skip-existing
+
+# Tampilkan detail cerita tanpa mengunduh
+wattpdl --info --id 398440633
+
+# Perbarui semua cerita tercatat yang punya chapter baru
+wattpdl --update-library --format epub
+
+# Lihat apa yang akan dilakukan sebuah unduhan, tanpa menulis file
+wattpdl --dry-run --id 398440633 --mode 1 --format epub
 
 # Lihat semua opsi
 wattpdl --help
@@ -604,10 +652,10 @@ Aturan lint ada di `pyproject.toml` di bagian `[tool.ruff]` (line-length 110, ta
 
 | Workflow | Purpose |
 |----------|---------|
-| `tests.yml` | ruff lint, pytest di Python 3.9-3.12, dan package build dengan `twine check` di setiap push ke `main`, pull request ke `main`, dan push tag `v*` |
+| `tests.yml` | ruff lint, pip-audit dependency audit, pytest di Python 3.9-3.12 dengan coverage floor, dan package build dengan `twine check` di setiap push ke `main`, pull request ke `main`, dan push tag `v*` |
 | `publish.yml` | build dan publish ke PyPI lewat trusted publishing (OIDC) setiap GitHub Release dipublish |
 
-Lint, test, dan build check harus hijau sebelum setiap push. Publish ke PyPI hanya terjadi lewat GitHub Release yang dipublish.
+Lint, dependency audit, test, dan build check harus hijau sebelum setiap push (branch `main` memberlakukannya). Publish ke PyPI hanya terjadi lewat GitHub Release yang dipublish.
 
 ---
 
@@ -667,6 +715,20 @@ Ada jeda 0.5 detik antar chapter (sengaja, biar tidak membebani server Wattpad).
 - Mau baca santai di HP/tablet pakai aplikasi ebook (Google Play Books, Apple Books, dll): pilih format **`.epub`**
 - Mau edit atau print rapi pakai Word: pilih format **`.docx`**
 - Mau file kecil dan simpel, atau mau dibaca di aplikasi e-reader/notes: pilih format **`.txt`**
+
+</details>
+
+<details>
+<summary><b>Bagaimana cara menjadikan cerita ongoing selalu ter-update?</b></summary>
+
+Unduh ceritanya lewat Mode 1 atau Mode 2, keduanya otomatis mencatat cerita di library kamu. Nanti tinggal jalankan:
+
+```bash
+wattpdl --check-updates       # cerita mana saja yang punya chapter baru
+wattpdl --update-library      # unduh ulang semua yang berubah
+```
+
+`--update-library` menulis ulang file setiap cerita yang berubah secara utuh; karena progress resume disimpan untuk cerita yang diperbarui, hanya chapter baru yang diunduh dari Wattpad. Jalankan dengan cron atau Task Scheduler untuk refresh otomatis, atau pakai `--watch` untuk memantau satu cerita terus-menerus.
 
 </details>
 

@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented in this file. The format follows the release notes; see [CHANGELOG.id.md](CHANGELOG.id.md) for the Bahasa Indonesia version.
 
+## v1.7.0
+
+Library management, story info, and HTTP tuning for power users, plus a security hardening pass.
+
+### New features
+
+- **Library management.** `--library` lists every story recorded as fully downloaded; `--library-forget <id>` stops tracking one story.
+- **`--update-library`.** Re-downloads every recorded story that has new chapters on Wattpad in one command; resume progress is kept, so only the new chapters are fetched.
+- **`--check-updates` and `--library --json`.** Both commands print machine-readable JSON for scripting and automation.
+- **`wattpdl --info --id <id>`.** Shows a story's details (author, chapter count, status, genre, description) without downloading.
+- **`--retries N` and `--timeout N`.** Control the HTTP retry count per chapter (default 3, max 10) and the timeout of every HTTP request (default 20 seconds).
+- **`--dry-run`.** Simulates a download: prints the target file, how many chapters are selected, and how many would be reused from the resume cache, without writing anything.
+
+### Bug fixes
+
+- **Legacy Windows consoles no longer crash.** Stdout and stderr are reconfigured to UTF-8 at startup with a lossy fallback; previously the banner and step markers raised UnicodeEncodeError on a cp1252 console.
+- **Inline images cannot reach internal networks.** Downloads from non-globally-routable hosts (loopback, private ranges, link-local including the cloud metadata endpoint, CGNAT) are rejected, the scheme must be http/https, and images are capped at 25 MB.
+- **Corrupt cache files no longer crash the tool.** The library, progress, config, metadata-cache and update-check loaders now require a JSON object at the top level and treat anything else as missing.
+- **Stricter argument validation.** `--user` only accepts valid Wattpad usernames, `--watch-interval` must be at least 1 second, `--retries` at most 10, and `--json` is rejected outside `--library`/`--check-updates`.
+
+### Improvements
+
+- **CI/CD hardened.** GitHub Actions pinned to commit SHAs, token permissions reduced to `contents: read` (publish keeps only `id-token: write`), pip-audit added to CI, coverage floor 65%, Dependabot for pip and GitHub Actions, branch protection on `main` with required checks, and the test matrix runs on Python 3.9 to 3.12.
+
 ## v1.6.0
 
 Connection pooling for faster downloads, Pillow is now a declared dependency, and an internal cleanup.

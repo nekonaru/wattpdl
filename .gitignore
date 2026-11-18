@@ -39,5 +39,3 @@ desktop.ini
 .idea/
 *.swp
 
-# ── Local-only project notes (never commit) ──────
-.dev/

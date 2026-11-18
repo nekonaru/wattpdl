@@ -2,6 +2,30 @@
 
 Semua perubahan penting project ini didokumentasikan di file ini. Formatnya mengikuti release notes; lihat [CHANGELOG.md](CHANGELOG.md) untuk versi English.
 
+## v1.7.0
+
+Library management, info cerita, dan HTTP tuning untuk power user, plus security hardening.
+
+### Fitur baru
+
+- **Library management.** `--library` menampilkan semua cerita yang tercatat pernah diunduh penuh; `--library-forget <id>` berhenti memantau satu cerita.
+- **`--update-library`.** Unduh ulang semua cerita tercatat yang punya chapter baru di Wattpad dengan satu perintah; progress resume disimpan, jadi hanya chapter baru yang diunduh.
+- **`--check-updates` dan `--library --json`.** Keduanya bisa mencetak JSON machine-readable untuk scripting dan otomatisasi.
+- **`wattpdl --info --id <id>`.** Menampilkan detail cerita (penulis, jumlah chapter, status, genre, deskripsi) tanpa mengunduh.
+- **`--retries N` dan `--timeout N`.** Mengatur jumlah retry HTTP per chapter (default 3, maksimal 10) dan timeout setiap request HTTP (default 20 detik).
+- **`--dry-run`.** Simulasi unduhan: menampilkan file tujuan, berapa chapter dipilih, dan berapa yang dipakai ulang dari resume cache, tanpa menulis apa pun.
+
+### Perbaikan bug
+
+- **Console Windows lama tidak crash lagi.** Stdout dan stderr dikonfigurasi ulang ke UTF-8 saat start dengan fallback lossy; sebelumnya banner dan step marker memicu UnicodeEncodeError di console cp1252.
+- **Gambar inline tidak bisa menjangkau jaringan internal.** Unduhan dari host yang bukan global routeable (loopback, range privat, link-local termasuk endpoint metadata cloud, CGNAT) ditolak, scheme wajib http/https, dan gambar dibatasi 25 MB.
+- **File cache rusak tidak crash lagi.** Loader library, progress, config, metadata-cache, dan update-check sekarang mewajibkan JSON object di top-level dan memperlakukan selain itu sebagai kosong.
+- **Validasi argumen lebih ketat.** `--user` hanya menerima username Wattpad yang valid, `--watch-interval` minimal 1 detik, `--retries` maksimal 10, dan `--json` ditolak di luar `--library`/`--check-updates`.
+
+### Peningkatan
+
+- **CI/CD diperketat.** GitHub Actions di-pin ke commit SHA, permission token dikurangi ke `contents: read` (publish hanya memegang `id-token: write`), pip-audit ditambahkan ke CI, coverage floor 65%, Dependabot untuk pip dan GitHub Actions, branch protection di `main` dengan required checks, dan matrix test berjalan di Python 3.9 sampai 3.12.
+
 ## v1.6.0
 
 Connection pooling untuk unduhan lebih cepat, Pillow kini dependency resmi, dan pembersihan internal.

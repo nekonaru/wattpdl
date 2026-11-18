@@ -241,6 +241,44 @@ MESSAGES = {
         "val.chapters_required": "--chapters wajib diisi untuk --mode 3, contoh: --chapters 1,3,5-8",
         "val.chapter_required": "--chapter wajib diisi untuk --mode 4, contoh: --chapter 5",
         "val.workers_min": "--workers minimal 1.",
+        "val.retries_min": "--retries minimal 1.",
+        "val.retries_max": "--retries maksimal 10.",
+        "val.timeout_min": "--timeout minimal 1 detik.",
+        "val.json_requires": "--json hanya berlaku untuk --library dan --check-updates.",
+        "val.standalone_conflict": "--library, --library-forget, dan --update-library tidak bisa digabung dengan --id/--user.",
+        "val.info_requires_id": "--info butuh --id.",
+        "val.update_library_mode": "--update-library hanya untuk --mode 1 atau 2.",
+        "val.watch_interval_min": "--watch-interval minimal 1 detik.",
+        "val.username_invalid": "Nama pengguna Wattpad tidak valid: '{user}' (huruf, angka, '-', '_' saja).",
+
+        # ---------- fitur library ----------
+        "step.library": "Library",
+        "step.update_library": "Update Library",
+        "table.story_id": "ID Cerita",
+        "hint.library_forget": "Hapus 1 cerita dari library: wattpdl --library-forget <id>",
+        "ok.removed_from_library": "Dihapus dari library: {id}",
+        "info.not_in_library": "Tidak ada cerita {id} di library.",
+        "update.check_failed": "Gagal mengecek {title}: {error}",
+        "update.all_up_to_date": "Semua {n} cerita tercatat sudah up to date. ({failed} gagal dicek)",
+        "update.found": "Ditemukan {n} cerita dengan chapter baru.",
+        "update.story_progress": "[{n}/{total}] {title}: {old} -> {new} chapter, mengunduh...",
+        "update.done": "Selesai: {n} cerita diperbarui. ({failed} gagal dicek)",
+
+        # ---------- --info ----------
+        "info.status": "Status",
+        "info.status_ongoing": "Ongoing",
+        "info.status_completed": "Completed",
+        "info.genre": "Genre",
+        "info.description": "Deskripsi",
+
+        # ---------- dry run ----------
+        "dryrun.title": "Dry run (tidak ada file yang ditulis)",
+        "dryrun.path": "Target file:",
+        "dryrun.exists": "File sudah ada:",
+        "dryrun.mode": "Mode:",
+        "dryrun.chapters": "Chapter dipilih:",
+        "dryrun.reused": "Akan dipakai dari progress sebelumnya:",
+        "dryrun.to_download": "Akan diunduh:",
 
         # ---------- cli_args.py : help argparse ----------
         "meta.id": "ID_ATAU_LINK",
@@ -300,6 +338,18 @@ MESSAGES = {
             "Berhenti dengan Ctrl+C."
         ),
         "help.watch_interval": "Jeda antar pengecekan di mode --watch, dalam detik (default 1800 = 30 menit).",
+        "help.library": "Tampilkan semua cerita yang pernah diunduh penuh (tercatat di library).",
+        "help.library_forget": "Hapus 1 cerita dari library (berhenti dipantau --check-updates/--update-library).",
+        "help.update_library": (
+            "Unduh ulang semua cerita di library yang punya chapter baru (mode 1/2). "
+            "Isi file ditulis ulang seluruhnya; progress disimpan agar update berikutnya "
+            "hanya mengunduh chapter yang baru."
+        ),
+        "help.json": "Untuk --library dan --check-updates: output JSON ke stdout.",
+        "help.info": "Tampilkan detail cerita (--id) tanpa mengunduh apa pun.",
+        "help.retries": "Jumlah percobaan ulang per chapter sebelum dilewati (default 3).",
+        "help.timeout": "Timeout tiap request HTTP dalam detik (default 20).",
+        "help.dry_run": "Simulasi: tampilkan file tujuan & jumlah chapter yang akan diunduh, tanpa menulis apa pun.",
     },
 
     "en": {
@@ -484,6 +534,44 @@ MESSAGES = {
         "val.chapters_required": "--chapters is required for --mode 3, example: --chapters 1,3,5-8",
         "val.chapter_required": "--chapter is required for --mode 4, example: --chapter 5",
         "val.workers_min": "--workers must be at least 1.",
+        "val.retries_min": "--retries must be at least 1.",
+        "val.retries_max": "--retries must be at most 10.",
+        "val.timeout_min": "--timeout must be at least 1 second.",
+        "val.json_requires": "--json only applies to --library and --check-updates.",
+        "val.standalone_conflict": "--library, --library-forget, and --update-library cannot be combined with --id/--user.",
+        "val.info_requires_id": "--info requires --id.",
+        "val.update_library_mode": "--update-library only supports --mode 1 or 2.",
+        "val.watch_interval_min": "--watch-interval must be at least 1 second.",
+        "val.username_invalid": "Invalid Wattpad username: '{user}' (letters, digits, '-' and '_' only).",
+
+        # ---------- library feature ----------
+        "step.library": "Library",
+        "step.update_library": "Update Library",
+        "table.story_id": "Story ID",
+        "hint.library_forget": "Remove one story from the library: wattpdl --library-forget <id>",
+        "ok.removed_from_library": "Removed from the library: {id}",
+        "info.not_in_library": "No story {id} in the library.",
+        "update.check_failed": "Could not check {title}: {error}",
+        "update.all_up_to_date": "All {n} recorded stories are up to date. ({failed} failed to check)",
+        "update.found": "Found {n} stories with new chapters.",
+        "update.story_progress": "[{n}/{total}] {title}: {old} -> {new} chapters, downloading...",
+        "update.done": "Done: {n} stories updated. ({failed} failed to check)",
+
+        # ---------- --info ----------
+        "info.status": "Status",
+        "info.status_ongoing": "Ongoing",
+        "info.status_completed": "Completed",
+        "info.genre": "Genre",
+        "info.description": "Description",
+
+        # ---------- dry run ----------
+        "dryrun.title": "Dry run (no file will be written)",
+        "dryrun.path": "Target file:",
+        "dryrun.exists": "Target file already exists:",
+        "dryrun.mode": "Mode:",
+        "dryrun.chapters": "Chapters selected:",
+        "dryrun.reused": "Reused from previous progress:",
+        "dryrun.to_download": "To download:",
 
         # ---------- cli_args.py : argparse help ----------
         "meta.id": "ID_OR_LINK",
@@ -543,5 +631,17 @@ MESSAGES = {
             "Stop with Ctrl+C."
         ),
         "help.watch_interval": "Delay between checks in --watch mode, in seconds (default 1800 = 30 minutes).",
+        "help.library": "List every story that was fully downloaded before (recorded in the library).",
+        "help.library_forget": "Remove one story from the library (stops --check-updates/--update-library tracking).",
+        "help.update_library": (
+            "Re-download every recorded story that has new chapters (mode 1/2). "
+            "The file is rewritten in full; progress is kept so the next update "
+            "only downloads the new chapters."
+        ),
+        "help.json": "With --library or --check-updates: print JSON to stdout.",
+        "help.info": "Show the details of a story (--id) without downloading anything.",
+        "help.retries": "Retries per chapter before it is skipped (default 3).",
+        "help.timeout": "Timeout for every HTTP request in seconds (default 20).",
+        "help.dry_run": "Simulate: show the target file and chapter counts without writing anything.",
     },
 }

@@ -17,8 +17,11 @@ src/wattpdl/
 ├── cli_args.py   # parsing & validasi argumen command line (mode non-interaktif)
 ├── config.py     # simpan preferensi user (folder simpan, format, bahasa) di ~/.wattpdl/config.json
 ├── i18n.py       # terjemahan teks tampilan CLI (en/id)
+├── metacache.py  # cache singkat metadata cerita (beberapa menit)
+├── updater.py    # cek PyPI untuk versi wattpdl baru
+├── library.py    # registry cerita yang tercatat pernah diunduh penuh
 └── progress.py   # cache chapter yang berhasil diunduh, untuk fitur resume
-tests/            # unit test (pytest)
+tests/            # unit test (test_wattpdl.py) + security regression test (test_security.py)
 ```
 
 Aturan sederhana:
@@ -42,6 +45,13 @@ pip install -e .[dev]
 
 `pip install -e .[dev]` menginstall project dalam mode "editable" (perubahan kode langsung kepakai tanpa install ulang) sekaligus dependency development (`pytest`, `ruff`, `build`, `twine`). Setelah ini, command `wattpdl` di terminal akan menjalankan kode dari folder ini.
 
+Opsional: pasang pre-commit hook (ruff + pemeriksaan dasar) supaya commit dilint sebelum dibuat:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
 ## Sebelum Membuat Pull Request
 
 1. **Jalankan test**, pastikan semua lolos:
@@ -52,6 +62,7 @@ pip install -e .[dev]
    ```bash
    ruff check .
    ```
+   Security regression test ada di `tests/test_security.py` dan ikut jalan sebagai bagian dari suite yang sama.
 3. Kalau menambah fungsi baru yang bisa dites tanpa koneksi internet (parsing, formatting, validasi), tambahkan unit test-nya di `tests/test_wattpdl.py`.
 4. Update `README.md` (English) **dan** `README.id.md` (Indonesia) kalau ada perubahan cara pakai atau fitur baru.
 5. Dokumentasi default-nya English; versi Indonesia ada di file `*.id.md`. Komentar kode, docstring, dan pesan commit ditulis dalam bahasa Inggris. Jangan pakai em dash di dokumen maupun kode.
@@ -74,12 +85,11 @@ Buka [Issue baru](https://github.com/nekonaru/wattpdl/issues/new) dan sertakan:
 
 ## Proses Release (untuk maintainer)
 
-1. Update nomor versi di **dua tempat** (harus sama):
-   - `src/wattpdl/__init__.py` → `__version__ = "x.y.z"`
-   - `pyproject.toml` → `version = "x.y.z"`
-2. Commit perubahan versi, push ke `main`
-3. Buat **GitHub Release** baru dengan tag `vx.y.z`
-4. Publish release → workflow `.github/workflows/publish.yml` otomatis jalan, build package, dan upload ke PyPI lewat Trusted Publishing
-5. Cek `https://pypi.org/project/wattpdl/`, versi baru harusnya muncul dalam beberapa menit
+1. Update nomor versi di **satu tempat**: `src/wattpdl/__init__.py` -> `__version__ = "x.y.z"` (package membaca versi dari situ, jadi tidak ada yang lain yang perlu diubah)
+2. Update `CHANGELOG.md` dan `CHANGELOG.id.md` dengan versi baru di paling atas
+3. Commit perubahan versi, push ke `main`, dan tunggu CI hijau di commit itu
+4. Buat **GitHub Release** baru dengan tag `vx.y.z`, dengan release notes bilingual (English dulu, baru Bahasa Indonesia) dan isi yang sama dengan entri changelog
+5. Publish release -> workflow `.github/workflows/publish.yml` otomatis jalan, build package, dan upload ke PyPI lewat Trusted Publishing
+6. Cek `https://pypi.org/project/wattpdl/`, versi baru harusnya muncul dalam beberapa menit
 
 Trusted Publishing perlu didaftarkan sekali di halaman pengaturan project PyPI (Publishing → Add a new publisher) sebelum workflow ini bisa jalan. Lihat [docs.pypi.org/trusted-publishers](https://docs.pypi.org/trusted-publishers/).

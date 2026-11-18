@@ -20,9 +20,12 @@ def load_library() -> dict:
     if not LIBRARY_FILE.exists():
         return {}
     try:
-        return json.loads(LIBRARY_FILE.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+        data = json.loads(LIBRARY_FILE.read_text(encoding="utf-8"))
+    except Exception:
         return {}
+    if not isinstance(data, dict):
+        return {}
+    return data
 
 
 def remember_story(story_id: str, title: str, num_parts: int) -> None:
@@ -35,3 +38,18 @@ def remember_story(story_id: str, title: str, num_parts: int) -> None:
         LIBRARY_FILE.write_text(json.dumps(library, ensure_ascii=False, indent=2), encoding="utf-8")
     except OSError:
         pass
+
+
+def forget_story(story_id) -> bool:
+    """Remove 1 story from the library, so --check-updates / --update-library
+    stop tracking it. Return True if the story was present, False otherwise."""
+    library = load_library()
+    if str(story_id) not in library:
+        return False
+    library.pop(str(story_id))
+    try:
+        LIBRARY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        LIBRARY_FILE.write_text(json.dumps(library, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError:
+        return False
+    return True

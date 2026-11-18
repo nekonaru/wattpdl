@@ -85,13 +85,17 @@
 | **Adaptive rate limit** | The delay between chapters slows down automatically when Wattpad starts limiting requests (429/503), then gradually speeds up again |
 | **Metadata cache** | Story info is cached briefly so repeated attempts in a short time do not always hit the API |
 | **Specific error messages** | Different messages for a deleted story (404) vs a private/restricted one (403) |
+| **HTTP tuning** | `--retries N` sets the retry count per chapter before skipping (default 3, max 10), `--timeout N` is the timeout in seconds for every HTTP request |
 
 ### Automation
 
 | Feature | Description |
 |---------|-------------|
 | **New chapter detection** | `--check-updates` reports which ongoing stories already have new chapters |
+| **Update library** | `--update-library` re-downloads every recorded story that has new chapters, so your whole reading list stays current in one command |
+| **Library commands** | `--library` lists every recorded story, `--library-forget <id>` stops tracking one story |
 | **Watch mode** | `--watch` monitors 1 story continuously and re-downloads as soon as a new chapter appears |
+| **`--json` output** | `--library` and `--check-updates` print JSON for scripting and automation |
 | **wattpdl update check** | Notifies you automatically when a newer wattpdl version is on PyPI |
 
 ### Interface and Experience
@@ -103,6 +107,8 @@
 | **Animated progress bar** | Spinner, percentage, chapter count, and estimated time remaining |
 | **Final summary** | A report panel listing failed chapters (if any) when finished |
 | **Remembers preferences** | The last save folder, file format, and language are reused in the next session |
+| **Story info** | `wattpdl --info --id <id>` shows a story's details (author, chapter count, status, genre, description) without downloading |
+| **Dry run** | `--dry-run` prints what a download would do (target file, chapters to download and reuse) without writing anything |
 
 ---
 
@@ -339,6 +345,7 @@ Press **Enter** to save in `Downloads`, or type a custom path such as:
 - Download a long story in Mode 2 to read it chapter by chapter, or use `--workers` to speed it up
 - Schedule `--mode 1 --skip-existing` with cron or Task Scheduler for ongoing stories you re-download often
 - Use `--check-updates` to see which downloaded ongoing stories have new chapters
+- Use `--update-library` to refresh every recorded story that has new chapters in one command
 - Use `--watch` to re-download automatically as soon as a new chapter appears
 
 ### Output structure
@@ -413,6 +420,30 @@ The progress file is deleted automatically once all chapters have been downloade
 
 The last save folder, file format, and display language you chose are saved automatically in `~/.wattpdl/config.json` and reused as defaults in the next session, so there is no need to fill them in every time you run the script.
 
+### Library and update automation
+
+Stories you download in Mode 1 or Mode 2 are recorded automatically in `~/.wattpdl/library.json`. That registry powers the update tooling:
+
+```bash
+wattpdl --library                 # list every recorded story
+wattpdl --check-updates           # which ones have new chapters right now?
+wattpdl --update-library          # re-download all of them that changed
+wattpdl --library --json          # the same listing, as JSON for scripts
+wattpdl --check-updates --json    # the update report, as JSON for scripts
+```
+
+`--update-library` rewrites each changed story's output file in full (all formats write the whole document) using your saved format and the default save folder. The resume progress for updated stories is kept on purpose, so the next update only downloads the chapters that are new; the resulting file always contains every chapter, old and new.
+
+Progress files for updated stories are kept in `~/.wattpdl/progress/` so the next update is cheap; delete that folder if you want to reclaim the space. Stories deleted or made private on Wattpad are reported as deleted/failed and skipped, without aborting the other stories.
+
+To stop tracking a story, remove it from the library:
+
+```bash
+wattpdl --library-forget 398440633
+```
+
+A few stories can be watched instead with `--watch`, which re-downloads as soon as a new chapter appears (see `--help`).
+
 ### Non-interactive mode (scripting/automation)
 
 Besides the question-and-answer mode, WattPDL can also be run through command line arguments, which is great for scheduling (cron/Task Scheduler) or calling from other scripts.
@@ -442,6 +473,14 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--check-updates` | Report which downloaded stories have new chapters |
 | `--watch` / `--watch-interval` | Monitor a story and re-download when new chapters appear (default check interval 1800 seconds) |
 | `--no-update-check` | Do not check for the latest wattpdl version on PyPI at startup |
+| `--library` | List every story recorded as fully downloaded (with `--json`, machine-readable) |
+| `--library-forget` | Remove one story from the library |
+| `--update-library` | Re-download every recorded story that has new chapters (mode 1 or 2 only) |
+| `--json` | With `--library` or `--check-updates`, print JSON to stdout |
+| `--info` | Show a story's details without downloading anything |
+| `--retries` | Retries per chapter before it is skipped (default 3, max 10) |
+| `--timeout` | Timeout for every HTTP request in seconds (default 20) |
+| `--dry-run` | Simulate a download: show the target file and chapter counts, write nothing |
 | `--version` | Show the wattpdl version |
 
 **More examples:**
@@ -461,6 +500,15 @@ wattpdl --id 398440633 --mode 1 --format epub
 
 # Download as Markdown, skip if the file already exists (good for scheduling)
 wattpdl --id 398440633 --mode 1 --format md --skip-existing
+
+# Show a story's details without downloading
+wattpdl --info --id 398440633
+
+# Update every recorded story that has new chapters
+wattpdl --update-library --format epub
+
+# See what a download would do, without writing any file
+wattpdl --dry-run --id 398440633 --mode 1 --format epub
 
 # Show all options
 wattpdl --help
@@ -602,10 +650,10 @@ Lint rules live in `pyproject.toml` under `[tool.ruff]` (line-length 110, target
 
 | Workflow | Purpose |
 |----------|---------|
-| `tests.yml` | ruff lint, pytest on Python 3.9-3.12, and a package build with `twine check` on every push to `main`, pull request to `main`, and push to a `v*` tag |
+| `tests.yml` | ruff lint, pip-audit dependency audit, pytest on Python 3.9-3.12 with a coverage floor, and a package build with `twine check` on every push to `main`, pull request to `main`, and push to a `v*` tag |
 | `publish.yml` | builds and publishes to PyPI via trusted publishing (OIDC) when a GitHub Release is published |
 
-Lint, tests, and the build check must be green before every push. Publishing to PyPI happens only through a published GitHub Release.
+Lint, the dependency audit, tests, and the build check must be green before every push (the `main` branch enforces this). Publishing to PyPI happens only through a published GitHub Release.
 
 ---
 
@@ -665,6 +713,20 @@ There is a 0.5 second delay between chapters (on purpose, so Wattpad's servers a
 - Want to read casually on a phone/tablet with an ebook app (Google Play Books, Apple Books, etc.): choose the **`.epub`** format
 - Want to edit or print neatly with Word: choose the **`.docx`** format
 - Want a small, simple file, or to read it in an e-reader/notes app: choose the **`.txt`** format
+
+</details>
+
+<details>
+<summary><b>How do I keep ongoing stories up to date?</b></summary>
+
+Download the story in Mode 1 or Mode 2, which records it in your library automatically. Later, run:
+
+```bash
+wattpdl --check-updates       # which recorded stories have new chapters
+wattpdl --update-library      # re-download all of the changed ones
+```
+
+`--update-library` rewrites each changed story's file in full; because the resume progress is kept for updated stories, only the new chapters are fetched from Wattpad. Run it with cron or Task Scheduler for a hands-off refresh, or use `--watch` to monitor one story continuously.
 
 </details>
 

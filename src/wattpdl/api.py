@@ -7,6 +7,7 @@ import re
 import threading
 import time
 from typing import Optional
+from urllib.parse import urlparse
 
 import requests
 
@@ -58,7 +59,9 @@ AUTHOR_STORIES_URL = (
 )
 
 DELAY_SECONDS = 0.5   # base delay between chapters (do not remove)
-MAX_RETRIES = 3
+MAX_RETRIES = 3       # default chapter download retry count
+DEFAULT_TIMEOUT = 20  # default HTTP timeout in seconds
+MAX_IMAGE_BYTES = 25 * 1024 * 1024  # max size of a downloaded image (cover or inline), 25 MB
 
 
 class WattpadAPIError(Exception):
@@ -143,7 +146,7 @@ def _raise_specific_http_error(e: requests.HTTPError, context: str = None) -> No
     raise e
 
 
-def get_story_info(story_id: str) -> tuple[str, str, list, dict]:
+def get_story_info(story_id: str, timeout: Optional[int] = None) -> tuple[str, str, list, dict]:
     """
     Fetch story metadata: title, author, chapter list, and extra metadata.
     The extra metadata (the `meta` dict) is used to enrich .docx/.epub files:
@@ -158,7 +161,7 @@ def get_story_info(story_id: str) -> tuple[str, str, list, dict]:
     requests.HTTPError.
     """
     url = STORY_INFO_URL.format(story_id=story_id)
-    resp = _http_session().get(url, timeout=20)
+    resp = _http_session().get(url, timeout=timeout or DEFAULT_TIMEOUT)
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
@@ -178,7 +181,7 @@ def get_story_info(story_id: str) -> tuple[str, str, list, dict]:
     return title, author, parts, meta
 
 
-def get_author_stories(username: str) -> list:
+def get_author_stories(username: str, timeout: Optional[int] = None) -> list:
     """
     Fetch the list of stories published by a Wattpad author.
     Return a list of dicts: [{"id": str, "title": str, "num_parts": int, "completed": bool}, ...]
@@ -187,7 +190,7 @@ def get_author_stories(username: str) -> list:
     from one author at once, without looking up IDs one by one).
     """
     url = AUTHOR_STORIES_URL.format(username=username)
-    resp = _http_session().get(url, timeout=20)
+    resp = _http_session().get(url, timeout=timeout or DEFAULT_TIMEOUT)
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
@@ -205,7 +208,34 @@ def get_author_stories(username: str) -> list:
     ]
 
 
-def download_image(image_url: str) -> Optional[bytes]:
+def _is_private_host(host) -> bool:
+    """True when `host` resolves to anything other than a globally routable,
+    non-multicast address (loopback, RFC1918, link-local like the cloud
+    metadata endpoint 169.254.169.254, CGNAT 100.64.0.0/10, unspecified,
+    reserved). Used to stop inline-image fetches, whose URLs come from
+    story HTML, from being aimed at internal networks."""
+    import ipaddress
+    import socket
+
+    host = (host or "").strip().rstrip(".").lower()
+    if not host or host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        addrinfos = socket.getaddrinfo(host, None)
+    except OSError:
+        # DNS failed; the request will fail anyway, no need to block it here
+        return False
+    for info in addrinfos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return True
+        if ip.is_multicast or not ip.is_global:
+            return True
+    return False
+
+
+def download_image(image_url: str, timeout: Optional[int] = None) -> Optional[bytes]:
     """Download 1 image (used for inline images inside a chapter, and for the
     story cover). A failure must not break the whole process, images are only
     extras, so always return None on failure and never raise an exception.
@@ -213,20 +243,35 @@ def download_image(image_url: str) -> Optional[bytes]:
     if not image_url:
         return None
     try:
-        resp = _http_session().get(image_url, timeout=20)
+        parsed = urlparse(image_url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return None
+        if _is_private_host(parsed.hostname):
+            return None
+        resp = _http_session().get(
+            image_url,
+            timeout=timeout or DEFAULT_TIMEOUT,
+            stream=True,
+        )
         resp.raise_for_status()
-        return resp.content
+        chunks, total = [], 0
+        for chunk in resp.iter_content(chunk_size=65536):
+            total += len(chunk)
+            if total > MAX_IMAGE_BYTES:
+                return None
+            chunks.append(chunk)
+        return b"".join(chunks)
     except requests.RequestException:
         return None
 
 
-def download_cover_image(cover_url: str) -> Optional[bytes]:
+def download_cover_image(cover_url: str, timeout: Optional[int] = None) -> Optional[bytes]:
     """Download the story cover image. Used to embed the cover in .docx/.epub files.
     Same contract as download_image: a failure must not stop the story download,
     return None on failure instead of raising. Kept as a separate name for
     backwards compatibility.
     """
-    return download_image(cover_url)
+    return download_image(cover_url, timeout=timeout)
 
 
 def get_chapter_html(
@@ -234,6 +279,7 @@ def get_chapter_html(
     retries: int = MAX_RETRIES,
     on_retry=None,
     rate_limiter: Optional[AdaptiveRateLimiter] = None,
+    timeout: Optional[int] = None,
 ) -> str:
     """
     Download the chapter text HTML with automatic retry.
@@ -250,7 +296,7 @@ def get_chapter_html(
     session = _http_session()
     for attempt in range(1, retries + 1):
         try:
-            resp = session.get(url, timeout=20)
+            resp = session.get(url, timeout=timeout or DEFAULT_TIMEOUT)
             resp.raise_for_status()
             if rate_limiter:
                 rate_limiter.report_success()

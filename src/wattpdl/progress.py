@@ -27,9 +27,12 @@ def load_progress(story_id: str) -> dict:
     if not path.exists():
         return {}
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
         return {}
+    if not isinstance(data, dict):
+        return {}
+    return data
 
 
 def save_chapter_progress(story_id: str, part_id, title: str, text: str) -> None:

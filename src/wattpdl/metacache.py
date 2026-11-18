@@ -31,7 +31,9 @@ def get_cached_story(story_id: str):
         return None
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except Exception:
+        return None
+    if not isinstance(data, dict):
         return None
     if time.time() - data.get("cached_at", 0) > TTL_SECONDS:
         return None

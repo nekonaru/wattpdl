@@ -4,6 +4,7 @@ Run with: pytest
 (the path to src/ is set through [tool.pytest.ini_options] in pyproject.toml)
 """
 import base64
+import json
 import pathlib
 import tempfile
 import threading
@@ -410,7 +411,7 @@ class TestFetchStoryOrExit:
         # Bug 1: only requests.HTTPError used to be caught, ConnectionError/Timeout
         # would slip through as a raw traceback. It must now exit cleanly (SystemExit),
         # not raise ConnectionError straight to the caller.
-        def fake_get_story_info(story_id):
+        def fake_get_story_info(story_id, timeout=None):
             raise requests.ConnectionError("koneksi putus")
 
         monkeypatch.setattr(app_mod.api, "get_story_info", fake_get_story_info)
@@ -418,7 +419,7 @@ class TestFetchStoryOrExit:
             app_mod.fetch_story_or_exit("12345")
 
     def test_timeout_exits_with_friendly_message(self, monkeypatch):
-        def fake_get_story_info(story_id):
+        def fake_get_story_info(story_id, timeout=None):
             raise requests.Timeout("waktu habis")
 
         monkeypatch.setattr(app_mod.api, "get_story_info", fake_get_story_info)
@@ -531,7 +532,8 @@ class TestCoverImage:
         assert api_mod.download_cover_image("https://example.com/cover.jpg") is None
 
     @responses_lib.activate
-    def test_download_cover_image_returns_bytes_on_success(self):
+    def test_download_cover_image_returns_bytes_on_success(self, monkeypatch):
+        monkeypatch.setattr(api_mod, "_is_private_host", lambda host: False)
         responses_lib.add(
             responses_lib.GET, "https://example.com/cover.jpg",
             body=b"\xff\xd8\xff\xe0FAKEJPEGDATA", status=200,
@@ -1176,7 +1178,7 @@ class TestDownloadChaptersRateLimiting:
         subject to wait()."""
         html_with_2_images = '<img src="https://example.com/a.jpg"><img src="https://example.com/b.jpg"><p>teks</p>'
         monkeypatch.setattr(api_mod, "get_chapter_html", lambda *a, **kw: html_with_2_images)
-        monkeypatch.setattr(api_mod, "download_image", lambda url: b"fake-image-bytes")
+        monkeypatch.setattr(api_mod, "download_image", lambda url, timeout=None: b"fake-image-bytes")
         rl = api_mod.AdaptiveRateLimiter(base_delay=0.0)
         wait_calls = {"n": 0}
         monkeypatch.setattr(rl, "wait", lambda: wait_calls.__setitem__("n", wait_calls["n"] + 1))
@@ -1384,13 +1386,13 @@ class TestInteractiveInputSafety:
 
     def test_fetch_cover_skips_network_when_not_needed(self, monkeypatch):
         monkeypatch.setattr(app_mod.api, "download_cover_image",
-                            lambda url: pytest.fail("must not download"))
+                            lambda url, timeout=None: pytest.fail("must not download"))
         assert app_mod.fetch_cover({"cover_url": "https://x/c.jpg"}, True, "5") is None   # --no-cover
         assert app_mod.fetch_cover({"cover_url": "https://x/c.jpg"}, False, "1") is None  # .txt has no cover
         assert app_mod.fetch_cover({"cover_url": None}, False, "5") is None              # no cover url
 
     def test_fetch_cover_downloads_for_pdf(self, monkeypatch):
-        monkeypatch.setattr(app_mod.api, "download_cover_image", lambda url: b"cover-bytes")
+        monkeypatch.setattr(app_mod.api, "download_cover_image", lambda url, timeout=None: b"cover-bytes")
         assert app_mod.fetch_cover({"cover_url": "https://x/c.jpg"}, False, "5") == b"cover-bytes"
 
 
@@ -1499,3 +1501,287 @@ class TestHttpSession:
         session = api_mod._http_session()
         adapter = session.get_adapter("https://example.com")
         assert adapter._pool_maxsize >= 10
+
+
+class TestLibraryForget:
+    """--library-forget: remove one story from the library."""
+
+    @pytest.fixture(autouse=True)
+    def isolate_library(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(library_mod, "LIBRARY_FILE", tmp_path / "library.json")
+
+    def test_forget_existing_story(self):
+        library_mod.remember_story("123", "Judul", 10)
+        assert library_mod.forget_story("123") is True
+        assert library_mod.load_library() == {}
+
+    def test_forget_missing_story_returns_false(self):
+        assert library_mod.forget_story("999") is False
+
+    def test_forget_keeps_other_stories(self):
+        library_mod.remember_story("1", "A", 1)
+        library_mod.remember_story("2", "B", 2)
+        library_mod.forget_story("1")
+        lib = library_mod.load_library()
+        assert "1" not in lib
+        assert lib["2"]["title"] == "B"
+
+
+class TestLibraryCommand:
+    """--library and --check-updates --json: machine-readable output."""
+
+    @pytest.fixture(autouse=True)
+    def isolate_library(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(library_mod, "LIBRARY_FILE", tmp_path / "library.json")
+        monkeypatch.setattr(metacache, "CACHE_DIR", tmp_path / "cache")
+
+    def test_library_json_lists_entries(self, capsys):
+        library_mod.remember_story("10", "Cerita A", 3)
+        library_mod.remember_story("11", "Cerita B", 7)
+        args = cli_args.parse_args(["--library", "--json"])
+        app_mod.run_library(args)
+        out = json.loads(capsys.readouterr().out)
+        assert [entry["id"] for entry in out] == ["10", "11"]
+        assert out[0]["title"] == "Cerita A"
+
+    def test_library_json_empty(self, capsys):
+        args = cli_args.parse_args(["--library", "--json"])
+        app_mod.run_library(args)
+        assert json.loads(capsys.readouterr().out) == []
+
+    @responses_lib.activate
+    def test_check_updates_json(self, capsys):
+        library_mod.remember_story("10", "Cerita A", 3)
+        responses_lib.add(
+            responses_lib.GET, api_mod.STORY_INFO_URL.format(story_id="10"),
+            json={"title": "Cerita A", "user": {"name": "P"}, "numParts": 5,
+                  "parts": [{"id": i, "title": f"Ch{i}"} for i in range(5)]},
+            status=200,
+        )
+        args = cli_args.parse_args(["--check-updates", "--json"])
+        app_mod.run_check_updates(args)
+        out = json.loads(capsys.readouterr().out)
+        assert len(out) == 1
+        assert out[0]["status"] == "new_chapters"
+        assert out[0]["new_chapters"] == 2
+        assert out[0]["current_parts"] == 5
+
+    @responses_lib.activate
+    def test_check_updates_json_deleted(self, capsys):
+        library_mod.remember_story("11", "Cerita Dihapus", 3)
+        responses_lib.add(
+            responses_lib.GET, api_mod.STORY_INFO_URL.format(story_id="11"),
+            status=404,
+        )
+        args = cli_args.parse_args(["--check-updates", "--json"])
+        app_mod.run_check_updates(args)
+        out = json.loads(capsys.readouterr().out)
+        assert out[0]["status"] == "deleted"
+        assert out[0]["current_parts"] is None
+
+
+class TestDryRun:
+    """--dry-run: no file is written and no chapter is downloaded."""
+
+    @pytest.fixture(autouse=True)
+    def isolate(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(progress_mod, "PROGRESS_DIR", tmp_path / "progress")
+
+    def test_dry_run_writes_nothing(self, tmp_path, monkeypatch):
+        def fail(*a, **kw):
+            raise AssertionError("download must not run in dry-run")
+
+        monkeypatch.setattr(cli_mod, "download_chapters", fail)
+        parts = [{"id": 1, "title": "Bab 1"}, {"id": 2, "title": "Bab 2"}]
+        app_mod.run_download("1", "Judul", "Penulis", parts, "1", "1", tmp_path, dry_run=True)
+        assert not (tmp_path / "Judul.txt").exists()
+        assert list(tmp_path.iterdir()) == []
+
+    def test_dry_run_counts_resumed_chapters(self, tmp_path, monkeypatch):
+        progress_mod.save_chapter_progress("1", 1, "Bab 1", "sudah ada")
+
+        def fail(*a, **kw):
+            raise AssertionError("download must not run in dry-run")
+
+        monkeypatch.setattr(cli_mod, "download_chapters", fail)
+        parts = [{"id": 1, "title": "Bab 1"}, {"id": 2, "title": "Bab 2"}]
+        app_mod.run_download("1", "Judul", "Penulis", parts, "1", "1", tmp_path, dry_run=True)
+        assert not (tmp_path / "Judul.txt").exists()
+
+
+class TestUpdateLibraryFlow:
+    """--update-library: re-download stories in the library that have new chapters."""
+
+    @pytest.fixture(autouse=True)
+    def isolate(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(library_mod, "LIBRARY_FILE", tmp_path / "library.json")
+        monkeypatch.setattr(metacache, "CACHE_DIR", tmp_path / "cache")
+        monkeypatch.setattr(progress_mod, "PROGRESS_DIR", tmp_path / "progress")
+        monkeypatch.setattr(app_mod.config_mod, "load_config",
+                            lambda: {"file_format": "1", "save_dir": str(tmp_path), "ui_lang": None})
+        monkeypatch.setattr(app_mod.config_mod, "save_config", lambda **kw: None)
+
+        def fake_get_story_info(story_id, timeout=None):
+            counts = {"10": 5, "11": 2}
+            new_count = counts[str(story_id)]
+            return (
+                f"Judul {story_id}",
+                "Penulis",
+                [{"id": i, "title": f"Ch{i}"} for i in range(new_count)],
+                {},
+            )
+
+        monkeypatch.setattr(app_mod.api, "get_story_info", fake_get_story_info)
+
+    def test_updates_only_stories_with_new_chapters(self, tmp_path, monkeypatch):
+        library_mod.remember_story("10", "Judul 10", 3)  # 3 -> 5, must update
+        library_mod.remember_story("11", "Judul 11", 2)  # 2 -> 2, up to date
+        calls = []
+        monkeypatch.setattr(app_mod, "run_download", lambda *a, **kw: calls.append((a, kw)))
+        args = cli_args.parse_args(["--update-library"])
+        app_mod.run_update_library(args)
+        assert len(calls) == 1
+        args_pos, kwargs = calls[0]
+        assert args_pos[0] == "10"
+        assert kwargs["keep_progress_on_success"] is True
+        assert args_pos[4] == "1"
+
+    def test_dry_run_skips_download(self, tmp_path, monkeypatch):
+        library_mod.remember_story("10", "Judul 10", 3)
+        calls = []
+        monkeypatch.setattr(app_mod, "run_download", lambda *a, **kw: calls.append((a, kw)))
+        args = cli_args.parse_args(["--update-library", "--dry-run"])
+        app_mod.run_update_library(args)
+        assert calls == []
+        assert not (tmp_path / "Judul 10.txt").exists()
+
+    def test_empty_library_no_crash(self):
+        args = cli_args.parse_args(["--update-library"])
+        app_mod.run_update_library(args)
+
+
+class TestInfoCommand:
+    """--info: print a story's details without downloading."""
+
+    @pytest.fixture(autouse=True)
+    def isolate(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(metacache, "CACHE_DIR", tmp_path / "cache")
+
+        def fake_get_story_info(story_id, timeout=None):
+            return (
+                "Judul",
+                "Penulis",
+                [{"id": 1, "title": "Ch1"}, {"id": 2, "title": "Ch2"}],
+                {"completed": True, "tags": ["Fantasy"], "description": "Sinopsis."},
+            )
+
+        monkeypatch.setattr(app_mod.api, "get_story_info", fake_get_story_info)
+
+    def test_info_prints_details_and_downloads_nothing(self, monkeypatch):
+        def fail(*a, **kw):
+            raise AssertionError("download must not run for --info")
+
+        monkeypatch.setattr(cli_mod, "download_chapters", fail)
+        args = cli_args.parse_args(["--info", "--id", "10"])
+        app_mod.run_info(args)
+
+
+class TestCliArgsValidation:
+    """Validation for the new flags (--retries, --timeout, --json, ...)."""
+
+    def test_retries_parsed_and_default(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1"])
+        assert args.retries == 3
+        args2 = cli_args.parse_args(["--id", "1", "--mode", "1", "--retries", "5"])
+        assert args2.retries == 5
+
+    def test_retries_zero_rejected(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1", "--retries", "0"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_timeout_zero_rejected(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1", "--timeout", "0"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_json_requires_library_or_check_updates(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1", "--json"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_library_conflicts_with_id(self):
+        args = cli_args.parse_args(["--library", "--id", "1", "--mode", "1"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_info_requires_id(self):
+        args = cli_args.parse_args(["--info"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_update_library_only_mode_1_or_2(self):
+        args = cli_args.parse_args(["--update-library", "--mode", "3"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+        args2 = cli_args.parse_args(["--update-library", "--mode", "2"])
+        cli_args.validate_common_args(args2)  # must not raise
+
+    def test_dry_run_flag(self):
+        args = cli_args.parse_args(["--id", "1", "--mode", "1", "--dry-run"])
+        assert args.dry_run is True
+
+
+class TestHttpTimeoutWiring:
+    """--timeout must reach every HTTP call (story info, chapters, images)."""
+
+    def test_get_story_info_passes_timeout(self, monkeypatch):
+        captured = {}
+
+        class FakeSession:
+            def get(self, url, timeout=None, **kw):
+                captured["timeout"] = timeout
+                return type("R", (), {"status_code": 200,
+                                      "raise_for_status": lambda self: None,
+                                      "json": lambda self: {"title": "T", "user": {}, "parts": [],
+                                                            "tags": []}})()
+
+        monkeypatch.setattr(api_mod, "_http_session", lambda: FakeSession())
+        api_mod.get_story_info("1", timeout=7)
+        assert captured["timeout"] == 7
+
+    def test_get_chapter_html_passes_timeout(self, monkeypatch):
+        captured = {}
+
+        class FakeSession:
+            def get(self, url, timeout=None, **kw):
+                captured["timeout"] = timeout
+                return type("R", (), {"status_code": 200,
+                                      "raise_for_status": lambda self: None,
+                                      "text": "<p>OK</p>"})()
+
+        monkeypatch.setattr(api_mod, "_http_session", lambda: FakeSession())
+        api_mod.get_chapter_html(1, retries=1, timeout=9)
+        assert captured["timeout"] == 9
+
+    def test_download_image_passes_timeout(self, monkeypatch):
+        captured = {}
+        monkeypatch.setattr(api_mod, "_is_private_host", lambda host: False)
+
+        class FakeResp:
+            status_code = 200
+
+            def raise_for_status(self):
+                return None
+
+            def iter_content(self, chunk_size=65536):
+                yield b"img"
+
+        class FakeSession:
+            def get(self, url, timeout=None, **kw):
+                captured["timeout"] = timeout
+                return FakeResp()
+
+        monkeypatch.setattr(api_mod, "_http_session", lambda: FakeSession())
+        api_mod.download_image("https://example.com/x.jpg", timeout=11)
+        assert captured["timeout"] == 11
