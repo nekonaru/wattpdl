@@ -58,6 +58,7 @@
 |-------|------------|
 | **4 mode unduh** | Semua jadi 1 file, semua terpisah dalam `.zip`, pilih beberapa chapter, atau cukup 1 chapter |
 | **Unduh per penulis** | `--user <username>` mengunduh semua/cerita pilihan dari satu penulis sekaligus |
+| **Cari cerita** | `--search "<query>"` menampilkan cerita yang cocok dengan diberi nomor (judul, penulis, jumlah chapter, status); unduh beberapa sekaligus dengan `--select 1-8,10` |
 | **Mode non-interaktif** | Bisa dijalankan lewat argumen command line untuk scripting/otomatisasi, tanpa perlu jawab prompt |
 | **Resume otomatis** | Kalau proses terhenti di tengah jalan, jalankan ulang cerita yang sama, chapter yang sudah berhasil tidak diunduh ulang |
 | **Skip file yang sudah ada** | Lewati unduhan kalau file output sudah ada di folder tujuan, tidak menimpa tanpa sengaja |
@@ -348,6 +349,7 @@ Tekan **Enter** untuk simpan di `Downloads`, atau ketik path kustom seperti:
 - Jadwalkan `--mode 1 --skip-existing` dengan cron atau Task Scheduler untuk cerita ongoing yang sering diunduh ulang
 - Pakai `--check-updates` untuk lihat cerita ongoing yang sudah diunduh mana saja yang punya chapter baru
 - Pakai `--update-library` untuk refresh semua cerita tercatat yang punya chapter baru dalam satu perintah
+- Pakai `--search` untuk mencari fanfic berdasarkan judul (misal `--search "Railgun in Fairy Tail"`) dan unduh beberapa sekaligus
 - Pakai `--watch` untuk unduh ulang otomatis begitu ada chapter baru
 
 ### Struktur output
@@ -478,6 +480,8 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--library` | Tampilkan semua cerita yang pernah diunduh penuh (dengan `--json`, machine-readable) |
 | `--library-forget` | Hapus 1 cerita dari library |
 | `--update-library` | Unduh ulang semua cerita tercatat yang punya chapter baru (hanya mode 1 atau 2) |
+| `--search` | Cari cerita Wattpad dan tampilkan dengan nomor (judul, penulis, jumlah chapter, status) |
+| `--select` | Indeks cerita dari hasil `--search` yang diunduh, contoh: `1-8,10` atau `all` |
 | `--json` | Untuk `--library` atau `--check-updates`, cetak JSON ke stdout |
 | `--info` | Tampilkan detail cerita tanpa mengunduh apa pun |
 | `--retries` | Jumlah retry per chapter sebelum dilewati (default 3, maksimal 10) |
@@ -511,6 +515,9 @@ wattpdl --update-library --format epub
 
 # Lihat apa yang akan dilakukan sebuah unduhan, tanpa menulis file
 wattpdl --dry-run --id 398440633 --mode 1 --format epub
+
+# Cari di Wattpad dan unduh cerita-cerita dari daftar (indeks dari output)
+wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1 --format epub
 
 # Lihat semua opsi
 wattpdl --help
@@ -729,6 +736,19 @@ wattpdl --update-library      # unduh ulang semua yang berubah
 ```
 
 `--update-library` menulis ulang file setiap cerita yang berubah secara utuh; karena progress resume disimpan untuk cerita yang diperbarui, hanya chapter baru yang diunduh dari Wattpad. Jalankan dengan cron atau Task Scheduler untuk refresh otomatis, atau pakai `--watch` untuk memantau satu cerita terus-menerus.
+
+</details>
+
+<details>
+<summary><b>Bagaimana cara mencari cerita berdasarkan judul?</b></summary>
+
+Jalankan wattpdl dengan `--search` dan kata kuncinya, contohnya:
+
+```bash
+wattpdl --search "Railgun in Fairy Tail"
+```
+
+Cerita yang cocok akan ditampilkan dengan nomor (judul, penulis, jumlah chapter, status). Tanpa `--select`, kamu ditanya indeks mana yang diunduh (bisa rentang seperti `1-8,10`, atau `all`). Untuk scripting, langsung isi `--select`: `wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1`.
 
 </details>
 
