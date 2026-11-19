@@ -249,6 +249,7 @@ MESSAGES = {
         "val.select_requires_search": "--select butuh --search.",
         "val.search_empty": "--search tidak boleh kosong.",
         "val.search_mode": "--search hanya untuk --mode 1 atau 2.",
+        "val.search_limit_bounds": "--search-limit harus antara 1 dan 100.",
 
         # ---------- search ----------
         "step.search": "Cari",
@@ -256,6 +257,8 @@ MESSAGES = {
         "search.none": "Tidak ada cerita ditemukan untuk '{query}'.",
         "status.searching": "Mencari '{query}'...",
         "err.select_invalid": "Indeks tidak valid: {error}",
+        "search.page_info": "Halaman {page}/{total} ({start}-{end} dari {items})",
+        "hint.search_page_nav": "Halaman berikutnya: n | sebelumnya: p",
         "prompt.search_mode": "Mode unduh (1 = 1 file gabungan, 2 = .zip per chapter)",
         "prompt.fanfic_indices": "Tambahkan indeks fanfic yang diunduh",
         "prompt.fanfic_indices_hint": "(contoh: 1-8,10)",
@@ -364,6 +367,7 @@ MESSAGES = {
         "help.timeout": "Timeout tiap request HTTP dalam detik (default 20).",
         "help.dry_run": "Simulasi: tampilkan file tujuan & jumlah chapter yang akan diunduh, tanpa menulis apa pun.",
         "help.search": "Cari cerita di Wattpad & tampilkan daftar (diberi nomor); unduh beberapa sekaligus dengan --select.",
+        "help.search_limit": "Jumlah hasil --search yang diambil (default 40, maksimal 100).",
         "help.select": "Indeks cerita dari hasil --search, contoh: 1,3,5-8.",
     },
 
@@ -557,6 +561,7 @@ MESSAGES = {
         "val.select_requires_search": "--select requires --search.",
         "val.search_empty": "--search must not be empty.",
         "val.search_mode": "--search only supports --mode 1 or 2.",
+        "val.search_limit_bounds": "--search-limit must be between 1 and 100.",
 
         # ---------- search ----------
         "step.search": "Search",
@@ -564,6 +569,8 @@ MESSAGES = {
         "search.none": "No stories found for '{query}'.",
         "status.searching": "Searching '{query}'...",
         "err.select_invalid": "Invalid selection: {error}",
+        "search.page_info": "Page {page}/{total} ({start}-{end} of {items})",
+        "hint.search_page_nav": "Next page: n | previous page: p",
         "prompt.search_mode": "Download mode (1 = 1 combined file, 2 = .zip per chapter)",
         "prompt.fanfic_indices": "Add indices of fanfics to download",
         "prompt.fanfic_indices_hint": "(example: 1-8,10)",
@@ -672,6 +679,7 @@ MESSAGES = {
         "help.timeout": "Timeout for every HTTP request in seconds (default 20).",
         "help.dry_run": "Simulate: show the target file and chapter counts without writing anything.",
         "help.search": "Search Wattpad stories & list them; download several at once with --select.",
+        "help.search_limit": "How many --search results to fetch (default 40, max 100).",
         "help.select": "Story indices from the --search results, example: 1,3,5-8.",
     },
 }

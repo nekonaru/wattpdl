@@ -114,6 +114,10 @@ def build_parser() -> argparse.ArgumentParser:
         help=t("help.search"),
     )
     parser.add_argument(
+        "--search-limit", type=int, default=40, metavar="N",
+        help=t("help.search_limit"),
+    )
+    parser.add_argument(
         "--select", metavar="all|1,3,5-8",
         help=t("help.select"),
     )
@@ -182,6 +186,8 @@ def validate_common_args(args: argparse.Namespace) -> None:
         raise ValueError(t("val.retries_max"))
     if args.timeout < 1:
         raise ValueError(t("val.timeout_min"))
+    if args.search_limit < 1 or args.search_limit > 100:
+        raise ValueError(t("val.search_limit_bounds"))
     if args.watch_interval < 1:
         raise ValueError(t("val.watch_interval_min"))
     standalone = [args.library, bool(args.library_forget), args.update_library, bool(args.search)]

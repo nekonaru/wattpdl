@@ -58,7 +58,7 @@
 |---------|-------------|
 | **4 download modes** | Everything in 1 file, everything separate in a `.zip`, pick several chapters, or just 1 chapter |
 | **Download by author** | `--user <username>` downloads all or selected stories from one author at once |
-| **Search stories** | `--search "<query>"` lists matching stories by index (title, author, chapter count, status); download several at once with `--select 1-8,10` |
+| **Search stories** | `--search "<query>"` lists matching stories by index (title, author, chapter count, status), 10 per page; download several at once with `--select 1-8,10` |
 | **Non-interactive mode** | Run with command line arguments for scripting/automation, no prompts to answer |
 | **Automatic resume** | If the process stops midway, run the same story again: chapters that already succeeded are not downloaded again |
 | **Skip existing files** | Skip the download if the output file already exists in the target folder, so nothing is overwritten by accident |
@@ -478,7 +478,8 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--library` | List every story recorded as fully downloaded (with `--json`, machine-readable) |
 | `--library-forget` | Remove one story from the library |
 | `--update-library` | Re-download every recorded story that has new chapters (mode 1 or 2 only) |
-| `--search` | Search Wattpad stories and list them by index (title, author, chapter count, status) |
+| `--search` | Search Wattpad stories and list them by index (title, author, chapter count, status), 10 per page |
+| `--search-limit` | How many `--search` results to fetch (default 40, max 100) |
 | `--select` | Story indices from the `--search` results to download, example: `1-8,10` or `all` |
 | `--json` | With `--library` or `--check-updates`, print JSON to stdout |
 | `--info` | Show a story's details without downloading anything |
@@ -746,7 +747,7 @@ Run wattpdl with `--search` and a query, for example:
 wattpdl --search "Railgun in Fairy Tail"
 ```
 
-The matching stories are listed with numbers (title, author, chapter count, status). Without `--select`, you are asked which indices to download (a range like `1-8,10` works, or `all`). For scripting, pass them directly: `wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1`.
+The matching stories are listed with numbers (title, author, chapter count, status), 10 per page. Type `n` for the next page and `p` for the previous one; the indices are global across pages, so story #13 is picked with `13` no matter which page is on screen. To fetch more results than the default 40, use `--search-limit N` (up to 100). Without `--select`, you are asked which indices to download (a range like `1-8,10` works, or `all`). For scripting, pass them directly: `wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1`.
 
 </details>
 

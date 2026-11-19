@@ -2,6 +2,15 @@
 
 Semua perubahan penting project ini didokumentasikan di file ini. Formatnya mengikuti release notes; lihat [CHANGELOG.md](CHANGELOG.md) untuk versi English.
 
+## v1.9.0
+
+Hasil search sekarang ditampilkan per halaman, 10 cerita per halaman.
+
+### Fitur baru
+
+- **Search paging.** Hasil `--search` ditampilkan 10 per halaman; ketik `n` untuk halaman berikutnya dan `p` untuk halaman sebelumnya. Nomor indeks global untuk semua halaman, jadi cerita #13 selalu dipilih dengan mengetik `13` di halaman mana pun, dan `--select` memakai nomor global yang sama di mode non-interaktif.
+- **`--search-limit N`** mengatur berapa banyak hasil yang diambil (default 40, maksimal 100). Query yang sangat populer tidak lagi terhenti di 10 teratas.
+
 ## v1.8.1
 
 ### Perbaikan bug
