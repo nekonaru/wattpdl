@@ -1785,3 +1785,129 @@ class TestHttpTimeoutWiring:
         monkeypatch.setattr(api_mod, "_http_session", lambda: FakeSession())
         api_mod.download_image("https://example.com/x.jpg", timeout=11)
         assert captured["timeout"] == 11
+
+
+class TestSearchStories:
+    """api.search_stories: Wattpad public search endpoint."""
+
+    def _fake_session(self, monkeypatch, payload):
+        class FakeResp:
+            status_code = 200
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return payload
+
+        class FakeSession:
+            def get(self, url, params=None, timeout=None, **kw):
+                FakeSession.last_params = params
+                return FakeResp()
+
+        monkeypatch.setattr(api_mod, "_http_session", lambda: FakeSession())
+        return FakeSession
+
+    def test_parses_response(self, monkeypatch):
+        session = self._fake_session(monkeypatch, {
+            "stories": [
+                {"id": "101", "title": "Story A", "numParts": 12,
+                 "completed": True, "user": {"name": "authorA"}},
+                {"id": "102", "title": "Story B", "numParts": 3,
+                 "completed": False, "user": {"name": "authorB"}},
+            ],
+        })
+        stories = api_mod.search_stories("railgun")
+        assert session.last_params["query"] == "railgun"
+        assert sorted(stories, key=lambda s: s["id"])[0]["id"] == "101"
+        assert [s["author"] for s in stories] == ["authorA", "authorB"]
+        assert stories[0]["completed"] is True
+        assert stories[0]["num_parts"] == 12
+
+    def test_empty_results(self, monkeypatch):
+        self._fake_session(monkeypatch, {"stories": []})
+        assert api_mod.search_stories("nonsensequery12345") == []
+
+    def test_empty_query_never_hits_network(self):
+        assert api_mod.search_stories("   ") == []
+        assert api_mod.search_stories("") == []
+
+
+class TestSearchValidation:
+    def test_select_requires_search(self):
+        args = cli_args.parse_args(["--select", "1,2"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_search_conflicts_with_id(self):
+        args = cli_args.parse_args(["--search", "x", "--id", "1"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_search_conflicts_with_user(self):
+        args = cli_args.parse_args(["--search", "x", "--user", "nekonaru"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_search_rejects_blank_query(self):
+        args = cli_args.parse_args(["--search", "   "])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_search_only_mode_1_or_2(self):
+        args = cli_args.parse_args(["--search", "x", "--mode", "3"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+
+class TestSearchFlow:
+    """app.run_search: pick fanfics by index and download them."""
+
+    @pytest.fixture(autouse=True)
+    def isolate(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(metacache, "CACHE_DIR", tmp_path / "cache")
+        monkeypatch.setattr(app_mod.config_mod, "load_config",
+                            lambda: {"file_format": "1", "save_dir": str(tmp_path), "ui_lang": None})
+        monkeypatch.setattr(app_mod.config_mod, "save_config", lambda **kw: None)
+        monkeypatch.setattr(app_mod, "resolve_save_dir", lambda *a, **kw: tmp_path)
+
+        fake_stories = [
+            {"id": "101", "title": "Book One", "num_parts": 10, "completed": True, "author": "authA"},
+            {"id": "102", "title": "Book Two", "num_parts": 5, "completed": False, "author": "authB"},
+            {"id": "103", "title": "Book Three", "num_parts": 20, "completed": True, "author": "authC"},
+        ]
+        monkeypatch.setattr(app_mod.api, "search_stories", lambda *a, **kw: fake_stories)
+
+        def fake_fetch(story_id, use_cache=True, timeout=None):
+            return (f"Judul {story_id}", "Penulis", [{"id": 1, "title": "Ch1"}], {})
+
+        monkeypatch.setattr(app_mod, "fetch_story_or_exit", fake_fetch)
+        self.calls = []
+        monkeypatch.setattr(app_mod, "run_download", lambda *a, **kw: self.calls.append((a, kw)))
+        return fake_stories
+
+    def test_non_interactive_select_downloads_chosen(self):
+        args = cli_args.parse_args(["--search", "railgun", "--select", "1,3"])
+        app_mod.run_search(args)
+        assert [call[0][0] for call in self.calls] == ["101", "103"]
+
+    def test_non_interactive_select_all_downloads_everything(self):
+        args = cli_args.parse_args(["--search", "railgun", "--select", "all"])
+        app_mod.run_search(args)
+        assert [call[0][0] for call in self.calls] == ["101", "102", "103"]
+
+    def test_interactive_asks_for_indices(self, monkeypatch):
+        answers = iter(["2", "1"])  # fanfic indices, mode
+        monkeypatch.setattr(app_mod.cli.Prompt, "ask", lambda *a, **kw: next(answers))
+        monkeypatch.setattr(app_mod, "_ask_file_format", lambda config: "1")
+        monkeypatch.setattr(app_mod, "_ask_include_images", lambda file_format: False)
+        args = cli_args.parse_args(["--search", "railgun"])
+        app_mod.run_search(args)
+        assert [call[0][0] for call in self.calls] == ["102"]
+        assert self.calls[0][0][4] == "1"
+
+    def test_search_no_results_prints_and_returns(self, monkeypatch, capsys):
+        monkeypatch.setattr(app_mod.api, "search_stories", lambda *a, **kw: [])
+        args = cli_args.parse_args(["--search", "zzzz-nothing"])
+        app_mod.run_search(args)
+        assert self.calls == []
