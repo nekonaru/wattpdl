@@ -34,7 +34,7 @@ def _http_session() -> requests.Session:
     if session is None:
         session = requests.Session()
         session.headers.update(HEADERS)
-        adapter = requests.adapters.HTTPAdapter(pool_connections=1, pool_maxsize=10)
+        adapter = requests.adapters.HTTPAdapter(pool_connections=1, pool_maxsize=50)
         session.mount("https://", adapter)
         session.mount("http://", adapter)
         _thread_local.session = session

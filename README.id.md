@@ -58,6 +58,7 @@
 |-------|------------|
 | **4 mode unduh** | Semua jadi 1 file, semua terpisah dalam `.zip`, pilih beberapa chapter, atau cukup 1 chapter |
 | **Unduh per penulis** | `--user <username>` mengunduh semua/cerita pilihan dari satu penulis sekaligus |
+| **Batch dari file** | `--file PATH` mengunduh semua cerita di file, satu ID atau link per baris (`#` untuk komentar), dalam mode 1 atau 2 |
 | **Cari cerita** | `--search "<query>"` menampilkan cerita yang cocok dengan diberi nomor (judul, penulis, jumlah chapter, status), 10 per halaman; unduh beberapa sekaligus dengan `--select 1-8,10` |
 | **Mode non-interaktif** | Bisa dijalankan lewat argumen command line untuk scripting/otomatisasi, tanpa perlu jawab prompt |
 | **Resume otomatis** | Kalau proses terhenti di tengah jalan, jalankan ulang cerita yang sama, chapter yang sudah berhasil tidak diunduh ulang |
@@ -75,6 +76,7 @@
 | **Link sumber tersimpan** | URL cerita dicantumkan di header file hasil |
 | **Nama file aman** | Karakter ilegal otomatis dihapus dari nama file |
 | **Pilih folder simpan** | Default ke folder `Downloads` sistem, bisa dikustomisasi |
+| **Nama file custom** | `--filename "Seri Saya - Buku 1"` mengganti nama dasar file output untuk unduhan satu cerita (`--id`) |
 
 ### Keandalan dan Performa
 
@@ -479,6 +481,8 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--no-update-check` | Jangan cek versi wattpdl terbaru di PyPI saat start |
 | `--library` | Tampilkan semua cerita yang pernah diunduh penuh (dengan `--json`, machine-readable) |
 | `--library-forget` | Hapus 1 cerita dari library |
+| `--file` | Unduh cerita yang dideretkan di file, satu ID atau link per baris (`#` untuk komentar), mode 1 atau 2 |
+| `--filename` | Nama file output custom untuk satu cerita (hanya `--id`), mis. `--filename "Seri Saya - Buku 1"` |
 | `--update-library` | Unduh ulang semua cerita tercatat yang punya chapter baru (hanya mode 1 atau 2) |
 | `--search` | Cari cerita Wattpad dan tampilkan dengan nomor (judul, penulis, jumlah chapter, status), 10 per halaman |
 | `--search-limit` | Berapa banyak hasil `--search` yang diambil (default 40, maksimal 100) |
@@ -519,6 +523,12 @@ wattpdl --dry-run --id 398440633 --mode 1 --format epub
 
 # Cari di Wattpad dan unduh cerita-cerita dari daftar (indeks dari output)
 wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1 --format epub
+
+# Unduh semua cerita yang dideretkan di file, satu ID/link per baris
+wattpdl --file "stories.txt" --mode 1 --format epub
+
+# Unduh satu cerita dengan nama file custom
+wattpdl --id 398440633 --mode 1 --format epub --filename "Seri Saya - Buku 1"
 
 # Lihat semua opsi
 wattpdl --help

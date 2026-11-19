@@ -245,11 +245,13 @@ MESSAGES = {
         "val.retries_max": "--retries maksimal 10.",
         "val.timeout_min": "--timeout minimal 1 detik.",
         "val.json_requires": "--json hanya berlaku untuk --library dan --check-updates.",
-        "val.standalone_conflict": "--library, --library-forget, --update-library, dan --search tidak bisa digabung dengan --id/--user.",
+        "val.standalone_conflict": "--library, --library-forget, --update-library, --search, dan --file tidak bisa digabung dengan --id/--user.",
         "val.select_requires_search": "--select butuh --search.",
         "val.search_empty": "--search tidak boleh kosong.",
         "val.search_mode": "--search hanya untuk --mode 1 atau 2.",
         "val.search_limit_bounds": "--search-limit harus antara 1 dan 100.",
+        "val.file_mode": "--file hanya untuk --mode 1 atau 2.",
+        "val.filename_requires_id": "--filename hanya berlaku untuk satu cerita (--id).",
 
         # ---------- search ----------
         "step.search": "Cari",
@@ -369,6 +371,14 @@ MESSAGES = {
         "help.search": "Cari cerita di Wattpad & tampilkan daftar (diberi nomor); unduh beberapa sekaligus dengan --select.",
         "help.search_limit": "Jumlah hasil --search yang diambil (default 40, maksimal 100).",
         "help.select": "Indeks cerita dari hasil --search, contoh: 1,3,5-8.",
+        "help.file": "Unduh daftar cerita dari file (ID atau link per baris, '#' untuk komentar).",
+        "help.filename": "Nama file output custom (hanya untuk satu cerita dengan --id, mis. --filename 'Seri Saya - Buku 1').",
+        "step.file_batch": "Batch dari File",
+        "warn.file_bad_line": "Baris dilewati (bukan ID/link cerita valid): {line}",
+        "err.file_not_found": "File tidak ditemukan: {path}",
+        "err.file_empty": "Tidak ada cerita valid di {path}",
+        "file.story_failed": "[Gagal] {id}: {error}",
+        "file.done": "Selesai: {n} cerita diunduh, {failed} gagal.",
     },
 
     "en": {
@@ -557,11 +567,13 @@ MESSAGES = {
         "val.retries_max": "--retries must be at most 10.",
         "val.timeout_min": "--timeout must be at least 1 second.",
         "val.json_requires": "--json only applies to --library and --check-updates.",
-        "val.standalone_conflict": "--library, --library-forget, --update-library, and --search cannot be combined with --id/--user.",
+        "val.standalone_conflict": "--library, --library-forget, --update-library, --search, and --file cannot be combined with --id/--user.",
         "val.select_requires_search": "--select requires --search.",
         "val.search_empty": "--search must not be empty.",
         "val.search_mode": "--search only supports --mode 1 or 2.",
         "val.search_limit_bounds": "--search-limit must be between 1 and 100.",
+        "val.file_mode": "--file only supports --mode 1 or 2.",
+        "val.filename_requires_id": "--filename only applies to a single story (--id).",
 
         # ---------- search ----------
         "step.search": "Search",
@@ -681,5 +693,13 @@ MESSAGES = {
         "help.search": "Search Wattpad stories & list them; download several at once with --select.",
         "help.search_limit": "How many --search results to fetch (default 40, max 100).",
         "help.select": "Story indices from the --search results, example: 1,3,5-8.",
+        "help.file": "Download the story IDs/links listed in a file, one per line ('#' for comments).",
+        "help.filename": "Custom output base name (only for a single story with --id, e.g. --filename 'My Series - Book 1').",
+        "step.file_batch": "File Batch",
+        "warn.file_bad_line": "Line skipped (not a valid story ID/link): {line}",
+        "err.file_not_found": "File not found: {path}",
+        "err.file_empty": "No valid stories in {path}",
+        "file.story_failed": "[failed] {id}: {error}",
+        "file.done": "Done: {n} stories downloaded, {failed} failed.",
     },
 }

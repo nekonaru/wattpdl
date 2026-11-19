@@ -58,6 +58,7 @@
 |---------|-------------|
 | **4 download modes** | Everything in 1 file, everything separate in a `.zip`, pick several chapters, or just 1 chapter |
 | **Download by author** | `--user <username>` downloads all or selected stories from one author at once |
+| **Batch from file** | `--file PATH` downloads every story listed in a file, one ID or link per line (`#` for comments), in mode 1 or 2 |
 | **Search stories** | `--search "<query>"` lists matching stories by index (title, author, chapter count, status), 10 per page; download several at once with `--select 1-8,10` |
 | **Non-interactive mode** | Run with command line arguments for scripting/automation, no prompts to answer |
 | **Automatic resume** | If the process stops midway, run the same story again: chapters that already succeeded are not downloaded again |
@@ -75,6 +76,7 @@
 | **Source link saved** | The story URL is included in the header of the resulting file |
 | **Safe file names** | Illegal characters are removed from file names automatically |
 | **Choose the save folder** | Defaults to the system `Downloads` folder, customizable |
+| **Custom file name** | `--filename "My Series - Book 1"` overrides the output base name for single-story downloads (`--id`) |
 
 ### Reliability and Performance
 
@@ -477,6 +479,8 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--no-update-check` | Do not check for the latest wattpdl version on PyPI at startup |
 | `--library` | List every story recorded as fully downloaded (with `--json`, machine-readable) |
 | `--library-forget` | Remove one story from the library |
+| `--file` | Download the stories listed in a file, one ID or link per line (`#` for comments), mode 1 or 2 |
+| `--filename` | Custom output base name for a single story (`--id` only), e.g. `--filename "My Series - Book 1"` |
 | `--update-library` | Re-download every recorded story that has new chapters (mode 1 or 2 only) |
 | `--search` | Search Wattpad stories and list them by index (title, author, chapter count, status), 10 per page |
 | `--search-limit` | How many `--search` results to fetch (default 40, max 100) |
@@ -517,6 +521,12 @@ wattpdl --dry-run --id 398440633 --mode 1 --format epub
 
 # Search Wattpad and download the listed stories (indices from the output)
 wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1 --format epub
+
+# Download every story listed in a file, one ID/link per line
+wattpdl --file "stories.txt" --mode 1 --format epub
+
+# Download one story under a custom file name
+wattpdl --id 398440633 --mode 1 --format epub --filename "My Series - Book 1"
 
 # Show all options
 wattpdl --help

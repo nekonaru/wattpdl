@@ -123,16 +123,34 @@ def resolve_chapters(mode: str, parts: list, chapters_arg: str = None, chapter_a
     return list(enumerate(parts, start=1))
 
 
+def _fetch_story_tolerant(story_id: str, timeout: int = None):
+    """Fetch a story for a batch flow (--user, --file). Returns
+    (info_tuple_or_None, error_string_or_None). Unlike the single-story flow,
+    a failure here must not stop the rest of the batch."""
+    try:
+        return api.get_story_info(story_id, timeout=timeout), None
+    except (api.StoryNotFoundError, api.StoryAccessError, requests.RequestException) as e:
+        return None, str(e)
+
+
+def _output_base_name(title, filename) -> str:
+    """The base file name for a single-story download: --filename if given, else the story title."""
+    custom = (filename or "").strip()
+    if custom:
+        return writers.safe_filename(custom)
+    return writers.safe_filename(title)
+
+
 def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                   chapters_arg=None, chapter_arg=None, meta=None, cover_bytes=None,
                   skip_existing=False, interactive=False, workers=1, include_images=False,
                   language="id", retries=None, timeout=None, dry_run=False,
-                  keep_progress_on_success=False):
+                  keep_progress_on_success=False, filename=None):
     """Shared download flow for both interactive and non-interactive modes."""
     indexed_parts = resolve_chapters(mode, parts, chapters_arg, chapter_arg)
 
     ext = {"2": "docx", "3": "epub", "4": "md", "5": "pdf"}.get(file_format, "txt")
-    base_name = writers.safe_filename(title)
+    base_name = _output_base_name(title, filename)
 
     if mode == "1":
         full_path = save_dir / f"{base_name}.{ext}"
@@ -377,6 +395,7 @@ def run_non_interactive(args):
         meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
         workers=args.workers, include_images=args.include_images, language=args.lang,
         retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
+        filename=args.filename,
     )
 
 
@@ -460,7 +479,8 @@ def run_interactive(args=None):
     run_download(story_id, title, author, parts, mode, file_format, save_dir,
                  meta=meta, cover_bytes=cover_bytes, interactive=True,
                  workers=workers, include_images=include_images,
-                 retries=retries, timeout=timeout, dry_run=dry_run)
+                 retries=retries, timeout=timeout, dry_run=dry_run,
+                 filename=args.filename if args else None)
 
 
 def run_user_mode(args) -> None:
@@ -515,11 +535,17 @@ def run_user_mode(args) -> None:
         writers.check_format_libraries(file_format, console)
     save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
 
+    succeeded, failed = 0, 0
     for n, story_index in enumerate(chosen_indices, start=1):
         story_summary = stories[story_index - 1]
         console.print(f"[primary]{t('info.story_progress', n=n, total=len(chosen_indices), title=story_summary['title'])}[/primary]")
         cli.reset_steps()  # reset the step numbering for every new story, instead of keeping on counting across stories
-        title, author, parts, meta = fetch_story_or_exit(story_summary["id"], use_cache=not args.no_cache, timeout=args.timeout)
+        info, error = _fetch_story_tolerant(story_summary["id"], timeout=args.timeout)
+        if info is None:
+            failed += 1
+            console.print(f"[warning]{t('file.story_failed', id=story_summary['id'], error=error)}[/warning]")
+            continue
+        title, author, parts, meta = info
 
         cover_bytes = None if args.dry_run else fetch_cover(meta, args.no_cover, file_format, timeout=args.timeout)
 
@@ -528,8 +554,11 @@ def run_user_mode(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
+            filename=args.filename,
         )
+        succeeded += 1
 
+    console.print(f"[success]{t('file.done', n=succeeded, failed=failed)}[/success]")
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
 
 
@@ -868,6 +897,63 @@ def run_search(args) -> None:
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
 
 
+def run_file_mode(args) -> None:
+    """Download the stories listed in a file, one ID or link per line.
+    Blank lines and lines starting with '#' are ignored. For each story a full
+    download is made (mode 1 or 2); stories that fail to fetch are skipped and
+    reported at the end, never aborting the rest of the file."""
+    cli.reset_steps()
+    step_rule(t("step.file_batch"))
+    path = pathlib.Path(args.file)
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError as e:
+        console.print(f"[danger]{t('err.file_not_found', path=path)}[/danger] {e}")
+        sys.exit(1)
+
+    story_ids = []
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            story_ids.append(api.extract_story_id(line))
+        except ValueError:
+            console.print(f"[warning]{t('warn.file_bad_line', line=line[:60])}[/warning]")
+    if not story_ids:
+        console.print(f"[danger]{t('err.file_empty', path=path)}[/danger]")
+        sys.exit(1)
+
+    mode = args.mode or "1"
+    config = config_mod.load_config()
+    file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
+    if not args.dry_run:
+        writers.check_format_libraries(file_format, console)
+    save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
+
+    succeeded, failed = 0, 0
+    for i, story_id in enumerate(story_ids, start=1):
+        console.print(f"[primary]{t('info.story_progress', n=i, total=len(story_ids), title=story_id)}[/primary]")
+        cli.reset_steps()  # reset the step numbering for every new story
+        info, error = _fetch_story_tolerant(story_id, timeout=args.timeout)
+        if info is None:
+            failed += 1
+            console.print(f"[warning]{t('file.story_failed', id=story_id, error=error)}[/warning]")
+            continue
+        title, author, parts, meta = info
+        cover_bytes = None if args.dry_run else fetch_cover(meta, args.no_cover, file_format, timeout=args.timeout)
+        run_download(
+            story_id, title, author, parts, mode, file_format, save_dir,
+            meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
+            workers=args.workers, include_images=args.include_images, language=args.lang,
+            retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
+        )
+        succeeded += 1
+
+    console.print(f"[success]{t('file.done', n=succeeded, failed=failed)}[/success]")
+    config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
+
+
 def run_watch(args) -> None:
     """Monitor 1 story continuously (--watch), automatically re-download in full
     as soon as the chapter count increases. Suitable for ongoing stories that update
@@ -965,6 +1051,8 @@ def main():
         run_check_updates(args)
     elif args.update_library:
         run_update_library(args)
+    elif args.file:
+        run_file_mode(args)
     elif args.search:
         run_search(args)
     elif args.user:
