@@ -179,20 +179,22 @@ def get_story_info(story_id: str, timeout: Optional[int] = None) -> tuple[str, s
 
 def search_stories(query: str, timeout: Optional[int] = None, limit: int = 10) -> list:
     """
-    Search Wattpad public API (v3 stories endpoint with `search=`).
+    Search Wattpad public API (v3 stories endpoint).
     Return a list of dicts: [{"id": str, "title": str, "num_parts": int, "completed": bool, "author": str}, ...]
 
     Used by the `--search "<query>"` feature (issue: search fanfics and
-    download several by index). The result order is Wattpad's relevance
-    order, the same as when searching on the website; the titles are
-    shown as-is.
+    download several by index). `limit` is clamped to 1-100 (Wattpad
+    serves at most 100 results per request). The result order is
+    Wattpad's relevance order, the same as when searching on the website;
+    the titles are shown as-is.
     """
     query = (query or "").strip()
     if not query:
         return []
+    limit = max(1, min(int(limit), 100))
     resp = _http_session().get(
         SEARCH_URL,
-        params={"query": query, "fields": SEARCH_FIELDS, "limit": int(limit)},
+        params={"query": query, "fields": SEARCH_FIELDS, "limit": limit},
         timeout=timeout or DEFAULT_TIMEOUT,
     )
     resp.raise_for_status()

@@ -1911,3 +1911,107 @@ class TestSearchFlow:
         args = cli_args.parse_args(["--search", "zzzz-nothing"])
         app_mod.run_search(args)
         assert self.calls == []
+
+
+class TestSearchLimit:
+    """--search-limit controls how many results are fetched."""
+
+    def test_search_limit_default_is_40(self):
+        args = cli_args.parse_args(["--search", "x"])
+        assert args.search_limit == 40
+
+    def test_search_limit_custom_value(self):
+        args = cli_args.parse_args(["--search", "x", "--search-limit", "100"])
+        assert args.search_limit == 100
+
+    def test_search_limit_zero_rejected(self):
+        args = cli_args.parse_args(["--search", "x", "--search-limit", "0"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_search_limit_over_max_rejected(self):
+        args = cli_args.parse_args(["--search", "x", "--search-limit", "101"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_search_stories_uses_and_clamps_limit(self, monkeypatch):
+        captured = {}
+
+        class FakeResp:
+            status_code = 200
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"stories": []}
+
+        class FakeSession:
+            def get(self, url, params=None, timeout=None, **kw):
+                captured.update(params or {})
+                return FakeResp()
+
+        monkeypatch.setattr(api_mod, "_http_session", lambda: FakeSession())
+        api_mod.search_stories("railgun", limit=250)
+        assert captured["limit"] == 100
+        assert captured["query"] == "railgun"
+
+
+class TestSearchPaging:
+    """Interactive paging of search results, 10 per page, global indices."""
+
+    @pytest.fixture(autouse=True)
+    def isolate(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(metacache, "CACHE_DIR", tmp_path / "cache")
+        monkeypatch.setattr(app_mod.config_mod, "load_config",
+                            lambda: {"file_format": "1", "save_dir": str(tmp_path), "ui_lang": None})
+        monkeypatch.setattr(app_mod.config_mod, "save_config", lambda **kw: None)
+        monkeypatch.setattr(app_mod, "resolve_save_dir", lambda *a, **kw: tmp_path)
+
+        fake_stories = [
+            {"id": str(100 + i), "title": f"Story {i:02d}", "num_parts": 1 + i,
+             "completed": i % 2 == 0, "author": f"auth{i}"}
+            for i in range(1, 26)  # 25 stories: 3 pages
+        ]
+        monkeypatch.setattr(app_mod.api, "search_stories", lambda *a, **kw: fake_stories)
+
+        def fake_fetch(story_id, use_cache=True, timeout=None):
+            return (f"Judul {story_id}", "Penulis", [{"id": 1, "title": "Ch1"}], {})
+
+        monkeypatch.setattr(app_mod, "fetch_story_or_exit", fake_fetch)
+        self.calls = []
+        monkeypatch.setattr(app_mod, "run_download", lambda *a, **kw: self.calls.append((a, kw)))
+        monkeypatch.setattr(app_mod, "_ask_file_format", lambda config: "1")
+        monkeypatch.setattr(app_mod, "_ask_include_images", lambda file_format: False)
+
+    def test_paging_with_n_and_select_on_page_2(self, monkeypatch):
+        answers = iter(["n", "13", "1"])  # next page, select #13 (global), mode 1
+        monkeypatch.setattr(app_mod.cli.Prompt, "ask", lambda *a, **kw: next(answers))
+        args = cli_args.parse_args(["--search", "railgun"])
+        app_mod.run_search(args)
+        assert [call[0][0] for call in self.calls] == ["113"]
+
+    def test_paging_forward_and_back(self, monkeypatch):
+        answers = iter(["n", "n", "p", "3", "1"])  # page forward twice, back once, pick global #3
+        monkeypatch.setattr(app_mod.cli.Prompt, "ask", lambda *a, **kw: next(answers))
+        args = cli_args.parse_args(["--search", "railgun"])
+        app_mod.run_search(args)
+        # after n, n, p we are on page 2 (11-20); indices are global, so 3 means story #3
+        assert [call[0][0] for call in self.calls] == ["103"]
+
+    def test_paging_all_selects_everything(self, monkeypatch):
+        answers = iter(["all", "1"])
+        monkeypatch.setattr(app_mod.cli.Prompt, "ask", lambda *a, **kw: next(answers))
+        args = cli_args.parse_args(["--search", "railgun"])
+        app_mod.run_search(args)
+        assert [call[0][0] for call in self.calls] == [str(100 + i) for i in range(1, 26)]
+
+    def test_select_beyond_page_1_non_interactive(self):
+        args = cli_args.parse_args(["--search", "railgun", "--select", "23"])
+        app_mod.run_search(args)
+        assert [call[0][0] for call in self.calls] == ["123"]
+
+    def test_select_all_beyond_page_1_non_interactive(self):
+        args = cli_args.parse_args(["--search", "railgun", "--select", "all"])
+        app_mod.run_search(args)
+        assert len(self.calls) == 25

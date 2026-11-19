@@ -58,7 +58,7 @@
 |-------|------------|
 | **4 mode unduh** | Semua jadi 1 file, semua terpisah dalam `.zip`, pilih beberapa chapter, atau cukup 1 chapter |
 | **Unduh per penulis** | `--user <username>` mengunduh semua/cerita pilihan dari satu penulis sekaligus |
-| **Cari cerita** | `--search "<query>"` menampilkan cerita yang cocok dengan diberi nomor (judul, penulis, jumlah chapter, status); unduh beberapa sekaligus dengan `--select 1-8,10` |
+| **Cari cerita** | `--search "<query>"` menampilkan cerita yang cocok dengan diberi nomor (judul, penulis, jumlah chapter, status), 10 per halaman; unduh beberapa sekaligus dengan `--select 1-8,10` |
 | **Mode non-interaktif** | Bisa dijalankan lewat argumen command line untuk scripting/otomatisasi, tanpa perlu jawab prompt |
 | **Resume otomatis** | Kalau proses terhenti di tengah jalan, jalankan ulang cerita yang sama, chapter yang sudah berhasil tidak diunduh ulang |
 | **Skip file yang sudah ada** | Lewati unduhan kalau file output sudah ada di folder tujuan, tidak menimpa tanpa sengaja |
@@ -480,7 +480,8 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--library` | Tampilkan semua cerita yang pernah diunduh penuh (dengan `--json`, machine-readable) |
 | `--library-forget` | Hapus 1 cerita dari library |
 | `--update-library` | Unduh ulang semua cerita tercatat yang punya chapter baru (hanya mode 1 atau 2) |
-| `--search` | Cari cerita Wattpad dan tampilkan dengan nomor (judul, penulis, jumlah chapter, status) |
+| `--search` | Cari cerita Wattpad dan tampilkan dengan nomor (judul, penulis, jumlah chapter, status), 10 per halaman |
+| `--search-limit` | Berapa banyak hasil `--search` yang diambil (default 40, maksimal 100) |
 | `--select` | Indeks cerita dari hasil `--search` yang diunduh, contoh: `1-8,10` atau `all` |
 | `--json` | Untuk `--library` atau `--check-updates`, cetak JSON ke stdout |
 | `--info` | Tampilkan detail cerita tanpa mengunduh apa pun |
@@ -748,7 +749,7 @@ Jalankan wattpdl dengan `--search` dan kata kuncinya, contohnya:
 wattpdl --search "Railgun in Fairy Tail"
 ```
 
-Cerita yang cocok akan ditampilkan dengan nomor (judul, penulis, jumlah chapter, status). Tanpa `--select`, kamu ditanya indeks mana yang diunduh (bisa rentang seperti `1-8,10`, atau `all`). Untuk scripting, langsung isi `--select`: `wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1`.
+Cerita yang cocok akan ditampilkan dengan nomor (judul, penulis, jumlah chapter, status), 10 cerita per halaman. Ketik `n` untuk halaman berikutnya dan `p` untuk halaman sebelumnya; nomornya global untuk semua halaman, jadi cerita #13 selalu dipilih dengan mengetik `13` di halaman mana pun. Untuk mengambil lebih dari 40 hasil default, pakai `--search-limit N` (maksimal 100). Tanpa `--select`, kamu ditanya indeks mana yang diunduh (bisa rentang seperti `1-8,10`, atau `all`). Untuk scripting, langsung isi `--select`: `wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1`.
 
 </details>
 

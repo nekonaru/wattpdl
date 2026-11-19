@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file. The format follows the release notes; see [CHANGELOG.id.md](CHANGELOG.id.md) for the Bahasa Indonesia version.
 
+## v1.9.0
+
+Search results are paged, 10 at a time.
+
+### New features
+
+- **Search paging.** `--search` results are shown 10 per page; type `n` for the next page and `p` for the previous one. Indices are global across pages, so story #13 is opened with `13` no matter which page is on screen, and `--select` accepts the same global numbers in non-interactive mode.
+- **`--search-limit N`** controls how many results are fetched (default 40, max 100). Popular queries no longer stop at the top 10.
+
 ## v1.8.1
 
 ### Bug fixes

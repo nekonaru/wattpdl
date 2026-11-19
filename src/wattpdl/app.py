@@ -739,6 +739,26 @@ def run_update_library(args) -> None:
     console.print(f"[success]{t('update.done', n=len(to_update), failed=len(failed))}[/success]")
 
 
+def _search_table(stories: list, start: int, end: int) -> Table:
+    """One page of search results, numbered globally (start..end, 1-based)."""
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
+    table.add_column(t("table.no"), style="muted", justify="right", width=5)
+    table.add_column(t("table.title"), style="value")
+    table.add_column(t("table.author"), style="muted")
+    table.add_column(t("table.chapters"), style="muted", justify="right")
+    table.add_column(t("table.status"), style="muted")
+    for i in range(start, end):
+        s = stories[i]
+        table.add_row(
+            str(i + 1),
+            s["title"],
+            s["author"],
+            str(s["num_parts"]),
+            t("info.status_completed") if s["completed"] else t("info.status_ongoing"),
+        )
+    return table
+
+
 def run_search(args) -> None:
     """Search Wattpad stories with a query string and list them with numbers.
 
@@ -747,6 +767,10 @@ def run_search(args) -> None:
     "all"): non-interactive, for scripting; mode/format come from --mode/--format
     or the saved config. Mode is limited to 1 or 2 because picking specific
     chapters makes no sense for several stories at once.
+
+    Results are paged 10 per view. In interactive mode, type "n" for the next
+    page and "p" for the previous one; indices are global across all pages,
+    so story #13 is always picked with "13" no matter which page is shown.
     """
     cli.reset_steps()
     query = args.search.strip()
@@ -754,7 +778,7 @@ def run_search(args) -> None:
 
     try:
         with console.status(f"[accent]{t('status.searching', query=query)}[/accent]", spinner="dots"):
-            stories = api.search_stories(query, timeout=args.timeout, limit=10)
+            stories = api.search_stories(query, timeout=args.timeout, limit=args.search_limit)
     except requests.RequestException as e:
         console.print(f"[danger]{t('err.api_access')}[/danger] {e}")
         console.print(f"[muted]{t('hint.check_connection')}[/muted]")
@@ -764,28 +788,33 @@ def run_search(args) -> None:
         console.print(f"[muted]{t('search.none', query=query)}[/muted]")
         return
 
-    table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
-    table.add_column(t("table.no"), style="muted", justify="right", width=5)
-    table.add_column(t("table.title"), style="value")
-    table.add_column(t("table.author"), style="muted")
-    table.add_column(t("table.chapters"), style="muted", justify="right")
-    table.add_column(t("table.status"), style="muted")
-    for i, s in enumerate(stories, start=1):
-        table.add_row(
-            str(i),
-            s["title"],
-            s["author"],
-            str(s["num_parts"]),
-            t("info.status_completed") if s["completed"] else t("info.status_ongoing"),
-        )
-    console.print(table)
-
     interactive = args.select is None
+    page_size = 10
     if interactive:
+        page = 0
+        max_page = (len(stories) - 1) // page_size
         while True:
+            start = page * page_size
+            end = min(start + page_size, len(stories))
+            if len(stories) > page_size:
+                console.print(
+                    f"[muted]{t('search.page_info', page=page + 1, total=max_page + 1, start=start + 1, end=end, items=len(stories))}[/muted]"
+                )
+                console.print(f"[muted]{t('hint.search_page_nav')}[/muted]")
+            console.print(_search_table(stories, start, end))
             raw = cli.Prompt.ask(
                 f"\n[value]{t('prompt.fanfic_indices')}[/value] [muted]{t('prompt.fanfic_indices_hint')}[/muted]"
             )
+            cmd = raw.strip().lower()
+            if cmd in ("n", "next"):
+                page = min(page + 1, max_page)
+                continue
+            if cmd in ("p", "prev", "previous"):
+                page = max(page - 1, 0)
+                continue
+            if cmd == "all":
+                chosen_indices = list(range(1, len(stories) + 1))
+                break
             try:
                 chosen_indices = cli.parse_chapter_selection(raw, len(stories))
                 break
@@ -797,6 +826,7 @@ def run_search(args) -> None:
             default=args.mode or "1",
         )
     else:
+        console.print(_search_table(stories, 0, len(stories)))
         if args.select.strip().lower() == "all":
             chosen_indices = list(range(1, len(stories) + 1))
         else:
