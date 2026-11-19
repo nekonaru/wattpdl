@@ -37,6 +37,35 @@ def print_story_info(title: str, author: str, parts: list) -> None:
     console.print(Panel(info_table, border_style="success", box=box.ROUNDED, padding=(1, 2)))
 
 
+def _ask_file_format(config: dict) -> str:
+    """Ask for the output format with the same table as the interactive flow."""
+    format_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
+    format_table.add_column(style="accent", justify="right")
+    format_table.add_column(style="value")
+    format_table.add_row("1", t("fmt.1"))
+    format_table.add_row("2", t("fmt.2"))
+    format_table.add_row("3", t("fmt.3"))
+    format_table.add_row("4", t("fmt.4"))
+    format_table.add_row("5", t("fmt.5"))
+    console.print()
+    console.print(format_table)
+    return cli.Prompt.ask(
+        f"\n[value]{t('prompt.format')}[/value]",
+        choices=["1", "2", "3", "4", "5"],
+        default=config.get("file_format", "1"),
+    )
+
+
+def _ask_include_images(file_format: str) -> bool:
+    """Ask whether to embed inline images, like the interactive flow."""
+    if file_format in ("2", "3", "5"):
+        return cli.Confirm.ask(
+            f"[value]{t('prompt.include_images')}[/value]",
+            default=False,
+        )
+    return False
+
+
 def resolve_save_dir(custom_path: str, config: dict, create_dirs: bool = True) -> pathlib.Path:
     """Resolve the save folder: custom path/argument wins, then the saved config, then the default Downloads folder.
     With create_dirs=False (used by --dry-run), no folder is created on disk."""
@@ -391,31 +420,11 @@ def run_interactive(args=None):
 
     mode = cli.Prompt.ask(f"\n[value]{t('prompt.mode')}[/value]", choices=["1", "2", "3", "4"], default="1")
 
-    format_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
-    format_table.add_column(style="accent", justify="right")
-    format_table.add_column(style="value")
-    format_table.add_row("1", t("fmt.1"))
-    format_table.add_row("2", t("fmt.2"))
-    format_table.add_row("3", t("fmt.3"))
-    format_table.add_row("4", t("fmt.4"))
-    format_table.add_row("5", t("fmt.5"))
-    console.print()
-    console.print(format_table)
-
-    file_format = cli.Prompt.ask(
-        f"\n[value]{t('prompt.format')}[/value]",
-        choices=["1", "2", "3", "4", "5"],
-        default=config.get("file_format", "1"),
-    )
+    file_format = _ask_file_format(config)
     if not dry_run:
         writers.check_format_libraries(file_format, console)
 
-    include_images = False
-    if file_format in ("2", "3", "5"):
-        include_images = cli.Confirm.ask(
-            f"[value]{t('prompt.include_images')}[/value]",
-            default=False,
-        )
+    include_images = _ask_include_images(file_format)
 
     # The actual chapter selection (including the prompt for mode 3/4) happens inside
     # run_download() -> resolve_chapters(). Here len(parts) is enough as a
@@ -729,6 +738,105 @@ def run_update_library(args) -> None:
     console.print(f"[success]{t('update.done', n=len(to_update), failed=len(failed))}[/success]")
 
 
+def run_search(args) -> None:
+    """Search Wattpad stories with a query string and list them with numbers.
+
+    Without --select: asks which indices to download (like the issue requested),
+    plus mode and format, then downloads them. With --select (e.g. "1-8,10" or
+    "all"): non-interactive, for scripting; mode/format come from --mode/--format
+    or the saved config. Mode is limited to 1 or 2 because picking specific
+    chapters makes no sense for several stories at once.
+    """
+    cli.reset_steps()
+    query = args.search.strip()
+    step_rule(t("step.search"))
+
+    try:
+        with console.status(f"[accent]{t('status.searching', query=query)}[/accent]", spinner="dots"):
+            stories = api.search_stories(query, timeout=args.timeout, limit=10)
+    except requests.RequestException as e:
+        console.print(f"[danger]{t('err.api_access')}[/danger] {e}")
+        console.print(f"[muted]{t('hint.check_connection')}[/muted]")
+        sys.exit(1)
+
+    if not stories:
+        console.print(f"[muted]{t('search.none', query=query)}[/muted]")
+        return
+
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
+    table.add_column(t("table.no"), style="muted", justify="right", width=5)
+    table.add_column(t("table.title"), style="value")
+    table.add_column(t("table.author"), style="muted")
+    table.add_column(t("table.chapters"), style="muted", justify="right")
+    table.add_column(t("table.status"), style="muted")
+    for i, s in enumerate(stories, start=1):
+        table.add_row(
+            str(i),
+            s["title"],
+            s["author"],
+            str(s["num_parts"]),
+            t("info.status_completed") if s["completed"] else t("info.status_ongoing"),
+        )
+    console.print(table)
+
+    interactive = args.select is None
+    if interactive:
+        while True:
+            raw = cli.Prompt.ask(
+                f"\n[value]{t('prompt.fanfic_indices')}[/value] [muted]{t('prompt.fanfic_indices_hint')}[/muted]"
+            )
+            try:
+                chosen_indices = cli.parse_chapter_selection(raw, len(stories))
+                break
+            except ValueError as e:
+                console.print(f"[danger]❌  {e}[/danger]")
+        mode = cli.Prompt.ask(
+            f"[value]{t('prompt.search_mode')}[/value]",
+            choices=["1", "2"],
+            default=args.mode or "1",
+        )
+    else:
+        if args.select.strip().lower() == "all":
+            chosen_indices = list(range(1, len(stories) + 1))
+        else:
+            try:
+                chosen_indices = cli.parse_chapter_selection(args.select, len(stories))
+            except ValueError as e:
+                console.print(f"[danger]{t('err.select_invalid', error=e)}[/danger]")
+                sys.exit(1)
+        mode = args.mode or "1"
+
+    console.print(f"[success]{t('ok.stories_selected', n=len(chosen_indices), total=len(stories))}[/success]")
+
+    config = config_mod.load_config()
+    if interactive:
+        file_format = _ask_file_format(config)
+        include_images = _ask_include_images(file_format)
+    else:
+        file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
+        include_images = args.include_images
+    if not args.dry_run:
+        writers.check_format_libraries(file_format, console)
+    save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
+
+    for i, index in enumerate(chosen_indices, start=1):
+        story_summary = stories[index - 1]
+        console.print(f"[primary]{t('info.story_progress', n=i, total=len(chosen_indices), title=story_summary['title'])}[/primary]")
+        cli.reset_steps()  # reset the step numbering for every new story
+        title, author, parts, meta = fetch_story_or_exit(
+            story_summary["id"], use_cache=not args.no_cache, timeout=args.timeout
+        )
+        cover_bytes = None if args.dry_run else fetch_cover(meta, args.no_cover, file_format, timeout=args.timeout)
+        run_download(
+            story_summary["id"], title, author, parts, mode, file_format, save_dir,
+            meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
+            workers=args.workers, include_images=include_images, language=args.lang,
+            retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
+        )
+
+    config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
+
+
 def run_watch(args) -> None:
     """Monitor 1 story continuously (--watch), automatically re-download in full
     as soon as the chapter count increases. Suitable for ongoing stories that update
@@ -826,6 +934,8 @@ def main():
         run_check_updates(args)
     elif args.update_library:
         run_update_library(args)
+    elif args.search:
+        run_search(args)
     elif args.user:
         run_user_mode(args)
     elif args.id:

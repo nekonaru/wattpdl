@@ -108,6 +108,16 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,  # internal knob for testing, deliberately not documented for users
     )
 
+    # --- search Wattpad and download several stories at once ---
+    parser.add_argument(
+        "--search", metavar="QUERY",
+        help=t("help.search"),
+    )
+    parser.add_argument(
+        "--select", metavar="all|1,3,5-8",
+        help=t("help.select"),
+    )
+
     # --- manage the local library of stories to keep up to date ---
     parser.add_argument(
         "--library", action="store_true",
@@ -174,11 +184,17 @@ def validate_common_args(args: argparse.Namespace) -> None:
         raise ValueError(t("val.timeout_min"))
     if args.watch_interval < 1:
         raise ValueError(t("val.watch_interval_min"))
-    standalone = [args.library, bool(args.library_forget), args.update_library]
+    standalone = [args.library, bool(args.library_forget), args.update_library, bool(args.search)]
     if args.json and not (args.library or args.check_updates):
         raise ValueError(t("val.json_requires"))
     if any(standalone) and (args.id or args.user):
         raise ValueError(t("val.standalone_conflict"))
+    if args.select is not None and not args.search:
+        raise ValueError(t("val.select_requires_search"))
+    if args.search is not None and not args.search.strip():
+        raise ValueError(t("val.search_empty"))
+    if args.search is not None and args.mode is not None and args.mode not in ("1", "2"):
+        raise ValueError(t("val.search_mode"))
     if args.info and not args.id:
         raise ValueError(t("val.info_requires_id"))
     if args.update_library and args.mode is not None and args.mode not in ("1", "2"):

@@ -58,6 +58,7 @@
 |---------|-------------|
 | **4 download modes** | Everything in 1 file, everything separate in a `.zip`, pick several chapters, or just 1 chapter |
 | **Download by author** | `--user <username>` downloads all or selected stories from one author at once |
+| **Search stories** | `--search "<query>"` lists matching stories by index (title, author, chapter count, status); download several at once with `--select 1-8,10` |
 | **Non-interactive mode** | Run with command line arguments for scripting/automation, no prompts to answer |
 | **Automatic resume** | If the process stops midway, run the same story again: chapters that already succeeded are not downloaded again |
 | **Skip existing files** | Skip the download if the output file already exists in the target folder, so nothing is overwritten by accident |
@@ -346,6 +347,7 @@ Press **Enter** to save in `Downloads`, or type a custom path such as:
 - Schedule `--mode 1 --skip-existing` with cron or Task Scheduler for ongoing stories you re-download often
 - Use `--check-updates` to see which downloaded ongoing stories have new chapters
 - Use `--update-library` to refresh every recorded story that has new chapters in one command
+- Use `--search` to find fanfics by title (e.g. `--search "Railgun in Fairy Tail"`) and download several at once
 - Use `--watch` to re-download automatically as soon as a new chapter appears
 
 ### Output structure
@@ -476,6 +478,8 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--library` | List every story recorded as fully downloaded (with `--json`, machine-readable) |
 | `--library-forget` | Remove one story from the library |
 | `--update-library` | Re-download every recorded story that has new chapters (mode 1 or 2 only) |
+| `--search` | Search Wattpad stories and list them by index (title, author, chapter count, status) |
+| `--select` | Story indices from the `--search` results to download, example: `1-8,10` or `all` |
 | `--json` | With `--library` or `--check-updates`, print JSON to stdout |
 | `--info` | Show a story's details without downloading anything |
 | `--retries` | Retries per chapter before it is skipped (default 3, max 10) |
@@ -509,6 +513,9 @@ wattpdl --update-library --format epub
 
 # See what a download would do, without writing any file
 wattpdl --dry-run --id 398440633 --mode 1 --format epub
+
+# Search Wattpad and download the listed stories (indices from the output)
+wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1 --format epub
 
 # Show all options
 wattpdl --help
@@ -727,6 +734,19 @@ wattpdl --update-library      # re-download all of the changed ones
 ```
 
 `--update-library` rewrites each changed story's file in full; because the resume progress is kept for updated stories, only the new chapters are fetched from Wattpad. Run it with cron or Task Scheduler for a hands-off refresh, or use `--watch` to monitor one story continuously.
+
+</details>
+
+<details>
+<summary><b>How do I search for a story by name?</b></summary>
+
+Run wattpdl with `--search` and a query, for example:
+
+```bash
+wattpdl --search "Railgun in Fairy Tail"
+```
+
+The matching stories are listed with numbers (title, author, chapter count, status). Without `--select`, you are asked which indices to download (a range like `1-8,10` works, or `all`). For scripting, pass them directly: `wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1`.
 
 </details>
 

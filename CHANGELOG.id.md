@@ -2,6 +2,14 @@
 
 Semua perubahan penting project ini didokumentasikan di file ini. Formatnya mengikuti release notes; lihat [CHANGELOG.md](CHANGELOG.md) untuk versi English.
 
+## v1.8.0
+
+Cari cerita Wattpad dan unduh fanfic berdasarkan indeks.
+
+### Fitur baru
+
+- **Cari cerita.** `--search "<query>"` menampilkan cerita yang cocok dengan diberi nomor (judul, penulis, jumlah chapter, status) memakai search publik Wattpad. Tanpa `--select`, kamu ditanya indeks mana yang diunduh (bisa rentang seperti `1-8,10`, atau `all`). Untuk scripting, langsung isi: `--search "query" --select 1-8,10 --mode 1`. Hanya mode 1 dan 2, seperti `--user`.
+
 ## v1.7.0
 
 Library management, info cerita, dan HTTP tuning untuk power user, plus security hardening.
