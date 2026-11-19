@@ -29,6 +29,8 @@ def load_config() -> dict:
 
     merged = dict(DEFAULT_CONFIG)
     merged.update({k: v for k, v in data.items() if k in DEFAULT_CONFIG})
+    if merged.get("file_format") not in ("1", "2", "3", "4", "5"):
+        merged["file_format"] = DEFAULT_CONFIG["file_format"]
     return merged
 
 

@@ -2015,3 +2015,91 @@ class TestSearchPaging:
         args = cli_args.parse_args(["--search", "railgun", "--select", "all"])
         app_mod.run_search(args)
         assert len(self.calls) == 25
+
+
+class TestOutputBaseName:
+    def test_custom_filename_wins(self):
+        assert app_mod._output_base_name("Judul Asli", "Seri Saya - Buku 1") == "Seri_Saya_-_Buku_1"
+
+    def test_falls_back_to_title(self):
+        assert app_mod._output_base_name("Judul Asli", None) == "Judul_Asli"
+        assert app_mod._output_base_name("Judul Asli", "   ") == "Judul_Asli"
+
+    def test_custom_filename_is_sanitized(self):
+        assert "/" not in app_mod._output_base_name("Judul", "../../evil")
+        assert "\\" not in app_mod._output_base_name("Judul", "..\\..\\evil")
+
+
+class TestFileModeFlow:
+    @pytest.fixture(autouse=True)
+    def isolate(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(app_mod.config_mod, "load_config",
+                            lambda: {"file_format": "1", "save_dir": str(tmp_path), "ui_lang": None})
+        monkeypatch.setattr(app_mod.config_mod, "save_config", lambda **kw: None)
+        monkeypatch.setattr(app_mod, "resolve_save_dir", lambda *a, **kw: tmp_path)
+        monkeypatch.setattr(app_mod, "_ask_file_format", lambda config: "1")
+        monkeypatch.setattr(app_mod, "_ask_include_images", lambda file_format: False)
+        monkeypatch.setattr(metacache, "CACHE_DIR", tmp_path / "cache")
+
+        def fake_fetch(story_id, timeout=None):
+            if story_id == "111":
+                return (f"Judul {story_id}", "Penulis", [{"id": 1, "title": "Ch1"}], {}), None
+            return None, "cerita tidak ditemukan"
+
+        monkeypatch.setattr(app_mod, "_fetch_story_tolerant", fake_fetch)
+        self.calls = []
+        monkeypatch.setattr(app_mod, "run_download", lambda *a, **kw: self.calls.append((a, kw)))
+
+    def test_file_with_mixed_lines(self, tmp_path):
+        f = tmp_path / "stories.txt"
+        f.write_text(
+            "# daftar cerita\n"
+            "\n"
+            "111\n"
+            "https://www.wattpad.com/story/111222-title\n"
+            "bukan cerita\n",
+            encoding="utf-8",
+        )
+        args = cli_args.parse_args(["--file", str(f), "--mode", "1"])
+        app_mod.run_file_mode(args)
+        assert [call[0][0] for call in self.calls] == ["111"]
+
+    def test_missing_file_exits(self, tmp_path):
+        args = cli_args.parse_args(["--file", str(tmp_path / "nope.txt")])
+        with pytest.raises(SystemExit):
+            app_mod.run_file_mode(args)
+
+    def test_empty_file_exits(self, tmp_path):
+        f = tmp_path / "empty.txt"
+        f.write_text("# cuma komentar\n\n", encoding="utf-8")
+        args = cli_args.parse_args(["--file", str(f)])
+        with pytest.raises(SystemExit):
+            app_mod.run_file_mode(args)
+
+    def test_failing_story_does_not_stop_the_rest(self, tmp_path):
+        f = tmp_path / "stories.txt"
+        f.write_text("111\n999\n", encoding="utf-8")
+        args = cli_args.parse_args(["--file", str(f), "--mode", "1"])
+        app_mod.run_file_mode(args)
+        assert [call[0][0] for call in self.calls] == ["111"]
+
+
+class TestNewFlagValidation:
+    def test_filename_requires_id(self):
+        args = cli_args.parse_args(["--filename", "Name"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_file_rejects_mode_3(self):
+        args = cli_args.parse_args(["--file", "x.txt", "--mode", "3"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_file_conflicts_with_id(self):
+        args = cli_args.parse_args(["--file", "x.txt", "--id", "1"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
+
+    def test_file_defaults_to_mode_1(self):
+        args = cli_args.parse_args(["--file", "x.txt"])
+        cli_args.validate_common_args(args)  # must not raise

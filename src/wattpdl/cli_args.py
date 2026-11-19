@@ -96,6 +96,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     # --- watch mode: monitor an ongoing story, auto re-download when there are new chapters ---
     parser.add_argument(
+        "--file", metavar="PATH",
+        help=t("help.file"),
+    )
+    parser.add_argument(
+        "--filename", metavar="NAME",
+        help=t("help.filename"),
+    )
+    parser.add_argument(
         "--watch", action="store_true",
         help=t("help.watch"),
     )
@@ -190,7 +198,7 @@ def validate_common_args(args: argparse.Namespace) -> None:
         raise ValueError(t("val.search_limit_bounds"))
     if args.watch_interval < 1:
         raise ValueError(t("val.watch_interval_min"))
-    standalone = [args.library, bool(args.library_forget), args.update_library, bool(args.search)]
+    standalone = [args.library, bool(args.library_forget), args.update_library, bool(args.search), bool(args.file)]
     if args.json and not (args.library or args.check_updates):
         raise ValueError(t("val.json_requires"))
     if any(standalone) and (args.id or args.user):
@@ -201,6 +209,10 @@ def validate_common_args(args: argparse.Namespace) -> None:
         raise ValueError(t("val.search_empty"))
     if args.search is not None and args.mode is not None and args.mode not in ("1", "2"):
         raise ValueError(t("val.search_mode"))
+    if args.file and args.mode is not None and args.mode not in ("1", "2"):
+        raise ValueError(t("val.file_mode"))
+    if args.filename and not args.id:
+        raise ValueError(t("val.filename_requires_id"))
     if args.info and not args.id:
         raise ValueError(t("val.info_requires_id"))
     if args.update_library and args.mode is not None and args.mode not in ("1", "2"):

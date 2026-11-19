@@ -48,7 +48,11 @@ def safe_filename(name: str, max_length: int = 100) -> str:
     name = re.sub(r'[<>:"/\\|?*]', "", name)
     name = re.sub(r"[^\w\s\-]", "", name).strip()
     name = re.sub(r"\s+", "_", name)
-    name = name[:max_length].rstrip("_")
+    # The cap is in bytes, not characters: the OS limit is 255 bytes on Linux/macOS,
+    # and multibyte titles (CJK, emoji) can exceed that long before 100 characters.
+    encoded = name.encode("utf-8")
+    if len(encoded) > max_length:
+        name = encoded[:max_length].decode("utf-8", errors="ignore").rstrip("_")
     if not name:
         return "wattpad_story"
     if name.upper() in _WINDOWS_RESERVED_NAMES:

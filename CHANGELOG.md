@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file. The format follows the release notes; see [CHANGELOG.id.md](CHANGELOG.id.md) for the Bahasa Indonesia version.
 
+## v1.10.0
+
+Batch downloads from a file and custom file names, plus an audit round.
+
+### New features
+
+- **Batch from file.** `--file PATH` downloads every story listed in a file, one ID or link per line (`#` for comments), in mode 1 or 2. A failing story is skipped and reported at the end instead of aborting the rest.
+- **Custom file name.** `--filename "My Series - Book 1"` overrides the output base name for single-story downloads (`--id`).
+
+### Bug fixes
+
+- **Long multibyte titles no longer overflow the file name limit.** `safe_filename` now caps by UTF-8 bytes (100 bytes, not 100 characters), so CJK and other multibyte titles cannot exceed the 255-byte limit on Linux/macOS.
+- **Batch runs no longer stop on a deleted or private story.** `--user` now skips a story that cannot be fetched (with a warning) and continues with the rest, like `--update-library` already did. A failure summary is printed at the end.
+- **A full or read-only disk no longer fails a chapter.** Resume progress writes are now best-effort; the chapter still counts as downloaded.
+- **Saved preferences with an unknown file format fall back to `txt`** instead of passing through as-is.
+- **HTTP connection pooling now fits the full worker count** (50 instead of 10), so large `--workers` values reuse connections.
+
 ## v1.9.0
 
 Search results are paged, 10 at a time.

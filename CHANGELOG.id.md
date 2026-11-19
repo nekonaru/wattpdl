@@ -2,6 +2,23 @@
 
 Semua perubahan penting project ini didokumentasikan di file ini. Formatnya mengikuti release notes; lihat [CHANGELOG.md](CHANGELOG.md) untuk versi English.
 
+## v1.10.0
+
+Batch unduhan dari file dan nama file custom, plus audit round.
+
+### Fitur baru
+
+- **Batch dari file.** `--file PATH` mengunduh semua cerita di file, satu ID atau link per baris (`#` untuk komentar), dalam mode 1 atau 2. Cerita yang gagal dilewati dan dilaporkan di akhir, tidak menghentikan yang lain.
+- **Nama file custom.** `--filename "Seri Saya - Buku 1"` mengganti nama dasar file output untuk unduhan satu cerita (`--id`).
+
+### Perbaikan bug
+
+- **Judul panjang multibyte tidak lagi melebihi batas nama file.** `safe_filename` sekarang membatasi berdasarkan byte UTF-8 (100 byte, bukan 100 karakter), jadi judul CJK dan karakter multibyte lain tidak akan melebihi batas 255 byte di Linux/macOS.
+- **Batch tidak lagi berhenti saat cerita dihapus atau di-private.** `--user` sekarang melewati cerita yang tidak bisa diambil (dengan warning) dan lanjut ke yang lain, seperti yang sudah dilakukan `--update-library`. Ringkasan kegagalan ditampilkan di akhir.
+- **Disk penuh atau read-only tidak lagi gagal di tengah chapter.** Penulisan progress resume sekarang best-effort; chapter tetap dihitung berhasil diunduh.
+- **Preferensi tersimpan dengan format file tidak dikenal jatuh kembali ke `txt`** alih-alih diteruskan apa adanya.
+- **Connection pooling HTTP sekarang sesuai worker maksimum** (50, bukan 10), sehingga `--workers` besar tetap memakai ulang koneksi.
+
 ## v1.9.0
 
 Hasil search sekarang ditampilkan per halaman, 10 cerita per halaman.

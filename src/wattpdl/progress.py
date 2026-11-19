@@ -47,15 +47,24 @@ def save_chapter_progress(story_id: str, part_id, title: str, text: str) -> None
     """
     data = load_progress(story_id)
     data[str(part_id)] = {"title": title, "text": text}
-    PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
-    _progress_path(story_id).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    try:
+        PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
+        _progress_path(story_id).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        # The resume cache is best-effort; a full disk or a read-only folder must
+        # not make a successfully downloaded chapter count as failed.
+        pass
 
 
 def clear_progress(story_id: str) -> None:
-    """Delete this story's progress file (called after all chapters were downloaded successfully)."""
+    """Delete this story's progress file (called after all chapters were downloaded successfully).
+    A failing delete must not fail the download that just succeeded."""
     path = _progress_path(story_id)
     if path.exists():
-        path.unlink()
+        try:
+            path.unlink()
+        except OSError:
+            pass
 
 
 class ProgressStore:
@@ -85,10 +94,15 @@ class ProgressStore:
             self._flush()
 
     def _flush(self) -> None:
-        PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
-        _progress_path(self.story_id).write_text(
-            json.dumps(self._data, ensure_ascii=False), encoding="utf-8"
-        )
+        try:
+            PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
+            _progress_path(self.story_id).write_text(
+                json.dumps(self._data, ensure_ascii=False), encoding="utf-8"
+            )
+        except OSError:
+            # The resume cache is best-effort; a full disk or a read-only folder must
+            # not make a successfully downloaded chapter count as failed.
+            pass
 
     def clear(self) -> None:
         with self._lock:
