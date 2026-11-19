@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file. The format follows the release notes; see [CHANGELOG.id.md](CHANGELOG.id.md) for the Bahasa Indonesia version.
 
+## v1.8.0
+
+Search Wattpad stories and download fanfics by index.
+
+### New features
+
+- **Search stories.** `--search "<query>"` lists the matching stories by index (title, author, chapter count, status) using Wattpad's public search. Without `--select`, you are asked which indices to download (a range like `1-8,10`, or `all`). For scripting, pass them directly: `--search "query" --select 1-8,10 --mode 1`. Modes 1 and 2 only, like `--user`.
+
 ## v1.7.0
 
 Library management, story info, and HTTP tuning for power users, plus a security hardening pass.

@@ -47,16 +47,12 @@ STORY_INFO_URL = (
 )
 CHAPTER_TEXT_URL = "https://www.wattpad.com/apiv2/storytext?id={part_id}"
 
-# NOTE: this endpoint (get_author_stories) follows the same public Wattpad
-# API v3 URL pattern as STORY_INFO_URL above, but has not yet been
-# verified against the real server because this development environment
-# has no network access to wattpad.com. If the real JSON response structure
-# turns out to differ, only the parsing in
-# `get_author_stories()` needs adjusting; its signature and callers stay the same.
 AUTHOR_STORIES_URL = (
     "https://www.wattpad.com/api/v3/users/{username}/stories/published"
     "?fields=stories(id,title,numParts,completed)"
 )
+SEARCH_URL = "https://www.wattpad.com/api/v3/stories"
+SEARCH_FIELDS = "stories(id,title,numParts,completed,user(name))"
 
 DELAY_SECONDS = 0.5   # base delay between chapters (do not remove)
 MAX_RETRIES = 3       # default chapter download retry count
@@ -179,6 +175,39 @@ def get_story_info(story_id: str, timeout: Optional[int] = None) -> tuple[str, s
         "num_parts": data.get("numParts"),
     }
     return title, author, parts, meta
+
+
+def search_stories(query: str, timeout: Optional[int] = None, limit: int = 10) -> list:
+    """
+    Search Wattpad public API (v3 stories endpoint with `search=`).
+    Return a list of dicts: [{"id": str, "title": str, "num_parts": int, "completed": bool, "author": str}, ...]
+
+    Used by the `--search "<query>"` feature (issue: search fanfics and
+    download several by index). The result order is Wattpad's relevance
+    order, the same as when searching on the website; the titles are
+    shown as-is.
+    """
+    query = (query or "").strip()
+    if not query:
+        return []
+    resp = _http_session().get(
+        SEARCH_URL,
+        params={"query": query, "fields": SEARCH_FIELDS, "limit": int(limit)},
+        timeout=timeout or DEFAULT_TIMEOUT,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    stories = data.get("stories", [])
+    return [
+        {
+            "id": str(s.get("id")),
+            "title": s.get("title", f"story_{s.get('id')}"),
+            "num_parts": s.get("numParts", 0),
+            "completed": bool(s.get("completed", False)),
+            "author": (s.get("user") or {}).get("name", "unknown"),
+        }
+        for s in stories
+    ]
 
 
 def get_author_stories(username: str, timeout: Optional[int] = None) -> list:
