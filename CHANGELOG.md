@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file. The format follows the release notes; see [CHANGELOG.id.md](CHANGELOG.id.md) for the Bahasa Indonesia version.
 
+## v1.8.1
+
+### Bug fixes
+
+- **--output-dir now applies in interactive mode.** Typing Enter at the save-folder prompt saves into the folder passed via `--output-dir`; previously the flag was silently ignored in interactive mode and the saved config default was used instead.
+
 ## v1.8.0
 
 Search Wattpad stories and download fanfics by index.

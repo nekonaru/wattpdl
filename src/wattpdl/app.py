@@ -443,14 +443,15 @@ def run_interactive(args=None):
             )
 
     step_rule(t("step.save_folder"))
-    default_dir = pathlib.Path(config["save_dir"]) if config.get("save_dir") else cli.get_default_download_dir()
+    interactive_default = args.output_dir if (args and args.output_dir) else config.get("save_dir")
+    default_dir = pathlib.Path(interactive_default) if interactive_default else cli.get_default_download_dir()
     console.print(f"[muted]{t('info.default_folder')}[/muted] [accent]{default_dir}[/accent]")
     custom = cli.Prompt.ask(
         f"[muted]{t('prompt.custom_folder')}[/muted]",
         default="",
         show_default=False,
     ).strip()
-    save_dir = resolve_save_dir(custom, config, create_dirs=not dry_run)
+    save_dir = resolve_save_dir(custom or (args.output_dir if args else ""), config, create_dirs=not dry_run)
 
     # Fetched after every question was answered: a silent network wait between
     # prompts makes people press Enter again, which then answers the next prompts.

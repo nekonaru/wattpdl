@@ -2,6 +2,12 @@
 
 Semua perubahan penting project ini didokumentasikan di file ini. Formatnya mengikuti release notes; lihat [CHANGELOG.md](CHANGELOG.md) untuk versi English.
 
+## v1.8.1
+
+### Perbaikan bug
+
+- **--output-dir sekarang berlaku di mode interaktif.** Menekan Enter pada prompt folder simpan menyimpan ke folder yang diberikan lewat `--output-dir`; sebelumnya flag ini diabaikan diam-diam di mode interaktif dan folder default dari config tersimpan yang dipakai.
+
 ## v1.8.0
 
 Cari cerita Wattpad dan unduh fanfic berdasarkan indeks.

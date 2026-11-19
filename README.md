@@ -463,7 +463,7 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--format {txt,docx,epub,md,pdf}` | Output file format. Default: from saved config, or `txt` |
 | `--chapters` | Chapter numbers for `--mode 3`, example: `1,3,5-8` |
 | `--chapter` | Chapter number for `--mode 4`, example: `5` |
-| `--output-dir` | Custom save folder. Default: from saved config, or the `Downloads` folder |
+| `--output-dir` | Custom save folder. In interactive mode it replaces the default-folder prompt; otherwise the default is from saved config, or the `Downloads` folder |
 | `--skip-existing` | Skip the download if the target output file already exists, instead of overwriting it |
 | `--no-cover` | Do not embed the story cover image in `.docx`/`.epub`/`.pdf` files |
 | `--include-images` | Also download & embed inline images inside chapters (adds download time) |

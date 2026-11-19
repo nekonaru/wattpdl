@@ -465,7 +465,7 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--format {txt,docx,epub,md,pdf}` | Format file output. Default: dari config tersimpan, atau `txt` |
 | `--chapters` | Nomor chapter untuk `--mode 3`, contoh: `1,3,5-8` |
 | `--chapter` | Nomor chapter untuk `--mode 4`, contoh: `5` |
-| `--output-dir` | Folder penyimpanan custom. Default: dari config tersimpan, atau folder `Downloads` |
+| `--output-dir` | Folder penyimpanan custom. Di mode interaktif menggantikan prompt folder default; selain itu default dari config tersimpan, atau folder `Downloads` |
 | `--skip-existing` | Lewati unduhan kalau file output tujuan sudah ada, alih-alih menimpanya |
 | `--no-cover` | Jangan sisipkan gambar sampul cerita ke file `.docx`/`.epub`/`.pdf` |
 | `--include-images` | Ikut unduh & sisipkan gambar inline di dalam chapter (menambah waktu unduh) |
