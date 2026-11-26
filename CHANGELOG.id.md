@@ -2,6 +2,24 @@
 
 Semua perubahan penting project ini didokumentasikan di file ini. Formatnya mengikuti release notes; lihat [CHANGELOG.md](CHANGELOG.md) untuk versi English.
 
+## v1.11.0
+
+Beberapa format sekaligus, laporan unduhan, tooling CLI, dan audit yang menaikkan coverage test.
+
+### Fitur baru
+
+- **Beberapa format dari satu unduhan.** `--format txt,epub` atau `--format all` menulis semua output dari chapter yang sama. Pada mode 2, tiap format mendapat zip tersendiri.
+- **Laporan unduhan.** `--report PATH.json` atau `.csv` mencatat ID cerita, judul, mode, format, jumlah chapter, waktu, dan path output untuk semua unduhan dalam satu sesi.
+- **Perintah preferensi.** `--config` menampilkan preferensi tersimpan; `--config-set file_format=epub` mengubah salah satu.
+- **Doctor.** `--doctor` mengecek dependency, folder data, preferensi, dan konektivitas API Wattpad dalam satu perintah.
+- **Shell completion.** `--completion bash|zsh|fish|powershell` mencetak script completion untuk flag wattpdl.
+- **Quiet / verbose.** `--quiet` menekan output normal untuk cron; `--verbose` mencetak opsi yang aktif.
+
+### Peningkatan
+
+- **File output atomik.** Writer sekarang menulis ke file sementara di folder tujuan lalu memindahkannya saat sukses, jadi crash tidak menyisakan file setengah jadi.
+- **Coverage test naik** dari 69% menjadi 82% (307 test), dengan batas minimum 80% di CI.
+
 ## v1.10.0
 
 Batch unduhan dari file dan nama file custom, plus audit round.

@@ -141,39 +141,90 @@ def _output_base_name(title, filename) -> str:
     return writers.safe_filename(title)
 
 
+REPORT_ENTRIES = []  # reset by main(); appended after each real download
+
+
+def _output_path(save_dir, base_name, mode, code, indexed_parts):
+    """Output path for one (mode, format) combination.
+    In mode 2 several formats need distinct zip names, hence the format suffix."""
+    ext = {"2": "docx", "3": "epub", "4": "md", "5": "pdf"}.get(code, "txt")
+    if mode == "1":
+        return save_dir / f"{base_name}.{ext}"
+    if mode == "2":
+        return save_dir / (f"{base_name}.zip" if code == "1" else f"{base_name}_{ext}.zip")
+    if mode == "3":
+        return save_dir / f"{base_name}_selected.{ext}"
+    chap_no, chap_part = indexed_parts[0]
+    chap_title = writers.safe_filename(chap_part.get("title", f"Chapter {chap_no}"))
+    return save_dir / f"{base_name}_Ch{chap_no:03d}_{chap_title}.{ext}"
+
+
+def _write_output(path, title, author, story_id, results, mode, code,
+                  meta, cover_bytes, images_by_idx, language):
+    """Write the downloaded chapters to one output file in the requested format."""
+    separate = mode == "2"
+    if code == "2":
+        writer = writers.write_separate_docx_zip if separate else writers.write_combined_docx
+        writer(path, title, author, story_id, results,
+               meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
+    elif code == "3":
+        writer = writers.write_separate_epub_zip if separate else writers.write_combined_epub
+        writer(path, title, author, story_id, results,
+               meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx, language=language)
+    elif code == "4":
+        writer = writers.write_separate_md_zip if separate else writers.write_combined_md
+        writer(path, title, author, story_id, results, meta=meta)
+    elif code == "5":
+        writer = writers.write_separate_pdf_zip if separate else writers.write_combined_pdf
+        writer(path, title, author, story_id, results,
+               meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
+    else:
+        writer = writers.write_separate_zip if separate else writers.write_combined_txt
+        writer(path, title, author, story_id, results)
+
+
+def write_report(path, entries=None) -> None:
+    """Write a download report as JSON or CSV (extension decides the format)."""
+    import csv
+
+    entries = REPORT_ENTRIES if entries is None else entries
+    target = pathlib.Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.suffix.lower() == ".csv":
+        fields = ["story_id", "title", "mode", "formats", "chapters", "succeeded",
+                  "failed", "elapsed", "files", "at"]
+        with target.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            for entry in entries:
+                row = dict(entry)
+                row["files"] = "|".join(str(p) for p in entry.get("files", []))
+                row["formats"] = ",".join(entry.get("formats", []))
+                writer.writerow({k: row.get(k, "") for k in fields})
+    else:
+        target.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                   chapters_arg=None, chapter_arg=None, meta=None, cover_bytes=None,
                   skip_existing=False, interactive=False, workers=1, include_images=False,
                   language="id", retries=None, timeout=None, dry_run=False,
-                  keep_progress_on_success=False, filename=None):
+                  keep_progress_on_success=False, filename=None, formats=None):
     """Shared download flow for both interactive and non-interactive modes."""
     indexed_parts = resolve_chapters(mode, parts, chapters_arg, chapter_arg)
-
-    ext = {"2": "docx", "3": "epub", "4": "md", "5": "pdf"}.get(file_format, "txt")
+    codes = list(formats) if formats else [file_format]
     base_name = _output_base_name(title, filename)
+    targets = [(code, _output_path(save_dir, base_name, mode, code, indexed_parts)) for code in codes]
 
-    if mode == "1":
-        full_path = save_dir / f"{base_name}.{ext}"
-    elif mode == "2":
-        full_path = save_dir / f"{base_name}.zip"
-    elif mode == "3":
-        full_path = save_dir / f"{base_name}_selected.{ext}"
-    else:
-        chap_no, chap_part = indexed_parts[0]
-        chap_title = writers.safe_filename(chap_part.get("title", f"Chapter {chap_no}"))
-        full_path = save_dir / f"{base_name}_Ch{chap_no:03d}_{chap_title}.{ext}"
-
-    try:
-        path_exists = full_path.exists()
-    except OSError as e:
-        # This can happen if the combined file name (story title + chapter title
-        # for mode 4, or the target folder chosen by the user is already long)
-        # still exceeds the operating system's path length limit even after being truncated
-        # by safe_filename(). Show a tidy message, do not let a raw traceback through.
-        console.print(f"[danger]{t('err.path_invalid')}[/danger] {e}")
-        console.print(f"[muted]{t('info.path_tried', path=full_path)}[/muted]")
-        console.print(f"[muted]{t('hint.shorter_path')}[/muted]")
-        sys.exit(1)
+    for _code, path in targets:
+        try:
+            path.exists()
+        except OSError as e:
+            # The file name can still exceed the OS limit even after safe_filename().
+            console.print(f"[danger]{t('err.path_invalid')}[/danger] {e}")
+            console.print(f"[muted]{t('info.path_tried', path=path)}[/muted]")
+            console.print(f"[muted]{t('hint.shorter_path')}[/muted]")
+            sys.exit(1)
 
     if dry_run:
         reused, to_download = 0, 0
@@ -186,29 +237,36 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                     to_download += 1
         else:
             to_download = len(indexed_parts)
-        ext = {"2": "docx", "3": "epub", "4": "md", "5": "pdf"}.get(file_format, "txt")
         console.print(f"[warning]{t('dryrun.title')}[/warning]")
-        console.print(f"[muted]{t('dryrun.path')}[/muted] [accent]{full_path}[/accent]")
-        console.print(f"[muted]{t('dryrun.exists')}[/muted] [accent]{str(path_exists).lower()}[/accent]")
-        console.print(f"[muted]{t('dryrun.mode')}[/muted] [accent]{mode} ({ext})[/accent]")
+        for code, path in targets:
+            ext = {"2": "docx", "3": "epub", "4": "md", "5": "pdf"}.get(code, "txt")
+            console.print(f"[muted]{t('dryrun.path')}[/muted] [accent]{path}[/accent]")
+            console.print(f"[muted]{t('dryrun.exists')}[/muted] [accent]{str(path.exists()).lower()}[/accent]")
+            console.print(f"[muted]{t('dryrun.mode')}[/muted] [accent]{mode} ({ext})[/accent]")
         console.print(f"[muted]{t('dryrun.chapters')}[/muted] [accent]{len(indexed_parts)}[/accent]")
         console.print(f"[muted]{t('dryrun.reused')}[/muted] [accent]{reused}[/accent]")
         console.print(f"[muted]{t('dryrun.to_download')}[/muted] [accent]{to_download}[/accent]")
         return
 
-    if path_exists:
-        if interactive:
-            if not cli.confirm_overwrite(full_path):
-                console.print(f"[muted]{t('info.skipped_existing_kept')}[/muted]")
-                return
-        elif should_skip_existing(full_path, skip_existing):
-            console.print(
-                f"[muted]{t('info.skipped_existing')}[/muted] [accent]{full_path}[/accent]\n"
-                f"[muted]{t('hint.remove_skip_existing')}[/muted]"
-            )
-            return
+    write_targets = []
+    for code, path in targets:
+        if path.exists():
+            if interactive:
+                if not cli.confirm_overwrite(path):
+                    console.print(f"[muted]{t('info.skipped_existing_kept')}[/muted]")
+                    continue
+            elif should_skip_existing(path, skip_existing):
+                console.print(
+                    f"[muted]{t('info.skipped_existing')}[/muted] [accent]{path}[/accent]\n"
+                    f"[muted]{t('hint.remove_skip_existing')}[/muted]"
+                )
+                continue
+        write_targets.append((code, path))
+    if not write_targets:
+        return
 
-    console.print(f"[value]{t('info.saved_at')}[/value] [accent]{full_path}[/accent]")
+    for _code, path in write_targets:
+        console.print(f"[value]{t('info.saved_at')}[/value] [accent]{path}[/accent]")
 
     step_rule(t("step.downloading"))
     start_time = time.time()
@@ -226,52 +284,34 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         else:
             console.print(f"[warning]{t('warn.no_images')}[/warning]")
 
+    written_paths = []
     try:
-        if mode == "2":
-            if file_format == "2":
-                writers.write_separate_docx_zip(full_path, title, author, story_id, results,
-                                                 meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
-            elif file_format == "3":
-                writers.write_separate_epub_zip(full_path, title, author, story_id, results,
-                                                 meta=meta, cover_bytes=cover_bytes,
-                                                 images_by_idx=images_by_idx, language=language)
-            elif file_format == "4":
-                writers.write_separate_md_zip(full_path, title, author, story_id, results, meta=meta)
-            elif file_format == "5":
-                writers.write_separate_pdf_zip(full_path, title, author, story_id, results,
-                                                meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
-            else:
-                writers.write_separate_zip(full_path, title, author, story_id, results)
-        else:
-            if file_format == "2":
-                writers.write_combined_docx(full_path, title, author, story_id, results,
-                                             meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
-            elif file_format == "3":
-                writers.write_combined_epub(full_path, title, author, story_id, results,
-                                             meta=meta, cover_bytes=cover_bytes,
-                                             images_by_idx=images_by_idx, language=language)
-            elif file_format == "4":
-                writers.write_combined_md(full_path, title, author, story_id, results, meta=meta)
-            elif file_format == "5":
-                writers.write_combined_pdf(full_path, title, author, story_id, results,
-                                            meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
-            else:
-                writers.write_combined_txt(full_path, title, author, story_id, results)
+        for code, path in write_targets:
+            _write_output(path, title, author, story_id, results, mode, code,
+                          meta, cover_bytes, images_by_idx, language)
+            written_paths.append(path)
     except OSError as e:
-        # The chapters were already downloaded (and their progress already saved through
-        # progress.py), so a failure to WRITE the file at the last second
-        # (path too long, disk full, no write permission, etc.) must not appear
-        # as a raw traceback. Tell the user their progress is not lost.
+        # The chapters were already downloaded, so a write failure at the last
+        # second must not look like a raw traceback; progress is preserved.
         console.print(f"[danger]{t('err.write_failed')}[/danger] {e}")
-        console.print(f"[muted]{t('info.path_tried', path=full_path)}[/muted]")
+        console.print(f"[muted]{t('info.path_tried', path=path)}[/muted]")
         console.print(f"[muted]{t('hint.progress_kept')}[/muted]")
         sys.exit(1)
+
+    REPORT_ENTRIES.append({
+        "story_id": str(story_id), "title": title, "mode": mode,
+        "formats": [{"1": "txt", "2": "docx", "3": "epub", "4": "md", "5": "pdf"}.get(c, c) for c, _ in write_targets],
+        "chapters": len(indexed_parts), "succeeded": len(results) - len(failed_chapters),
+        "failed": len(failed_chapters), "elapsed": elapsed,
+        "files": [str(p) for p in written_paths], "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
 
     step_rule(t("step.summary"))
     summary = Table(show_header=False, box=box.SIMPLE, padding=(0, 1), expand=False)
     summary.add_column(style="muted")
     summary.add_column(style="value")
-    summary.add_row(t("sum.file_saved"), f"[accent]{full_path}[/accent]")
+    for path in written_paths:
+        summary.add_row(t("sum.file_saved"), f"[accent]{path}[/accent]")
     summary.add_row(t("sum.success"), f"[success]{len(results) - len(failed_chapters)}/{len(results)}[/success]")
     if failed_chapters:
         summary.add_row(t("sum.failed"), f"[danger]{len(failed_chapters)}[/danger]")
@@ -381,9 +421,11 @@ def run_non_interactive(args):
     step_rule(t("step.story_info"))
     print_story_info(title, author, parts)
 
-    file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
+    codes = cli_args.resolve_codes(args.format, config.get("file_format", "1"))
+    file_format = codes[0]
     if not args.dry_run:
-        writers.check_format_libraries(file_format, console)
+        for code in codes:
+            writers.check_format_libraries(code, console)
 
     save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
 
@@ -395,7 +437,7 @@ def run_non_interactive(args):
         meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
         workers=args.workers, include_images=args.include_images, language=args.lang,
         retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
-        filename=args.filename,
+        filename=args.filename, formats=codes,
     )
 
 
@@ -440,8 +482,10 @@ def run_interactive(args=None):
     mode = cli.Prompt.ask(f"\n[value]{t('prompt.mode')}[/value]", choices=["1", "2", "3", "4"], default="1")
 
     file_format = _ask_file_format(config)
+    codes = [file_format]
     if not dry_run:
-        writers.check_format_libraries(file_format, console)
+        for code in codes:
+            writers.check_format_libraries(code, console)
 
     include_images = _ask_include_images(file_format)
 
@@ -530,9 +574,11 @@ def run_user_mode(args) -> None:
     console.print(f"[success]{t('ok.stories_selected', n=len(chosen_indices), total=len(stories))}[/success]")
 
     config = config_mod.load_config()
-    file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
+    codes = cli_args.resolve_codes(args.format, config.get("file_format", "1"))
+    file_format = codes[0]
     if not args.dry_run:
-        writers.check_format_libraries(file_format, console)
+        for code in codes:
+            writers.check_format_libraries(code, console)
     save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
 
     succeeded, failed = 0, 0
@@ -554,7 +600,7 @@ def run_user_mode(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
-            filename=args.filename,
+            filename=args.filename, formats=codes,
         )
         succeeded += 1
 
@@ -740,9 +786,11 @@ def run_update_library(args) -> None:
         return
 
     config = config_mod.load_config()
-    file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
+    codes = cli_args.resolve_codes(args.format, config.get("file_format", "1"))
+    file_format = codes[0]
     if not args.dry_run:
-        writers.check_format_libraries(file_format, console)
+        for code in codes:
+            writers.check_format_libraries(code, console)
     save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
 
     console.print(f"[success]{t('update.found', n=len(to_update))}[/success]")
@@ -763,7 +811,7 @@ def run_update_library(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout,
-            keep_progress_on_success=True,
+            keep_progress_on_success=True, formats=codes,
         )
     console.print(f"[success]{t('update.done', n=len(to_update), failed=len(failed))}[/success]")
 
@@ -871,12 +919,15 @@ def run_search(args) -> None:
     config = config_mod.load_config()
     if interactive:
         file_format = _ask_file_format(config)
+        codes = [file_format]
         include_images = _ask_include_images(file_format)
     else:
-        file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
+        codes = cli_args.resolve_codes(args.format, config.get("file_format", "1"))
+        file_format = codes[0]
         include_images = args.include_images
     if not args.dry_run:
-        writers.check_format_libraries(file_format, console)
+        for code in codes:
+            writers.check_format_libraries(code, console)
     save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
 
     for i, index in enumerate(chosen_indices, start=1):
@@ -892,6 +943,7 @@ def run_search(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
+            formats=codes,
         )
 
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
@@ -926,9 +978,11 @@ def run_file_mode(args) -> None:
 
     mode = args.mode or "1"
     config = config_mod.load_config()
-    file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
+    codes = cli_args.resolve_codes(args.format, config.get("file_format", "1"))
+    file_format = codes[0]
     if not args.dry_run:
-        writers.check_format_libraries(file_format, console)
+        for code in codes:
+            writers.check_format_libraries(code, console)
     save_dir = resolve_save_dir(args.output_dir, config, create_dirs=not args.dry_run)
 
     succeeded, failed = 0, 0
@@ -947,6 +1001,7 @@ def run_file_mode(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
+            formats=codes,
         )
         succeeded += 1
 
@@ -994,8 +1049,10 @@ def run_watch(args) -> None:
                         f"[success]{t('watch.new_chapters', old=last_known_parts, new=len(parts))}[/success]"
                     )
                 config = config_mod.load_config()
-                file_format = cli_args.FORMAT_TO_CODE[args.format] if args.format else config.get("file_format", "1")
-                writers.check_format_libraries(file_format, console)
+                codes = cli_args.resolve_codes(args.format, config.get("file_format", "1"))
+                file_format = codes[0]
+                for code in codes:
+                    writers.check_format_libraries(code, console)
                 save_dir = resolve_save_dir(args.output_dir, config)
                 cover_bytes = fetch_cover(meta, args.no_cover, file_format, timeout=args.timeout)
                 run_download(
@@ -1003,7 +1060,7 @@ def run_watch(args) -> None:
                     chapters_arg=args.chapters, chapter_arg=args.chapter,
                     meta=meta, cover_bytes=cover_bytes, skip_existing=False,
                     workers=args.workers, include_images=args.include_images, language=args.lang,
-                    retries=args.retries, timeout=args.timeout,
+                    retries=args.retries, timeout=args.timeout, formats=codes,
                 )
                 last_known_parts = len(parts)
             elif parts is not None:
@@ -1019,8 +1076,125 @@ def run_watch(args) -> None:
         console.print(f"[muted]{t('watch.stopped')}[/muted]")
 
 
+def completion_script(shell: str) -> str:
+    """Print a small shell-completion script for wattpdl's own flags."""
+    options = []
+    for action in cli_args.build_parser()._actions:
+        for opt in getattr(action, "option_strings", []):
+            if opt.startswith("--") and opt not in options:
+                options.append(opt)
+    words = " ".join(options)
+    if shell == "bash":
+        return (
+            "_wattpdl_completion() {\n"
+            '    local cur="${COMP_WORDS[COMP_CWORD]}"\n'
+            f'    COMPREPLY=( $(compgen -W "{words}" -- "$cur") )\n'
+            "}\n"
+            "complete -F _wattpdl_completion wattpdl\n"
+        )
+    if shell == "zsh":
+        return (
+            "#compdef wattpdl\n"
+            "_wattpdl() {\n"
+            f"    compadd -- {words}\n"
+            "}\n"
+            "compdef _wattpdl wattpdl\n"
+        )
+    if shell == "fish":
+        return "\n".join(f"complete -c wattpdl -l {opt[2:]}" for opt in options) + "\n"
+    return (
+        "Register-ArgumentCompleter -Native -CommandName wattpdl -ScriptBlock {\n"
+        "    param($wordToComplete)\n"
+        f"    @({', '.join(repr(opt) for opt in options)}) |"
+        " Where-Object { $_ -like \"$wordToComplete*\" }\n"
+        "}\n"
+    )
+
+
+def run_config_commands(args) -> None:
+    """--config shows the saved preferences; --config-set updates them."""
+    updates = cli_args.parse_config_set(args.config_set)
+    if updates:
+        config_mod.save_config(**updates)
+        for key, value in updates.items():
+            console.print(f"[success]{t('config.updated', name=key, value=value)}[/success]")
+    if args.config or not updates:
+        config = config_mod.load_config()
+        table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
+        table.add_column(t("config.key"), style="value")
+        table.add_column(t("config.value"), style="muted")
+        for key, value in config.items():
+            table.add_row(key, str(value))
+        console.print(Panel(table, title=f"[primary]{t('config.title')}[/primary]",
+                            box=box.ROUNDED, padding=(1, 2)))
+
+
+def doctor_checks() -> list:
+    """Run the self-diagnostic checks and return (name, ok, detail) rows."""
+    import importlib
+    import platform
+
+    rows = []
+    py_ok = sys.version_info >= (3, 9)
+    rows.append((t("doctor.python"), py_ok, platform.python_version()))
+    modules = ("requests", "rich", "docx", "ebooklib", "reportlab", "PIL")
+    found = []
+    for module in modules:
+        try:
+            importlib.import_module(module)
+            found.append(module)
+        except ImportError:
+            pass
+    rows.append((t("doctor.deps"), len(found) == len(modules), ", ".join(found)))
+    try:
+        config = config_mod.load_config()
+        rows.append((t("doctor.config"), True, f"file_format={config['file_format']}, ui_lang={config['ui_lang']}"))
+    except Exception as e:
+        rows.append((t("doctor.config"), False, str(e)))
+    dirs = (config_mod.CONFIG_DIR, metacache.CACHE_DIR, progress_mod.PROGRESS_DIR,
+            library.LIBRARY_FILE.parent)
+    dir_ok, dir_detail = True, []
+    for path in dirs:
+        try:
+            pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+            dir_detail.append(str(path))
+        except OSError as e:
+            dir_ok = False
+            dir_detail.append(f"{path}: {e}")
+    rows.append((t("doctor.dirs"), dir_ok, " | ".join(dir_detail)))
+    try:
+        _title, _author, parts, _meta = api.get_story_info("398440633", timeout=5)
+        rows.append((t("doctor.api"), bool(parts), f"{len(parts)} chapters"))
+    except Exception as e:
+        rows.append((t("doctor.api"), False, str(e)))
+    return rows
+
+
+def run_doctor() -> None:
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
+    table.add_column(t("config.key"), style="value")
+    table.add_column(t("doctor.title"), style="muted")
+    table.add_column(t("config.value"), style="muted")
+    for name, ok, detail in doctor_checks():
+        table.add_row(name, t("doctor.ok") if ok else t("doctor.fail"), str(detail)[:100])
+    console.print(Panel(table, title=f"[primary]{t('doctor.title')}[/primary]",
+                        box=box.ROUNDED, padding=(1, 2)))
+
+
 def main():
     args = cli_args.parse_args()  # parse_args also sets the display language (i18n)
+    cli.set_verbosity(quiet=args.quiet, verbose=args.verbose)
+    REPORT_ENTRIES.clear()
+
+    if args.completion:
+        print(completion_script(args.completion))
+        return
+    if args.doctor:
+        run_doctor()
+        return
+    if args.config or args.config_set:
+        run_config_commands(args)
+        return
 
     if args.ui_lang:
         # The explicit --ui-lang choice is remembered for the next session.
@@ -1042,6 +1216,10 @@ def main():
     except ValueError as e:
         console.print(f"[danger]❌  {e}[/danger]")
         sys.exit(1)
+
+    if cli.VERBOSE:
+        console.print(f"[muted]verbose: mode={args.mode or 'default'}, format={args.format or 'default'}, "
+                      f"workers={args.workers}, retries={args.retries}, timeout={args.timeout}[/muted]")
 
     if args.library:
         run_library(args)
@@ -1066,6 +1244,10 @@ def main():
             run_non_interactive(args)
     else:
         run_interactive(args)
+
+    if args.report and REPORT_ENTRIES:
+        write_report(args.report)
+        console.print(f"[muted]{t('report.written', path=args.report)}[/muted]")
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ If --id/--user is given, the script runs with no prompts at all, which is great 
 automation/scripting.
 """
 import argparse
+import pathlib
 import re
 
 from . import __version__, i18n
@@ -11,6 +12,53 @@ from . import config as config_mod
 from .i18n import SUPPORTED, t
 
 FORMAT_TO_CODE = {"txt": "1", "docx": "2", "epub": "3", "md": "4", "pdf": "5"}
+FORMATS = tuple(FORMAT_TO_CODE)
+
+
+def parse_formats(value) -> list:
+    """Parse `--format`: a single format, a comma-separated list, or `all`."""
+    if not value:
+        return []
+    parts = [part.strip().lower() for part in str(value).split(",") if part.strip()]
+    if not parts:
+        raise ValueError(t("val.format_invalid", value=value))
+    if "all" in parts:
+        return list(FORMATS)
+    invalid = [part for part in parts if part not in FORMATS]
+    if invalid:
+        raise ValueError(t("val.format_invalid", value=", ".join(invalid)))
+    return list(dict.fromkeys(parts))
+
+
+CONFIG_KEYS = ("save_dir", "file_format", "ui_lang")
+
+
+def resolve_codes(format_arg, default_code) -> list:
+    """Format codes to write: from `--format` (single, list or `all`), or the saved default."""
+    formats = parse_formats(format_arg)
+    if formats:
+        return [FORMAT_TO_CODE[fmt] for fmt in formats]
+    return [default_code]
+
+
+def parse_config_set(items) -> dict:
+    """Parse `--config-set key=value` items and validate keys/values."""
+    updates = {}
+    for item in items or []:
+        if "=" not in item:
+            raise ValueError(t("val.config_set_format", item=item))
+        key, value = item.split("=", 1)
+        key, value = key.strip(), value.strip()
+        if key not in CONFIG_KEYS:
+            raise ValueError(t("val.config_set_key", name=key))
+        if key == "file_format":
+            value = FORMAT_TO_CODE.get(value, value)
+            if value not in FORMAT_TO_CODE.values():
+                raise ValueError(t("val.config_set_value", name=key, value=value))
+        elif key == "ui_lang" and value not in SUPPORTED:
+            raise ValueError(t("val.config_set_value", name=key, value=value))
+        updates[key] = value
+    return updates
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,7 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
         help=t("help.mode"),
     )
     parser.add_argument(
-        "--format", choices=["txt", "docx", "epub", "md", "pdf"],
+        "--format", metavar="txt|docx|epub|md|pdf|all",
         help=t("help.format"),
     )
     parser.add_argument(
@@ -165,6 +213,36 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true",
         help=t("help.dry_run"),
     )
+    parser.add_argument(
+        "--report", metavar="PATH",
+        help=t("help.report"),
+    )
+
+    # --- tooling and preferences ---
+    parser.add_argument(
+        "--config", action="store_true",
+        help=t("help.config"),
+    )
+    parser.add_argument(
+        "--config-set", action="append", default=[], metavar="KEY=VALUE",
+        help=t("help.config_set"),
+    )
+    parser.add_argument(
+        "--doctor", action="store_true",
+        help=t("help.doctor"),
+    )
+    parser.add_argument(
+        "--completion", choices=["bash", "zsh", "fish", "powershell"],
+        help=t("help.completion"),
+    )
+    parser.add_argument(
+        "--quiet", action="store_true",
+        help=t("help.quiet"),
+    )
+    parser.add_argument(
+        "--verbose", action="store_true",
+        help=t("help.verbose"),
+    )
 
     return parser
 
@@ -192,14 +270,19 @@ def validate_common_args(args: argparse.Namespace) -> None:
         raise ValueError(t("val.retries_min"))
     if args.retries > 10:
         raise ValueError(t("val.retries_max"))
+    parse_formats(args.format)
+    parse_config_set(args.config_set)
+    if args.report and pathlib.Path(args.report).suffix.lower() not in (".json", ".csv"):
+        raise ValueError(t("val.report_ext"))
     if args.timeout < 1:
         raise ValueError(t("val.timeout_min"))
     if args.search_limit < 1 or args.search_limit > 100:
         raise ValueError(t("val.search_limit_bounds"))
     if args.watch_interval < 1:
         raise ValueError(t("val.watch_interval_min"))
-    standalone = [args.library, bool(args.library_forget), args.update_library, bool(args.search), bool(args.file)]
-    if args.json and not (args.library or args.check_updates):
+    standalone = [args.library, bool(args.library_forget), args.update_library, bool(args.search),
+                  bool(args.file), args.doctor, bool(args.completion), args.config, bool(args.config_set)]
+    if args.json and not (args.library or args.check_updates or args.search):
         raise ValueError(t("val.json_requires"))
     if any(standalone) and (args.id or args.user):
         raise ValueError(t("val.standalone_conflict"))
