@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file. The format follows the release notes; see [CHANGELOG.id.md](CHANGELOG.id.md) for the Bahasa Indonesia version.
 
+## v1.11.0
+
+Multi-format output, download reports, CLI tooling, and an audit round that raised test coverage.
+
+### New features
+
+- **Several formats from one download.** `--format txt,epub` or `--format all` writes every requested output from the same downloaded chapters. In mode 2 each format gets its own zip.
+- **Download report.** `--report PATH.json` or `.csv` records story ID, title, mode, formats, chapter counts, timing, and output paths for every download in the run.
+- **Preference commands.** `--config` shows saved preferences; `--config-set file_format=epub` changes one.
+- **Doctor.** `--doctor` checks dependency imports, data folders, preferences, and Wattpad API connectivity in one command.
+- **Shell completion.** `--completion bash|zsh|fish|powershell` prints a completion script for wattpdl flags.
+- **Quiet / verbose.** `--quiet` suppresses normal output for cron; `--verbose` prints the active options.
+
+### Improvements
+
+- **Atomic output files.** Writers now write to a temporary file in the target folder and rename it into place, so a crash or write error never leaves a half-written result.
+- **Test coverage raised** from 69% to 82% (307 tests), with an 80% floor enforced in CI.
+
 ## v1.10.0
 
 Batch downloads from a file and custom file names, plus an audit round.

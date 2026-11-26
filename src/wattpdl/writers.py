@@ -3,7 +3,9 @@ Text conversion and output file writing module.
 Contains every function that turns raw chapter text into
 .txt / .docx / .epub / .md / .pdf / .zip files on disk. No network logic or CLI display here.
 """
+import contextlib
 import html
+import os
 import pathlib
 import re
 import sys
@@ -11,6 +13,26 @@ import tempfile
 import zipfile
 
 from .i18n import t
+
+
+@contextlib.contextmanager
+def _atomic_output(path):
+    """Write to a temporary file in the target folder, then rename it into place.
+    A crash or write error never leaves a half-written output file behind."""
+    path = pathlib.Path(path)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".wattpdl-{path.stem}-", suffix=path.suffix, dir=str(path.parent)
+    )
+    os.close(fd)
+    try:
+        yield pathlib.Path(tmp_name)
+        os.replace(tmp_name, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 def html_to_text(raw_html: str) -> str:
@@ -98,7 +120,7 @@ def _story_header_lines(title: str, author: str, story_id: str) -> list:
 
 def write_combined_txt(path: pathlib.Path, title: str, author: str, story_id: str, results: list) -> None:
     """Write all the given chapters into one .txt file."""
-    with open(path, "w", encoding="utf-8") as f:
+    with _atomic_output(path) as tmp, open(tmp, "w", encoding="utf-8") as f:
         for line in _story_header_lines(title, author, story_id):
             f.write(f"{line}\n")
         f.write(f"\n{'=' * 50}\n\n")
@@ -112,7 +134,7 @@ def write_combined_md(path: pathlib.Path, title: str, author: str, story_id: str
                        meta: dict = None) -> None:
     """Write all the given chapters into one Markdown (.md) file."""
     meta = meta or {}
-    with open(path, "w", encoding="utf-8") as f:
+    with _atomic_output(path) as tmp, open(tmp, "w", encoding="utf-8") as f:
         f.write(f"# {title}\n\n")
         f.write(f"**by** {author}\n\n")
         if meta.get("tags"):
@@ -133,7 +155,7 @@ def write_separate_md_zip(path: pathlib.Path, title: str, author: str, story_id:
                            meta: dict = None) -> None:
     """Write each chapter as a separate .md file, packed into one .zip."""
     meta = meta or {}
-    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+    with _atomic_output(path) as tmp, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zf:
         info_lines = [f"# {title}", "", f"**by** {author}"]
         if meta.get("tags"):
             info_lines.append(f"**Genre**: {', '.join(meta['tags'])}")
@@ -149,7 +171,7 @@ def write_separate_md_zip(path: pathlib.Path, title: str, author: str, story_id:
 
 def write_separate_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list) -> None:
     """Write each chapter as a separate .txt file, packed into one .zip."""
-    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+    with _atomic_output(path) as tmp, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zf:
         info = "\n".join(_story_header_lines(title, author, story_id)) + "\n"
         zf.writestr("000_info.txt", info)
         for idx, chapter_title, text in results:
@@ -227,7 +249,8 @@ def write_combined_docx(path: pathlib.Path, title: str, author: str, story_id: s
         _write_paragraphs(doc, text)
         _insert_docx_images(doc, images_by_idx.get(idx))
 
-    doc.save(str(path))
+    with _atomic_output(path) as tmp:
+        doc.save(str(tmp))
 
 
 def write_separate_docx_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
@@ -263,7 +286,7 @@ def write_separate_docx_zip(path: pathlib.Path, title: str, author: str, story_i
             d.save(str(fname))
             chapter_files.append(fname)
 
-        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+        with _atomic_output(path) as tmp, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zf:
             for f in chapter_files:
                 zf.write(f, arcname=f.name)
 
@@ -386,7 +409,8 @@ def write_combined_epub(path: pathlib.Path, title: str, author: str, story_id: s
     book.add_item(epub.EpubNav())
     book.spine = ["nav"] + epub_chapters
 
-    epub.write_epub(str(path), book)
+    with _atomic_output(path) as tmp:
+        epub.write_epub(str(tmp), book)
 
 
 def write_separate_epub_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
@@ -439,7 +463,7 @@ def write_separate_epub_zip(path: pathlib.Path, title: str, author: str, story_i
             epub.write_epub(str(fname), chap_book)
             chapter_files.append(fname)
 
-        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+        with _atomic_output(path) as tmp, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zf:
             for f in chapter_files:
                 zf.write(f, arcname=f.name)
 
@@ -562,7 +586,9 @@ def write_combined_pdf(path: pathlib.Path, title: str, author: str, story_id: st
             story.extend(_pdf_image_flowables(img_bytes, doc.width, doc.height * 0.9))
         story.append(PageBreak())
 
-    doc.build(story)
+    with _atomic_output(path) as tmp:
+        final_doc = SimpleDocTemplate(str(tmp), pagesize=A5, title=title, author=author)
+        final_doc.build(story)
 
 
 def _pdf_chapter_heading(text: str, styles):
@@ -606,7 +632,7 @@ def write_separate_pdf_zip(path: pathlib.Path, title: str, author: str, story_id
             chap_doc.build(chap_story)
             chapter_files.append(fname)
 
-        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+        with _atomic_output(path) as tmp, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zf:
             for f in chapter_files:
                 zf.write(f, arcname=f.name)
 

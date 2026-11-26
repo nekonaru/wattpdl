@@ -56,7 +56,7 @@ jobs:
           pip install -e .[dev]
 
       - name: Run tests
-        run: pytest tests/ -v --cov=wattpdl --cov-report=term-missing --cov-fail-under=65
+        run: pytest tests/ -v --cov=wattpdl --cov-report=term-missing --cov-fail-under=80
 
   build:
     runs-on: ubuntu-latest

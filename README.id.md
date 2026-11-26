@@ -68,7 +68,8 @@
 
 | Fitur | Keterangan |
 |-------|------------|
-| **5 pilihan format** | Simpan sebagai `.txt` polos, dokumen Word `.docx`, ebook `.epub`, Markdown `.md`, atau `.pdf` |
+| **5 pilihan format** | Simpan sebagai `.txt` polos, dokumen Word `.docx`, ebook `.epub`, Markdown `.md`, atau `.pdf`. `--format txt,epub` atau `all` menulis beberapa format dari satu kali unduh |
+| **File output atomik** | Setiap file ditulis ke file sementara dulu lalu dipindahkan saat sukses, jadi crash tidak menyisakan file setengah jadi |
 | **Cover otomatis** | Gambar sampul cerita disisipkan ke file `.docx`/`.epub`/`.pdf` (bisa dimatikan lewat `--no-cover`) |
 | **Gambar inline** | Opsional (`--include-images`) ikut unduh & sisipkan gambar di dalam teks chapter, bukan cuma cover. Gambar yang sangat tinggi (strip webtoon/komik) dipotong per halaman PDF supaya tetap terbaca |
 | **Metadata EPUB lengkap** | Genre/tag, deskripsi cerita, dan tanggal terbit ikut tersimpan sebagai metadata buku |
@@ -89,6 +90,7 @@
 | **Cache metadata** | Info cerita di-cache singkat supaya percobaan berulang dalam waktu dekat tidak selalu hit API |
 | **Pesan error spesifik** | Bedakan pesan untuk cerita dihapus (404) vs private/dibatasi (403) |
 | **HTTP tuning** | `--retries N` mengatur jumlah retry per chapter sebelum dilewati (default 3, maksimal 10), `--timeout N` timeout dalam detik untuk setiap request HTTP |
+| **Laporan unduhan** | `--report PATH.json` atau `.csv` menulis laporan machine-readable untuk semua unduhan dalam satu sesi |
 
 ### Otomatisasi
 
@@ -112,6 +114,10 @@
 | **Ingat preferensi** | Folder simpan, format file, dan bahasa tampilan terakhir otomatis dipakai lagi di sesi berikutnya |
 | **Info cerita** | `wattpdl --info --id <id>` menampilkan detail cerita (penulis, jumlah chapter, status, genre, deskripsi) tanpa mengunduh |
 | **Dry run** | `--dry-run` menampilkan apa yang akan dilakukan (file tujuan, chapter yang akan diunduh dan dipakai dari cache) tanpa menulis file apa pun |
+| **Doctor** | `--doctor` mengecek dependency, folder data, preferensi, dan konektivitas API Wattpad |
+| **Shell completion** | `--completion bash\|zsh\|fish\|powershell` mencetak script completion untuk flag wattpdl |
+| **Perintah preferensi** | `--config` menampilkan preferensi tersimpan; `--config-set file_format=epub` mengubah salah satu |
+| **Quiet / verbose** | `--quiet` menekan output normal untuk cron; `--verbose` menambah baris detail tentang opsi aktif |
 
 ---
 
@@ -493,6 +499,13 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--timeout` | Timeout untuk setiap request HTTP dalam detik (default 20) |
 | `--dry-run` | Simulasi unduhan: tampilkan file tujuan dan jumlah chapter, tidak menulis apa pun |
 | `--version` | Tampilkan versi wattpdl |
+| `--report` | Tulis laporan JSON atau CSV untuk semua unduhan dalam sesi ini |
+| `--config` | Tampilkan preferensi tersimpan |
+| `--config-set` | Ubah preferensi, mis. `--config-set file_format=epub` |
+| `--doctor` | Cek dependency, folder data, preferensi, dan konektivitas API |
+| `--completion` | Cetak script completion (bash, zsh, fish, powershell) |
+| `--quiet` | Sembunyikan output normal (untuk cron) |
+| `--verbose` | Cetak baris tambahan berisi opsi aktif |
 
 **Contoh lain:**
 
@@ -529,6 +542,14 @@ wattpdl --file "stories.txt" --mode 1 --format epub
 
 # Unduh satu cerita dengan nama file custom
 wattpdl --id 398440633 --mode 1 --format epub --filename "Seri Saya - Buku 1"
+
+# Unduh satu cerita ke dua format dan tulis laporan
+wattpdl --id 398440633 --mode 1 --format txt,epub --report "unduhan.json"
+
+# Tooling: cek lingkungan, ubah preferensi, dapatkan shell completion
+wattpdl --doctor
+wattpdl --config-set file_format=epub --config
+wattpdl --completion bash
 
 # Lihat semua opsi
 wattpdl --help
@@ -662,7 +683,7 @@ ruff check .
 | `pytest tests/ -v` | Harus lolos seluruh suite |
 | `ruff check .` | Harus melaporkan nol issue |
 
-Aturan lint ada di `pyproject.toml` di bagian `[tool.ruff]` (line-length 110, target Python 3.9).
+Aturan lint ada di `pyproject.toml` di bagian `[tool.ruff]` (line-length 110, target Python 3.9). CI mensyaratkan coverage test minimal 80%.
 
 ---
 
@@ -670,7 +691,7 @@ Aturan lint ada di `pyproject.toml` di bagian `[tool.ruff]` (line-length 110, ta
 
 | Workflow | Purpose |
 |----------|---------|
-| `tests.yml` | ruff lint, pip-audit dependency audit, pytest di Python 3.9-3.12 dengan coverage floor, dan package build dengan `twine check` di setiap push ke `main`, pull request ke `main`, dan push tag `v*` |
+| `tests.yml` | ruff lint, pip-audit dependency audit, pytest di Python 3.9-3.12 dengan coverage floor 80%, dan package build dengan `twine check` di setiap push ke `main`, pull request ke `main`, dan push tag `v*` |
 | `publish.yml` | build dan publish ke PyPI lewat trusted publishing (OIDC) setiap GitHub Release dipublish |
 
 Lint, dependency audit, test, dan build check harus hijau sebelum setiap push (branch `main` memberlakukannya). Publish ke PyPI hanya terjadi lewat GitHub Release yang dipublish.
@@ -760,6 +781,20 @@ wattpdl --search "Railgun in Fairy Tail"
 ```
 
 Cerita yang cocok akan ditampilkan dengan nomor (judul, penulis, jumlah chapter, status), 10 cerita per halaman. Ketik `n` untuk halaman berikutnya dan `p` untuk halaman sebelumnya; nomornya global untuk semua halaman, jadi cerita #13 selalu dipilih dengan mengetik `13` di halaman mana pun. Untuk mengambil lebih dari 40 hasil default, pakai `--search-limit N` (maksimal 100). Tanpa `--select`, kamu ditanya indeks mana yang diunduh (bisa rentang seperti `1-8,10`, atau `all`). Untuk scripting, langsung isi `--select`: `wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1`.
+
+</details>
+
+<details>
+<summary><b>Bisa menyimpan beberapa format sekaligus?</b></summary>
+
+Bisa. Kirim daftar format yang dipisah koma, atau `all`. Teks chapter diunduh **satu kali**, lalu ditulis ke semua format yang diminta:
+
+```bash
+wattpdl --id 398440633 --mode 1 --format txt,epub
+wattpdl --id 398440633 --mode 1 --format all
+```
+
+Pada Mode 2 (file terpisah per chapter), tiap format mendapat zip sendiri: `Story_txt.zip`, `Story_epub.zip`, dan seterusnya. Tambah `--report unduhan.json` (atau `.csv`) untuk ringkasan machine-readable tentang file yang disimpan.
 
 </details>
 

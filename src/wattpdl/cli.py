@@ -95,6 +95,15 @@ THEME = Theme({
 })
 
 console = Console(theme=THEME)
+VERBOSE = False
+
+
+def set_verbosity(quiet: bool = False, verbose: bool = False) -> None:
+    """Set global output verbosity: --quiet suppresses normal console output,
+    --verbose enables extra detail (the two can be combined, quiet wins)."""
+    global VERBOSE
+    console.quiet = bool(quiet)
+    VERBOSE = bool(verbose)
 
 LOGO = r"""
 [primary]██╗    ██╗ █████╗ ████████╗████████╗██████╗ ██████╗ ██╗     [/primary]

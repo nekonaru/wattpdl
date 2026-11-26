@@ -68,7 +68,8 @@
 
 | Feature | Description |
 |---------|-------------|
-| **5 file formats** | Save as plain `.txt`, Word `.docx`, `.epub` ebook, Markdown `.md`, or `.pdf` |
+| **5 file formats** | Save as plain `.txt`, Word `.docx`, `.epub` ebook, Markdown `.md`, or `.pdf`. `--format txt,epub` or `all` writes several from the same download |
+| **Atomic output files** | Each file is written to a temporary file first and renamed on success, so a crash never leaves a half-written result |
 | **Automatic cover** | The story cover is embedded in `.docx`/`.epub`/`.pdf` files (can be turned off with `--no-cover`) |
 | **Inline images** | Optional (`--include-images`) download & embed of images inside chapter text, not just the cover. Very tall images (webtoon/comic strips) are sliced across PDF pages so they stay readable |
 | **Rich EPUB metadata** | Genre/tags, story description, and publish date are saved as book metadata |
@@ -89,6 +90,7 @@
 | **Metadata cache** | Story info is cached briefly so repeated attempts in a short time do not always hit the API |
 | **Specific error messages** | Different messages for a deleted story (404) vs a private/restricted one (403) |
 | **HTTP tuning** | `--retries N` sets the retry count per chapter before skipping (default 3, max 10), `--timeout N` is the timeout in seconds for every HTTP request |
+| **Download report** | `--report PATH.json` or `.csv` writes a machine-readable report of every download in the run |
 
 ### Automation
 
@@ -112,6 +114,10 @@
 | **Remembers preferences** | The last save folder, file format, and language are reused in the next session |
 | **Story info** | `wattpdl --info --id <id>` shows a story's details (author, chapter count, status, genre, description) without downloading |
 | **Dry run** | `--dry-run` prints what a download would do (target file, chapters to download and reuse) without writing anything |
+| **Doctor** | `--doctor` checks dependency imports, data folders, preferences and Wattpad API connectivity |
+| **Shell completion** | `--completion bash\|zsh\|fish\|powershell` prints a completion script for wattpdl's flags |
+| **Preference commands** | `--config` shows saved preferences; `--config-set file_format=epub` changes one |
+| **Quiet / verbose** | `--quiet` suppresses normal output for cron; `--verbose` adds a detail line about the active options |
 
 ---
 
@@ -491,6 +497,13 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--timeout` | Timeout for every HTTP request in seconds (default 20) |
 | `--dry-run` | Simulate a download: show the target file and chapter counts, write nothing |
 | `--version` | Show the wattpdl version |
+| `--report` | Write a JSON or CSV report of all downloads in the run |
+| `--config` | Show the saved preferences |
+| `--config-set` | Change a saved preference, e.g. `--config-set file_format=epub` |
+| `--doctor` | Check dependencies, data folders, preferences and API connectivity |
+| `--completion` | Print a shell completion script (bash, zsh, fish, powershell) |
+| `--quiet` | Suppress normal console output (for cron) |
+| `--verbose` | Print an extra line with the active options |
 
 **More examples:**
 
@@ -527,6 +540,14 @@ wattpdl --file "stories.txt" --mode 1 --format epub
 
 # Download one story under a custom file name
 wattpdl --id 398440633 --mode 1 --format epub --filename "My Series - Book 1"
+
+# Download one story into two formats and write a report
+wattpdl --id 398440633 --mode 1 --format txt,epub --report "download.json"
+
+# Tooling: check the environment, change a preference, get shell completion
+wattpdl --doctor
+wattpdl --config-set file_format=epub --config
+wattpdl --completion bash
 
 # Show all options
 wattpdl --help
@@ -660,7 +681,7 @@ ruff check .
 | `pytest tests/ -v` | Must pass the full suite |
 | `ruff check .` | Must report zero issues |
 
-Lint rules live in `pyproject.toml` under `[tool.ruff]` (line-length 110, target Python 3.9).
+Lint rules live in `pyproject.toml` under `[tool.ruff]` (line-length 110, target Python 3.9). CI requires at least 80% test coverage.
 
 ---
 
@@ -668,7 +689,7 @@ Lint rules live in `pyproject.toml` under `[tool.ruff]` (line-length 110, target
 
 | Workflow | Purpose |
 |----------|---------|
-| `tests.yml` | ruff lint, pip-audit dependency audit, pytest on Python 3.9-3.12 with a coverage floor, and a package build with `twine check` on every push to `main`, pull request to `main`, and push to a `v*` tag |
+| `tests.yml` | ruff lint, pip-audit dependency audit, pytest on Python 3.9-3.12 with an 80% coverage floor, and a package build with `twine check` on every push to `main`, pull request to `main`, and push to a `v*` tag |
 | `publish.yml` | builds and publishes to PyPI via trusted publishing (OIDC) when a GitHub Release is published |
 
 Lint, the dependency audit, tests, and the build check must be green before every push (the `main` branch enforces this). Publishing to PyPI happens only through a published GitHub Release.
@@ -758,6 +779,20 @@ wattpdl --search "Railgun in Fairy Tail"
 ```
 
 The matching stories are listed with numbers (title, author, chapter count, status), 10 per page. Type `n` for the next page and `p` for the previous one; the indices are global across pages, so story #13 is picked with `13` no matter which page is on screen. To fetch more results than the default 40, use `--search-limit N` (up to 100). Without `--select`, you are asked which indices to download (a range like `1-8,10` works, or `all`). For scripting, pass them directly: `wattpdl --search "Railgun in Fairy Tail" --select 1-8,10 --mode 1`.
+
+</details>
+
+<details>
+<summary><b>Can I save several formats at once?</b></summary>
+
+Yes. Pass a comma-separated list or `all`. Chapter text is downloaded **once**, then written to every requested format:
+
+```bash
+wattpdl --id 398440633 --mode 1 --format txt,epub
+wattpdl --id 398440633 --mode 1 --format all
+```
+
+In Mode 2 (separate files per chapter), each format gets its own zip, named `Story_txt.zip`, `Story_epub.zip`, and so on. Add `--report download.json` (or `.csv`) to get a machine-readable summary of what was saved.
 
 </details>
 

@@ -303,8 +303,9 @@ class TestCliArgs:
             cli_args.parse_args(["--id", "1", "--mode", "9"])
 
     def test_invalid_format_rejected(self):
-        with pytest.raises(SystemExit):
-            cli_args.parse_args(["--id", "1", "--format", "docm"])
+        args = cli_args.parse_args(["--id", "1", "--format", "docm"])
+        with pytest.raises(ValueError):
+            cli_args.validate_common_args(args)
 
     def test_validate_requires_mode(self):
         args = cli_args.parse_args(["--id", "1"])
