@@ -9,6 +9,7 @@ from rich.table import Table
 from .. import api, cli, library
 from ..cli import console, step_rule
 from ..i18n import t
+from .common import probe_many
 
 
 def run_check_updates(args=None) -> None:
@@ -41,23 +42,21 @@ def run_check_updates(args=None) -> None:
         table.add_column(t("table.status"), style="value")
 
     any_update = False
-    for story_id, entry in saved.items():
+    probes = probe_many(saved.keys(), timeout=timeout)
+    for (story_id, entry), (info, kind, _error) in zip(saved.items(), probes, strict=True):
         title = entry.get("title", story_id)
         old_count = entry.get("num_parts", 0)
         base = {"id": str(story_id), "title": title, "recorded_parts": old_count}
-        try:
-            _, _, parts, _ = api.get_story_info(story_id, timeout=timeout)
-            new_count = len(parts)
-        except api.StoryNotFoundError:
-            entries.append({**base, "current_parts": None, "status": "deleted", "new_chapters": 0})
+        if kind:
+            entries.append({**base, "current_parts": None, "status": kind, "new_chapters": 0})
             if not as_json:
-                table.add_row(title, str(old_count), "-", f"[danger]{t('status.deleted')}[/danger]")
+                label = t("status.deleted") if kind == "deleted" else t("status.check_failed")
+                style = "danger" if kind == "deleted" else "warning"
+                mark = "-" if kind == "deleted" else "?"
+                table.add_row(title, str(old_count), mark, f"[{style}]{label}[/{style}]")
             continue
-        except (api.StoryAccessError, requests.RequestException):
-            entries.append({**base, "current_parts": None, "status": "check_failed", "new_chapters": 0})
-            if not as_json:
-                table.add_row(title, str(old_count), "?", f"[warning]{t('status.check_failed')}[/warning]")
-            continue
+
+        new_count = len(info[2])
 
         if new_count > old_count:
             any_update = True

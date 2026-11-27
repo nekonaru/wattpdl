@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file. The format follows the release notes; see [CHANGELOG.id.md](CHANGELOG.id.md) for the Bahasa Indonesia version.
 
+## v2.0.1
+
+Audit and smoothness pass over existing features. No new commands.
+
+### Improvements
+
+- **Faster library checks.** `--check-updates` and `--update-library` now probe up to four stories concurrently (order preserved), instead of waiting for each request serially.
+- **Fewer config writes.** Batch flows write preferences once per run instead of once per story.
+- **No network call before argument validation.** Invalid commands now fail immediately, without a PyPI update check first.
+- **Honest dry-run summary.** Batch dry runs say "Simulation: N stories ready to download", not "downloaded".
+- **Test hygiene.** Direct-download tests now isolate `config.json`; the owner's real preferences are no longer touched by the test suite.
+
 ## v2.0.0
 
 Architecture, config schema, supply chain, and the end of Python 3.9 support.

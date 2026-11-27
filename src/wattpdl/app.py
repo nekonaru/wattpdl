@@ -71,6 +71,12 @@ def main():
         run_config_commands(args)
         return
 
+    try:
+        cli_args.validate_common_args(args)
+    except ValueError as e:
+        console.print(f"[danger]❌  {e}[/danger]")
+        sys.exit(1)
+
     if args.ui_lang:
         # The explicit --ui-lang choice is remembered for the next session.
         config_mod.save_config(ui_lang=args.ui_lang)
@@ -85,12 +91,6 @@ def main():
                 )
         except Exception:
             pass  # the update check must never stop the main application
-
-    try:
-        cli_args.validate_common_args(args)
-    except ValueError as e:
-        console.print(f"[danger]❌  {e}[/danger]")
-        sys.exit(1)
 
     if cli.VERBOSE:
         console.print(f"[muted]verbose: mode={args.mode or 'default'}, format={args.format or 'default'}, "

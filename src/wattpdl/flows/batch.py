@@ -15,6 +15,7 @@ from .common import (
     _search_table,
     fetch_cover,
     from_app,
+    probe_many,
 )
 
 
@@ -91,11 +92,14 @@ def run_user_mode(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
-            filename=args.filename, formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size,
+            filename=args.filename, formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size, save_preferences=False,
         )
         succeeded += 1
 
-    console.print(f"[success]{t('file.done', n=succeeded, failed=failed)}[/success]")
+    if args.dry_run:
+        console.print(f"[muted]{t('file.done_dry', n=succeeded, failed=failed)}[/muted]")
+    else:
+        console.print(f"[success]{t('file.done', n=succeeded, failed=failed)}[/success]")
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
 
 def run_update_library(args) -> None:
@@ -117,18 +121,18 @@ def run_update_library(args) -> None:
     up_to_date = []
     to_update = []
     failed = []
-    for story_id, entry in saved.items():
+    probes = probe_many(saved.keys(), timeout=args.timeout)
+    for (story_id, entry), (info, kind, error) in zip(saved.items(), probes, strict=True):
         title = entry.get("title", story_id)
         old_count = entry.get("num_parts", 0)
-        try:
-            title, author, parts, meta = api.get_story_info(story_id, timeout=args.timeout)
-        except (api.StoryNotFoundError, api.StoryAccessError, requests.RequestException) as e:
-            failed.append((title, str(e)))
-            console.print(f"[warning]{t('update.check_failed', title=title, error=e)}[/warning]")
+        if info is None:
+            failed.append((title, error or kind or "unknown error"))
+            console.print(f"[warning]{t('update.check_failed', title=title, error=error or kind)}[/warning]")
             continue
+        fetched_title, author, parts, meta = info
         new_count = len(parts)
         if new_count > old_count:
-            to_update.append((story_id, title, author, parts, meta, old_count, new_count))
+            to_update.append((story_id, fetched_title, author, parts, meta, old_count, new_count))
         else:
             up_to_date.append(title)
 
@@ -162,9 +166,11 @@ def run_update_library(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout,
-            keep_progress_on_success=True, formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size,
+            keep_progress_on_success=True, formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size, save_preferences=False,
         )
     console.print(f"[success]{t('update.done', n=len(to_update), failed=len(failed))}[/success]")
+    config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
+
 
 def run_search(args) -> None:
     """Search Wattpad stories with a query string and list them with numbers.
@@ -296,7 +302,7 @@ def run_search(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
-            formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size,
+            formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size, save_preferences=False,
         )
 
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
@@ -353,9 +359,12 @@ def run_file_mode(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
-            formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size,
+            formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size, save_preferences=False,
         )
         succeeded += 1
 
-    console.print(f"[success]{t('file.done', n=succeeded, failed=failed)}[/success]")
+    if args.dry_run:
+        console.print(f"[muted]{t('file.done_dry', n=succeeded, failed=failed)}[/muted]")
+    else:
+        console.print(f"[success]{t('file.done', n=succeeded, failed=failed)}[/success]")
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)

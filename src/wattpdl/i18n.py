@@ -379,6 +379,7 @@ MESSAGES = {
         "err.file_empty": "Tidak ada cerita valid di {path}",
         "file.story_failed": "[Gagal] {id}: {error}",
         "file.done": "Selesai: {n} cerita diunduh, {failed} gagal.",
+        "file.done_dry": "Simulasi: {n} cerita siap diunduh, {failed} gagal dicek.",
 
         # ---------- wave 1: power tools ----------
         "help.report": "Tulis laporan unduhan ke PATH (.json atau .csv).",
@@ -748,6 +749,7 @@ MESSAGES = {
         "err.file_empty": "No valid stories in {path}",
         "file.story_failed": "[failed] {id}: {error}",
         "file.done": "Done: {n} stories downloaded, {failed} failed.",
+        "file.done_dry": "Simulation: {n} stories ready to download, {failed} failed to check.",
 
         # ---------- wave 1: power tools ----------
         "help.report": "Write a download report to PATH (.json or .csv).",
