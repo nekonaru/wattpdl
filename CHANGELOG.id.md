@@ -2,6 +2,18 @@
 
 Semua perubahan penting project ini didokumentasikan di file ini. Formatnya mengikuti release notes; lihat [CHANGELOG.md](CHANGELOG.md) untuk versi English.
 
+## v2.0.1
+
+Audit dan penyempurnaan atas fitur yang ada. Tidak ada perintah baru.
+
+### Peningkatan
+
+- **Cek library lebih cepat.** `--check-updates` dan `--update-library` kini mengecek hingga empat cerita secara bersamaan (urutan tetap terjaga), tidak lagi menunggu satu per satu.
+- **Lebih sedikit penulisan config.** Alur batch menulis preferensi sekali per sesi, bukan sekali per cerita.
+- **Tidak ada request jaringan sebelum validasi argumen.** Perintah yang salah kini gagal langsung, tanpa cek update PyPI lebih dulu.
+- **Ringkasan dry-run yang jujur.** Batch dry-run menampilkan "Simulation: N stories ready to download", bukan "downloaded".
+- **Kebersihan test.** Test yang memanggil `run_download` langsung kini mengisolasi `config.json`; preferensi asli pemilik tidak lagi tersentuh oleh suite test.
+
 ## v2.0.0
 
 Arsitektur, schema config, supply chain, dan akhirnya dukungan Python 3.9.

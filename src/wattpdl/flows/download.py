@@ -26,7 +26,8 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                   skip_existing=False, interactive=False, workers=1, include_images=False,
                   language="id", retries=None, timeout=None, dry_run=False,
                   keep_progress_on_success=False, filename=None, formats=None,
-                  no_library=False, pdf_pagesize=None, pdf_font_size=None):
+                  no_library=False, pdf_pagesize=None, pdf_font_size=None,
+                  save_preferences=True):
     """Shared download flow for both interactive and non-interactive modes."""
     indexed_parts = resolve_chapters(mode, parts, chapters_arg, chapter_arg)
     codes = list(formats) if formats else [file_format]
@@ -174,5 +175,6 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         ))
         console.print()
 
-    # save the format & save folder preferences for the next session
-    config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
+    # Save preferences once per run; batch flows do it at the end themselves.
+    if save_preferences:
+        config_mod.save_config(save_dir=str(save_dir), file_format=file_format)

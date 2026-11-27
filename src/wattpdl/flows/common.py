@@ -120,6 +120,31 @@ def resolve_chapters(mode: str, parts: list, chapters_arg: str = None, chapter_a
     return list(enumerate(parts, start=1))
 
 
+def probe_story(story_id: str, timeout: int = None):
+    """Fetch minimal story info for a status check (never raises).
+
+    Returns (info_or_None, kind_or_None, message_or_None). Kind is `deleted`
+    for 404 and `check_failed` for other API/network errors.
+    """
+    try:
+        return api.get_story_info(story_id, timeout=timeout), None, None
+    except api.StoryNotFoundError as e:
+        return None, "deleted", str(e)
+    except (api.StoryAccessError, requests.RequestException) as e:
+        return None, "check_failed", str(e)
+
+
+def probe_many(story_ids, timeout=None, workers=4) -> list:
+    """Probe several stories concurrently, preserving input order."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    ids = list(story_ids)
+    if not ids:
+        return []
+    with ThreadPoolExecutor(max_workers=min(workers, len(ids))) as executor:
+        return list(executor.map(lambda sid: probe_story(sid, timeout=timeout), ids))
+
+
 def _fetch_story_tolerant(story_id: str, timeout: int = None):
     """Fetch a story for a batch flow (--user, --file). Returns
     (info_tuple_or_None, error_string_or_None). Unlike the single-story flow,
