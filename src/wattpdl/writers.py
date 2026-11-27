@@ -331,10 +331,13 @@ def _build_epub_book(title: str, author: str, story_id: str, identifier_suffix: 
     book.add_author(author)
 
     meta = meta or {}
+    book.add_metadata("DC", "source", f"https://www.wattpad.com/story/{story_id}")
     if meta.get("description"):
         book.add_metadata("DC", "description", meta["description"])
     for tag in meta.get("tags") or []:
         book.add_metadata("DC", "subject", tag)
+    if "completed" in meta:
+        book.add_metadata("DC", "subject", "Completed" if meta["completed"] else "Ongoing")
     if meta.get("create_date"):
         book.add_metadata("DC", "date", str(meta["create_date"]))
 
@@ -559,15 +562,20 @@ def _build_pdf_story_intro(title, author, story_id, meta, styles) -> list:
 
 
 def write_combined_pdf(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
-                        meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None) -> None:
+                        meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None,
+                       pagesize=None, font_size=None) -> None:
     """Write all the given chapters into one .pdf file."""
-    from reportlab.lib.pagesizes import A5
+    from reportlab.lib.pagesizes import A4, A5
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.platypus import PageBreak, SimpleDocTemplate
 
     images_by_idx = images_by_idx or {}
     styles = getSampleStyleSheet()
-    doc = SimpleDocTemplate(str(path), pagesize=A5, title=title, author=author)
+    page = {"A4": A4, "A5": A5}.get(pagesize, A5)
+    if font_size:
+        styles["BodyText"].fontSize = font_size
+        styles["Normal"].fontSize = font_size
+    doc = SimpleDocTemplate(str(path), pagesize=page, title=title, author=author)
     story = []
 
     if cover_bytes:
@@ -587,7 +595,7 @@ def write_combined_pdf(path: pathlib.Path, title: str, author: str, story_id: st
         story.append(PageBreak())
 
     with _atomic_output(path) as tmp:
-        final_doc = SimpleDocTemplate(str(tmp), pagesize=A5, title=title, author=author)
+        final_doc = SimpleDocTemplate(str(tmp), pagesize=page, title=title, author=author)
         final_doc.build(story)
 
 
@@ -600,19 +608,24 @@ def _pdf_chapter_heading(text: str, styles):
 
 
 def write_separate_pdf_zip(path: pathlib.Path, title: str, author: str, story_id: str, results: list,
-                            meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None) -> None:
+                            meta: dict = None, cover_bytes: bytes = None, images_by_idx: dict = None,
+                            pagesize=None, font_size=None) -> None:
     """Write each chapter as a separate .pdf file, packed into one .zip."""
-    from reportlab.lib.pagesizes import A5
+    from reportlab.lib.pagesizes import A4, A5
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.platypus import SimpleDocTemplate
 
     images_by_idx = images_by_idx or {}
     styles = getSampleStyleSheet()
+    page = {"A4": A4, "A5": A5}.get(pagesize, A5)
+    if font_size:
+        styles["BodyText"].fontSize = font_size
+        styles["Normal"].fontSize = font_size
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = pathlib.Path(tmpdir)
 
         info_file = tmp_path / "000_info.pdf"
-        info_doc = SimpleDocTemplate(str(info_file), pagesize=A5, title=title, author=author)
+        info_doc = SimpleDocTemplate(str(info_file), pagesize=page, title=title, author=author)
         info_story = []
         if cover_bytes:
             cover_flowable = _pdf_image_flowable(cover_bytes, info_doc.width, info_doc.height * 0.85)
@@ -624,7 +637,7 @@ def write_separate_pdf_zip(path: pathlib.Path, title: str, author: str, story_id
         chapter_files = [info_file]
         for idx, chapter_title, text in results:
             fname = tmp_path / f"{idx:03d}_{safe_filename(chapter_title)}.pdf"
-            chap_doc = SimpleDocTemplate(str(fname), pagesize=A5, title=chapter_title, author=author)
+            chap_doc = SimpleDocTemplate(str(fname), pagesize=page, title=chapter_title, author=author)
             chap_story = [_pdf_chapter_heading(chapter_title, styles)]
             chap_story.extend(_text_to_pdf_flowables(text, styles))
             for img_bytes in images_by_idx.get(idx) or []:
