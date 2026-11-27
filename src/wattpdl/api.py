@@ -48,11 +48,11 @@ STORY_INFO_URL = (
 CHAPTER_TEXT_URL = "https://www.wattpad.com/apiv2/storytext?id={part_id}"
 
 AUTHOR_STORIES_URL = (
-    "https://www.wattpad.com/api/v3/users/{username}/stories/published"
+    "https://www.wattpad.com/api/v3/users/{username}/stories"
     "?fields=stories(id,title,numParts,completed)"
 )
 SEARCH_URL = "https://www.wattpad.com/api/v3/stories"
-SEARCH_FIELDS = "stories(id,title,numParts,completed,user(name))"
+SEARCH_FIELDS = "stories(id,title,numParts,completed,voteCount,language(id,name),createDate,modifyDate,user(name))"
 
 DELAY_SECONDS = 0.5   # base delay between chapters (do not remove)
 MAX_RETRIES = 3       # default chapter download retry count
@@ -171,6 +171,7 @@ def get_story_info(story_id: str, timeout: Optional[int] = None) -> tuple[str, s
         "description": (data.get("description") or "").strip(),
         "tags": [t for t in (data.get("tags") or []) if t],
         "create_date": data.get("createDate", ""),
+        "modify_date": data.get("modifyDate", ""),
         "completed": bool(data.get("completed", False)),
         "num_parts": data.get("numParts"),
     }
@@ -207,6 +208,10 @@ def search_stories(query: str, timeout: Optional[int] = None, limit: int = 10) -
             "num_parts": s.get("numParts", 0),
             "completed": bool(s.get("completed", False)),
             "author": (s.get("user") or {}).get("name", "unknown"),
+            "votes": s.get("voteCount", 0),
+            "language": (s.get("language") or {}).get("name", ""),
+            "create_date": s.get("createDate", ""),
+            "modify_date": s.get("modifyDate", ""),
         }
         for s in stories
     ]

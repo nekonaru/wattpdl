@@ -59,7 +59,7 @@
 | **4 download modes** | Everything in 1 file, everything separate in a `.zip`, pick several chapters, or just 1 chapter |
 | **Download by author** | `--user <username>` downloads all or selected stories from one author at once |
 | **Batch from file** | `--file PATH` downloads every story listed in a file, one ID or link per line (`#` for comments), in mode 1 or 2 |
-| **Search stories** | `--search "<query>"` lists matching stories by index (title, author, chapter count, status), 10 per page; download several at once with `--select 1-8,10` |
+| **Search stories** | `--search "<query>"` lists matching stories by index (title, author, chapter count, status), 10 per page; download several at once with `--select 1-8,10`. `--search-status`, `--search-min-chapters`, `--search-sort`, and `--search-language` filter the list; `--search --json` prints it as JSON |
 | **Non-interactive mode** | Run with command line arguments for scripting/automation, no prompts to answer |
 | **Automatic resume** | If the process stops midway, run the same story again: chapters that already succeeded are not downloaded again |
 | **Skip existing files** | Skip the download if the output file already exists in the target folder, so nothing is overwritten by accident |
@@ -70,9 +70,10 @@
 |---------|-------------|
 | **5 file formats** | Save as plain `.txt`, Word `.docx`, `.epub` ebook, Markdown `.md`, or `.pdf`. `--format txt,epub` or `all` writes several from the same download |
 | **Atomic output files** | Each file is written to a temporary file first and renamed on success, so a crash never leaves a half-written result |
+| **PDF tuning** | `--pdf-pagesize A4\|A5` and `--pdf-font-size N` (6-24) control the PDF layout |
 | **Automatic cover** | The story cover is embedded in `.docx`/`.epub`/`.pdf` files (can be turned off with `--no-cover`) |
 | **Inline images** | Optional (`--include-images`) download & embed of images inside chapter text, not just the cover. Very tall images (webtoon/comic strips) are sliced across PDF pages so they stay readable |
-| **Rich EPUB metadata** | Genre/tags, story description, and publish date are saved as book metadata |
+| **Rich EPUB metadata** | Genre/tags, story description, publish date, status (Completed/Ongoing), and source URL are saved as book metadata |
 | **`--lang`** | Sets the EPUB metadata language code (default `id`) for stories in other languages |
 | **Source link saved** | The story URL is included in the header of the resulting file |
 | **Safe file names** | Illegal characters are removed from file names automatically |
@@ -91,6 +92,8 @@
 | **Specific error messages** | Different messages for a deleted story (404) vs a private/restricted one (403) |
 | **HTTP tuning** | `--retries N` sets the retry count per chapter before skipping (default 3, max 10), `--timeout N` is the timeout in seconds for every HTTP request |
 | **Download report** | `--report PATH.json` or `.csv` writes a machine-readable report of every download in the run |
+| **Download history** | Every successful download is recorded locally; `--history` (or `--history --json`) shows the last entries. `--no-library` skips recording for privacy |
+| **Author info** | `--author-info USER` lists an author's stories with chapter totals, no download |
 
 ### Automation
 
@@ -118,6 +121,7 @@
 | **Shell completion** | `--completion bash\|zsh\|fish\|powershell` prints a completion script for wattpdl's flags |
 | **Preference commands** | `--config` shows saved preferences; `--config-set file_format=epub` changes one |
 | **Quiet / verbose** | `--quiet` suppresses normal output for cron; `--verbose` adds a detail line about the active options |
+| **Watch notifications** | `--watch-notify-json` prints one JSON line per new chapter; `--watch-max-iterations N` stops a watch loop after N checks |
 
 ---
 
@@ -504,6 +508,17 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--completion` | Print a shell completion script (bash, zsh, fish, powershell) |
 | `--quiet` | Suppress normal console output (for cron) |
 | `--verbose` | Print an extra line with the active options |
+| `--search-status` | Filter `--search` results: `completed` or `ongoing` |
+| `--search-min-chapters` | Only show stories with at least N chapters |
+| `--search-sort` | Sort results: `votes`, `chapters`, or `title` |
+| `--search-language` | Filter results by language name (e.g. `English`) |
+| `--author-info` | List an author's stories with chapter totals, without downloading |
+| `--history` | Show the local download history (`--json` for machine-readable) |
+| `--no-library` | Do not record this download in the library or history |
+| `--pdf-pagesize` | PDF page size: `A4` or `A5` (default `A5`) |
+| `--pdf-font-size` | PDF body font size in points (6-24, default 10) |
+| `--watch-notify-json` | Print one JSON line whenever a new chapter is found in watch mode |
+| `--watch-max-iterations` | Stop watch mode after N checks |
 
 **More examples:**
 
@@ -548,6 +563,14 @@ wattpdl --id 398440633 --mode 1 --format txt,epub --report "download.json"
 wattpdl --doctor
 wattpdl --config-set file_format=epub --config
 wattpdl --completion bash
+
+# Discovery and history
+wattpdl --search "Railgun in Fairy Tail" --json --search-status completed --search-sort votes
+wattpdl --author-info MisakaLovesYou --json
+wattpdl --history --json
+
+# PDF layout
+wattpdl --id 398440633 --mode 1 --format pdf --pdf-pagesize A4 --pdf-font-size 12
 
 # Show all options
 wattpdl --help

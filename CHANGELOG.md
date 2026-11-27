@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file. The format follows the release notes; see [CHANGELOG.id.md](CHANGELOG.id.md) for the Bahasa Indonesia version.
 
+## v1.12.0
+
+Search filters, JSON discovery, download history, PDF/EPUB options, and a fix for the broken author endpoint.
+
+### New features
+
+- **Search filters.** `--search-status completed|ongoing`, `--search-min-chapters N`, `--search-sort votes|chapters|title` and `--search-language NAME` filter and sort results client-side (Wattpad's search API ignores those parameters). `--search --json` prints the results as JSON.
+- **Author info.** `--author-info USER` lists an author's stories with chapter totals, without downloading. `--author-info --json` prints JSON.
+- **Download history.** Successful downloads are recorded in `~/.wattpdl/history.json`; `--history` and `--history --json` show them. `--no-library` skips both library and history recording.
+- **PDF layout.** `--pdf-pagesize A4|A5` and `--pdf-font-size N` (6-24) control the generated PDFs.
+- **EPUB metadata.** The source story URL and Completed/Ongoing status are now written as Dublin Core metadata.
+- **Watch for scripts.** `--watch-notify-json` prints one JSON line per new chapter; `--watch-max-iterations N` is now documented and exposed.
+
+### Bug fixes
+
+- **Author downloads work again.** The Wattpad endpoint used by `--user` was `/users/{username}/stories/published`, which returns 404 for every real author. It is now `/users/{username}/stories`, verified live; `--user` and `--author-info` both use it.
+- **`--author-info` no longer crashes on a 404** from a deleted or private author; it shows a clear message instead.
+
 ## v1.11.0
 
 Multi-format output, download reports, CLI tooling, and an audit round that raised test coverage.

@@ -11,8 +11,33 @@ the data here is meant to last a long time (until the user downloads that story 
 """
 import json
 import pathlib
+import time
 
 LIBRARY_FILE = pathlib.Path.home() / ".wattpdl" / "library.json"
+HISTORY_FILE = pathlib.Path.home() / ".wattpdl" / "history.json"
+
+
+def load_history() -> list:
+    """Return the most recent downloads first: [{story_id, title, formats, chapters, at}, ...]."""
+    try:
+        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    return data if isinstance(data, list) else []
+
+
+def record_download(story_id: str, title: str, formats: list, chapters: int) -> None:
+    """Append one download to the local history (best-effort, never fail a download)."""
+    try:
+        history = load_history()
+        history.insert(0, {
+            "story_id": str(story_id), "title": title, "formats": list(formats),
+            "chapters": chapters, "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        })
+        HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        HISTORY_FILE.write_text(json.dumps(history[:500], ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError:
+        pass
 
 
 def load_library() -> dict:

@@ -59,7 +59,7 @@
 | **4 mode unduh** | Semua jadi 1 file, semua terpisah dalam `.zip`, pilih beberapa chapter, atau cukup 1 chapter |
 | **Unduh per penulis** | `--user <username>` mengunduh semua/cerita pilihan dari satu penulis sekaligus |
 | **Batch dari file** | `--file PATH` mengunduh semua cerita di file, satu ID atau link per baris (`#` untuk komentar), dalam mode 1 atau 2 |
-| **Cari cerita** | `--search "<query>"` menampilkan cerita yang cocok dengan diberi nomor (judul, penulis, jumlah chapter, status), 10 per halaman; unduh beberapa sekaligus dengan `--select 1-8,10` |
+| **Cari cerita** | `--search "<query>"` menampilkan cerita yang cocok dengan diberi nomor (judul, penulis, jumlah chapter, status), 10 per halaman; unduh beberapa sekaligus dengan `--select 1-8,10`. `--search-status`, `--search-min-chapters`, `--search-sort`, dan `--search-language` menyaring daftar; `--search --json` mencetaknya sebagai JSON |
 | **Mode non-interaktif** | Bisa dijalankan lewat argumen command line untuk scripting/otomatisasi, tanpa perlu jawab prompt |
 | **Resume otomatis** | Kalau proses terhenti di tengah jalan, jalankan ulang cerita yang sama, chapter yang sudah berhasil tidak diunduh ulang |
 | **Skip file yang sudah ada** | Lewati unduhan kalau file output sudah ada di folder tujuan, tidak menimpa tanpa sengaja |
@@ -70,9 +70,10 @@
 |-------|------------|
 | **5 pilihan format** | Simpan sebagai `.txt` polos, dokumen Word `.docx`, ebook `.epub`, Markdown `.md`, atau `.pdf`. `--format txt,epub` atau `all` menulis beberapa format dari satu kali unduh |
 | **File output atomik** | Setiap file ditulis ke file sementara dulu lalu dipindahkan saat sukses, jadi crash tidak menyisakan file setengah jadi |
+| **PDF tuning** | `--pdf-pagesize A4\|A5` dan `--pdf-font-size N` (6-24) mengatur tampilan PDF |
 | **Cover otomatis** | Gambar sampul cerita disisipkan ke file `.docx`/`.epub`/`.pdf` (bisa dimatikan lewat `--no-cover`) |
 | **Gambar inline** | Opsional (`--include-images`) ikut unduh & sisipkan gambar di dalam teks chapter, bukan cuma cover. Gambar yang sangat tinggi (strip webtoon/komik) dipotong per halaman PDF supaya tetap terbaca |
-| **Metadata EPUB lengkap** | Genre/tag, deskripsi cerita, dan tanggal terbit ikut tersimpan sebagai metadata buku |
+| **Metadata EPUB lengkap** | Genre/tag, deskripsi cerita, tanggal terbit, status (Completed/Ongoing), dan URL sumber disimpan sebagai metadata buku |
 | **`--lang`** | Set kode bahasa metadata EPUB (default `id`) untuk cerita berbahasa lain |
 | **Link sumber tersimpan** | URL cerita dicantumkan di header file hasil |
 | **Nama file aman** | Karakter ilegal otomatis dihapus dari nama file |
@@ -91,6 +92,8 @@
 | **Pesan error spesifik** | Bedakan pesan untuk cerita dihapus (404) vs private/dibatasi (403) |
 | **HTTP tuning** | `--retries N` mengatur jumlah retry per chapter sebelum dilewati (default 3, maksimal 10), `--timeout N` timeout dalam detik untuk setiap request HTTP |
 | **Laporan unduhan** | `--report PATH.json` atau `.csv` menulis laporan machine-readable untuk semua unduhan dalam satu sesi |
+| **Riwayat unduhan** | Setiap unduhan sukses tercatat lokal; `--history` (atau `--history --json`) menampilkan entri terakhir. `--no-library` melewati pencatatan untuk privasi |
+| **Info penulis** | `--author-info USER` menampilkan daftar cerita penulis beserta total chapter tanpa mengunduh |
 
 ### Otomatisasi
 
@@ -118,6 +121,7 @@
 | **Shell completion** | `--completion bash\|zsh\|fish\|powershell` mencetak script completion untuk flag wattpdl |
 | **Perintah preferensi** | `--config` menampilkan preferensi tersimpan; `--config-set file_format=epub` mengubah salah satu |
 | **Quiet / verbose** | `--quiet` menekan output normal untuk cron; `--verbose` menambah baris detail tentang opsi aktif |
+| **Notifikasi watch** | `--watch-notify-json` mencetak satu baris JSON per chapter baru; `--watch-max-iterations N` menghentikan loop setelah N pengecekan |
 
 ---
 
@@ -506,6 +510,17 @@ wattpdl --id 398440633 --mode 1 --format docx
 | `--completion` | Cetak script completion (bash, zsh, fish, powershell) |
 | `--quiet` | Sembunyikan output normal (untuk cron) |
 | `--verbose` | Cetak baris tambahan berisi opsi aktif |
+| `--search-status` | Filter hasil `--search`: `completed` atau `ongoing` |
+| `--search-min-chapters` | Hanya tampilkan cerita dengan minimal N chapter |
+| `--search-sort` | Urutkan hasil: `votes`, `chapters`, atau `title` |
+| `--search-language` | Filter berdasarkan nama bahasa (mis. `English`) |
+| `--author-info` | Tampilkan daftar cerita penulis beserta total chapter tanpa mengunduh |
+| `--history` | Tampilkan riwayat unduhan lokal (`--json` untuk machine-readable) |
+| `--no-library` | Jangan catat unduhan ini di library maupun riwayat |
+| `--pdf-pagesize` | Ukuran halaman PDF: `A4` atau `A5` (default `A5`) |
+| `--pdf-font-size` | Ukuran font isi PDF dalam poin (6-24, default 10) |
+| `--watch-notify-json` | Cetak satu baris JSON setiap ada chapter baru di watch mode |
+| `--watch-max-iterations` | Hentikan watch mode setelah N pengecekan |
 
 **Contoh lain:**
 
@@ -550,6 +565,14 @@ wattpdl --id 398440633 --mode 1 --format txt,epub --report "unduhan.json"
 wattpdl --doctor
 wattpdl --config-set file_format=epub --config
 wattpdl --completion bash
+
+# Discovery dan riwayat
+wattpdl --search "Railgun in Fairy Tail" --json --search-status completed --search-sort votes
+wattpdl --author-info MisakaLovesYou --json
+wattpdl --history --json
+
+# Tampilan PDF
+wattpdl --id 398440633 --mode 1 --format pdf --pdf-pagesize A4 --pdf-font-size 12
 
 # Lihat semua opsi
 wattpdl --help

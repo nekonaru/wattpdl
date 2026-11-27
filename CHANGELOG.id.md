@@ -2,6 +2,24 @@
 
 Semua perubahan penting project ini didokumentasikan di file ini. Formatnya mengikuti release notes; lihat [CHANGELOG.md](CHANGELOG.md) untuk versi English.
 
+## v1.12.0
+
+Filter search, penemuan via JSON, riwayat unduhan, opsi PDF/EPUB, dan perbaikan endpoint penulis yang rusak.
+
+### Fitur baru
+
+- **Filter search.** `--search-status completed|ongoing`, `--search-min-chapters N`, `--search-sort votes|chapters|title`, dan `--search-language NAME` menyaring serta mengurutkan hasil di sisi klien (API search Wattpad mengabaikan parameter tersebut). `--search --json` mencetak hasil sebagai JSON.
+- **Info penulis.** `--author-info USER` menampilkan cerita seorang penulis beserta total chapter tanpa mengunduh. `--author-info --json` mencetak JSON.
+- **Riwayat unduhan.** Unduhan sukses tercatat di `~/.wattpdl/history.json`; `--history` dan `--history --json` menampilkannya. `--no-library` melewati pencatatan di library maupun riwayat.
+- **Tampilan PDF.** `--pdf-pagesize A4|A5` dan `--pdf-font-size N` (6-24) mengatur PDF yang dihasilkan.
+- **Metadata EPUB.** URL cerita sumber dan status Completed/Ongoing kini ditulis sebagai metadata Dublin Core.
+- **Watch untuk scripting.** `--watch-notify-json` mencetak satu baris JSON per chapter baru; `--watch-max-iterations N` kini didokumentasikan dan tersedia.
+
+### Perbaikan bug
+
+- **Unduhan per penulis berfungsi lagi.** Endpoint Wattpad yang dipakai `--user` adalah `/users/{username}/stories/published`, yang mengembalikan 404 untuk semua penulis nyata. Sekarang `/users/{username}/stories`, diverifikasi langsung; `--user` dan `--author-info` memakainya.
+- **`--author-info` tidak crash lagi** saat menerima 404 dari penulis yang dihapus atau private; pesan jelas ditampilkan.
+
 ## v1.11.0
 
 Beberapa format sekaligus, laporan unduhan, tooling CLI, dan audit yang menaikkan coverage test.

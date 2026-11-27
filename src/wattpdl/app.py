@@ -160,7 +160,8 @@ def _output_path(save_dir, base_name, mode, code, indexed_parts):
 
 
 def _write_output(path, title, author, story_id, results, mode, code,
-                  meta, cover_bytes, images_by_idx, language):
+                  meta, cover_bytes, images_by_idx, language,
+                  pdf_pagesize=None, pdf_font_size=None):
     """Write the downloaded chapters to one output file in the requested format."""
     separate = mode == "2"
     if code == "2":
@@ -176,8 +177,9 @@ def _write_output(path, title, author, story_id, results, mode, code,
         writer(path, title, author, story_id, results, meta=meta)
     elif code == "5":
         writer = writers.write_separate_pdf_zip if separate else writers.write_combined_pdf
+        options = {"pagesize": pdf_pagesize, "font_size": pdf_font_size}
         writer(path, title, author, story_id, results,
-               meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx)
+               meta=meta, cover_bytes=cover_bytes, images_by_idx=images_by_idx, **options)
     else:
         writer = writers.write_separate_zip if separate else writers.write_combined_txt
         writer(path, title, author, story_id, results)
@@ -209,7 +211,8 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
                   chapters_arg=None, chapter_arg=None, meta=None, cover_bytes=None,
                   skip_existing=False, interactive=False, workers=1, include_images=False,
                   language="id", retries=None, timeout=None, dry_run=False,
-                  keep_progress_on_success=False, filename=None, formats=None):
+                  keep_progress_on_success=False, filename=None, formats=None,
+                  no_library=False, pdf_pagesize=None, pdf_font_size=None):
     """Shared download flow for both interactive and non-interactive modes."""
     indexed_parts = resolve_chapters(mode, parts, chapters_arg, chapter_arg)
     codes = list(formats) if formats else [file_format]
@@ -288,7 +291,8 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
     try:
         for code, path in write_targets:
             _write_output(path, title, author, story_id, results, mode, code,
-                          meta, cover_bytes, images_by_idx, language)
+                          meta, cover_bytes, images_by_idx, language,
+                          pdf_pagesize=pdf_pagesize, pdf_font_size=pdf_font_size)
             written_paths.append(path)
     except OSError as e:
         # The chapters were already downloaded, so a write failure at the last
@@ -337,10 +341,16 @@ def run_download(story_id, title, author, parts, mode, file_format, save_dir,
         # only fetches the chapters that were added since).
         if not keep_progress_on_success:
             progress_mod.clear_progress(story_id)
-        if mode in ("1", "2"):
+        if mode in ("1", "2") and not no_library:
             # Record it in the library so --check-updates / --watch can detect
             # when this story gets new chapters later.
             library.remember_story(story_id, title, len(parts))
+        if not no_library:
+            formats_for_history = [
+                {"1": "txt", "2": "docx", "3": "epub", "4": "md", "5": "pdf"}.get(c, c)
+                for c, _ in write_targets
+            ]
+            library.record_download(story_id, title, formats_for_history, len(indexed_parts))
         console.print(Panel(
             summary,
             title=f"[success]{t('sum.title_done')}[/success]",
@@ -437,7 +447,7 @@ def run_non_interactive(args):
         meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
         workers=args.workers, include_images=args.include_images, language=args.lang,
         retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
-        filename=args.filename, formats=codes,
+        filename=args.filename, formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size,
     )
 
 
@@ -524,7 +534,7 @@ def run_interactive(args=None):
                  meta=meta, cover_bytes=cover_bytes, interactive=True,
                  workers=workers, include_images=include_images,
                  retries=retries, timeout=timeout, dry_run=dry_run,
-                 filename=args.filename if args else None)
+                 filename=args.filename if args else None, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size)
 
 
 def run_user_mode(args) -> None:
@@ -600,7 +610,7 @@ def run_user_mode(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
-            filename=args.filename, formats=codes,
+            filename=args.filename, formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size,
         )
         succeeded += 1
 
@@ -811,7 +821,7 @@ def run_update_library(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout,
-            keep_progress_on_success=True, formats=codes,
+            keep_progress_on_success=True, formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size,
         )
     console.print(f"[success]{t('update.done', n=len(to_update), failed=len(failed))}[/success]")
 
@@ -851,15 +861,38 @@ def run_search(args) -> None:
     """
     cli.reset_steps()
     query = args.search.strip()
-    step_rule(t("step.search"))
+    if not args.json:
+        step_rule(t("step.search"))
 
     try:
-        with console.status(f"[accent]{t('status.searching', query=query)}[/accent]", spinner="dots"):
+        if args.json:
             stories = api.search_stories(query, timeout=args.timeout, limit=args.search_limit)
+        else:
+            with console.status(f"[accent]{t('status.searching', query=query)}[/accent]", spinner="dots"):
+                stories = api.search_stories(query, timeout=args.timeout, limit=args.search_limit)
     except requests.RequestException as e:
         console.print(f"[danger]{t('err.api_access')}[/danger] {e}")
         console.print(f"[muted]{t('hint.check_connection')}[/muted]")
         sys.exit(1)
+
+    if args.search_status:
+        wanted = args.search_status == "completed"
+        stories = [s for s in stories if s["completed"] == wanted]
+    if args.search_min_chapters:
+        stories = [s for s in stories if s["num_parts"] >= args.search_min_chapters]
+    if args.search_language:
+        language = args.search_language.strip().casefold()
+        stories = [s for s in stories if language in s["language"].casefold()]
+    if args.search_sort == "votes":
+        stories.sort(key=lambda s: s["votes"], reverse=True)
+    elif args.search_sort == "chapters":
+        stories.sort(key=lambda s: s["num_parts"], reverse=True)
+    elif args.search_sort == "title":
+        stories.sort(key=lambda s: s["title"].casefold())
+
+    if args.json:
+        print(json.dumps(stories, ensure_ascii=False, indent=2))
+        return
 
     if not stories:
         console.print(f"[muted]{t('search.none', query=query)}[/muted]")
@@ -943,7 +976,7 @@ def run_search(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
-            formats=codes,
+            formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size,
         )
 
     config_mod.save_config(save_dir=str(save_dir), file_format=file_format)
@@ -1001,7 +1034,7 @@ def run_file_mode(args) -> None:
             meta=meta, cover_bytes=cover_bytes, skip_existing=args.skip_existing,
             workers=args.workers, include_images=args.include_images, language=args.lang,
             retries=args.retries, timeout=args.timeout, dry_run=args.dry_run,
-            formats=codes,
+            formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size,
         )
         succeeded += 1
 
@@ -1048,6 +1081,10 @@ def run_watch(args) -> None:
                     console.print(
                         f"[success]{t('watch.new_chapters', old=last_known_parts, new=len(parts))}[/success]"
                     )
+                    if args.watch_notify_json:
+                        print(json.dumps({"story_id": str(story_id), "old": last_known_parts,
+                                          "new": len(parts), "new_chapters": len(parts) - last_known_parts},
+                                         ensure_ascii=False))
                 config = config_mod.load_config()
                 codes = cli_args.resolve_codes(args.format, config.get("file_format", "1"))
                 file_format = codes[0]
@@ -1060,7 +1097,7 @@ def run_watch(args) -> None:
                     chapters_arg=args.chapters, chapter_arg=args.chapter,
                     meta=meta, cover_bytes=cover_bytes, skip_existing=False,
                     workers=args.workers, include_images=args.include_images, language=args.lang,
-                    retries=args.retries, timeout=args.timeout, formats=codes,
+                    retries=args.retries, timeout=args.timeout, formats=codes, no_library=args.no_library, pdf_pagesize=args.pdf_pagesize, pdf_font_size=args.pdf_font_size,
                 )
                 last_known_parts = len(parts)
             elif parts is not None:
@@ -1074,6 +1111,61 @@ def run_watch(args) -> None:
             time.sleep(args.watch_interval)
     except KeyboardInterrupt:
         console.print(f"[muted]{t('watch.stopped')}[/muted]")
+
+
+def run_author_info(args) -> None:
+    """List an author's published stories with totals, without downloading."""
+    cli.reset_steps()
+    try:
+        if args.json:
+            stories = api.get_author_stories(args.author_info, timeout=args.timeout)
+        else:
+            with console.status(f"[accent]{t('status.fetching_user_stories', user=args.author_info)}[/accent]",
+                                spinner="dots"):
+                stories = api.get_author_stories(args.author_info, timeout=args.timeout)
+    except (api.StoryNotFoundError, api.StoryAccessError) as e:
+        console.print(f"[danger]{t('err.no_user_stories', user=args.author_info)}[/danger] {e}")
+        sys.exit(1)
+    except requests.RequestException as e:
+        console.print(f"[danger]{t('err.api_access')}[/danger] {e}")
+        sys.exit(1)
+    if args.json:
+        print(json.dumps(stories, ensure_ascii=False, indent=2))
+        return
+    if not stories:
+        console.print(f"[danger]{t('err.no_user_stories', user=args.author_info)}[/danger]")
+        return
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
+    table.add_column(t("table.no"), style="muted", justify="right", width=5)
+    table.add_column(t("table.title"), style="value")
+    table.add_column(t("table.chapters"), style="muted", justify="right")
+    table.add_column(t("table.status"), style="muted")
+    for i, story in enumerate(stories, start=1):
+        table.add_row(str(i), story["title"], str(story["num_parts"]),
+                      t("info.status_completed") if story["completed"] else t("info.status_ongoing"))
+    console.print(table)
+    console.print(f"[muted]{t('author.summary', n=len(stories), chapters=sum(s['num_parts'] for s in stories))}[/muted]")
+
+
+def run_history(args) -> None:
+    """Show the local download history (or JSON with --json)."""
+    cli.reset_steps()
+    entries = library.load_history()
+    if args.json:
+        print(json.dumps(entries, ensure_ascii=False, indent=2))
+        return
+    if not entries:
+        console.print(f"[muted]{t('history.empty')}[/muted]")
+        return
+    table = Table(box=box.SIMPLE_HEAD, padding=(0, 1), expand=False)
+    table.add_column(t("table.title"), style="value")
+    table.add_column(t("table.chapters"), style="muted", justify="right")
+    table.add_column(t("config.value"), style="muted")
+    table.add_column(t("history.at"), style="muted")
+    for entry in entries[:50]:
+        table.add_row(entry.get("title", "?"), str(entry.get("chapters", 0)),
+                      ", ".join(entry.get("formats", [])), str(entry.get("at", "")))
+    console.print(table)
 
 
 def completion_script(shell: str) -> str:
@@ -1191,6 +1283,12 @@ def main():
         return
     if args.doctor:
         run_doctor()
+        return
+    if args.author_info:
+        run_author_info(args)
+        return
+    if args.history:
+        run_history(args)
         return
     if args.config or args.config_set:
         run_config_commands(args)
