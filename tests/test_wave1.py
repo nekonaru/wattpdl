@@ -118,6 +118,7 @@ class TestRealMultiFormatWrites:
     @pytest.fixture(autouse=True)
     def isolate(self, tmp_path, monkeypatch):
         from wattpdl import cli as cli_mod
+        from wattpdl import config as config_mod
         from wattpdl import progress as progress_mod
 
         self.calls = []
@@ -128,6 +129,7 @@ class TestRealMultiFormatWrites:
 
         monkeypatch.setattr(cli_mod, "download_chapters", fake_download)
         monkeypatch.setattr(progress_mod, "PROGRESS_DIR", tmp_path / "progress")
+        monkeypatch.setattr(config_mod, "CONFIG_FILE", tmp_path / "config.json")
         app_mod.REPORT_ENTRIES.clear()
 
     def test_two_formats_written_once(self, tmp_path):

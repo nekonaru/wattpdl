@@ -173,10 +173,12 @@ class TestWatchNotify:
 class TestNoLibrary:
     def test_no_library_skips_recording(self, monkeypatch, tmp_path):
         from wattpdl import cli as cli_mod
+        from wattpdl import config as config_mod
         from wattpdl import progress as progress_mod
 
         monkeypatch.setattr(cli_mod, "download_chapters", lambda *a, **kw: ([(1, "Ch", "isi")], [], {}))
         monkeypatch.setattr(progress_mod, "PROGRESS_DIR", tmp_path / "progress")
+        monkeypatch.setattr(config_mod, "CONFIG_FILE", tmp_path / "config.json")
         monkeypatch.setattr(app_mod.library, "LIBRARY_FILE", tmp_path / "library.json")
         app_mod.run_download("11", "Story", "Penulis", [{"id": 1, "title": "Ch"}], "1", "1", tmp_path,
                              no_library=True, timeout=5, formats=["1"])
