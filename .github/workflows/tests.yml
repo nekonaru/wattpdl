@@ -34,13 +34,12 @@ jobs:
         run: pip-audit -r requirements.txt
 
   test:
-    # ubuntu-22.04 still ships the Python 3.9 build; the newer runner image
-    # (ubuntu-latest / 26.04) no longer provides it.
+    # ubuntu-22.04 keeps the older Python builds available (3.10+) in setup-python.
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -11,7 +11,7 @@
 | `PROJECT_KIND` | general |
 | `STACK` | Python |
 | `PLATFORMS` | Windows, macOS, Linux (CLI) |
-| `MIN_OS` | Python 3.9 or newer |
+| `MIN_OS` | Python 3.10 or newer |
 | `DEFAULT_BRANCH` | main |
 | `LICENSE` | MIT |
 | `UI_LANGUAGES` | English, Bahasa Indonesia |

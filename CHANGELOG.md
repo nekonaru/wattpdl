@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file. The format follows the release notes; see [CHANGELOG.id.md](CHANGELOG.id.md) for the Bahasa Indonesia version.
 
+## v2.0.0
+
+Architecture, config schema, supply chain, and the end of Python 3.9 support.
+
+### Breaking changes
+
+- **Python 3.9 is no longer supported.** Minimum is now Python 3.10 (`requires-python >=3.10`; CI tests 3.10 to 3.13). Python 3.9 reached end of life in 2025.
+- **Config schema v2.** `~/.wattpdl/config.json` now carries `"version": 2`. Older config files are migrated automatically on read; manual scripts that wrote the file should include the version.
+
+### Improvements
+
+- **`app.py` split into a `flows/` package.** `common.py`, `download.py`, `single.py`, `batch.py`, `library.py`, and `tooling.py` each own one part of the CLI; `app.py` is now a thin facade. No command behavior changed. Test coverage is 84%.
+- **Supply chain.** Added a hashed dependency snapshot (`requirements.lock.txt`, generated with `pip-compile --generate-hashes`) and a CycloneDX SBOM (`sbom.json`). Pre-commit now runs a local secret scanner over staged files.
+
 ## v1.12.0
 
 Search filters, JSON discovery, download history, PDF/EPUB options, and a fix for the broken author endpoint.

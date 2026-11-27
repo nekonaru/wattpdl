@@ -6,7 +6,6 @@ Contains every function that fetches raw data from the internet
 import re
 import threading
 import time
-from typing import Optional
 from urllib.parse import urlparse
 
 import requests
@@ -142,7 +141,7 @@ def _raise_specific_http_error(e: requests.HTTPError, context: str = None) -> No
     raise e
 
 
-def get_story_info(story_id: str, timeout: Optional[int] = None) -> tuple[str, str, list, dict]:
+def get_story_info(story_id: str, timeout: int | None = None) -> tuple[str, str, list, dict]:
     """
     Fetch story metadata: title, author, chapter list, and extra metadata.
     The extra metadata (the `meta` dict) is used to enrich .docx/.epub files:
@@ -178,7 +177,7 @@ def get_story_info(story_id: str, timeout: Optional[int] = None) -> tuple[str, s
     return title, author, parts, meta
 
 
-def search_stories(query: str, timeout: Optional[int] = None, limit: int = 10) -> list:
+def search_stories(query: str, timeout: int | None = None, limit: int = 10) -> list:
     """
     Search Wattpad public API (v3 stories endpoint).
     Return a list of dicts: [{"id": str, "title": str, "num_parts": int, "completed": bool, "author": str}, ...]
@@ -217,7 +216,7 @@ def search_stories(query: str, timeout: Optional[int] = None, limit: int = 10) -
     ]
 
 
-def get_author_stories(username: str, timeout: Optional[int] = None) -> list:
+def get_author_stories(username: str, timeout: int | None = None) -> list:
     """
     Fetch the list of stories published by a Wattpad author.
     Return a list of dicts: [{"id": str, "title": str, "num_parts": int, "completed": bool}, ...]
@@ -271,7 +270,7 @@ def _is_private_host(host) -> bool:
     return False
 
 
-def download_image(image_url: str, timeout: Optional[int] = None) -> Optional[bytes]:
+def download_image(image_url: str, timeout: int | None = None) -> bytes | None:
     """Download 1 image (used for inline images inside a chapter, and for the
     story cover). A failure must not break the whole process, images are only
     extras, so always return None on failure and never raise an exception.
@@ -301,7 +300,7 @@ def download_image(image_url: str, timeout: Optional[int] = None) -> Optional[by
         return None
 
 
-def download_cover_image(cover_url: str, timeout: Optional[int] = None) -> Optional[bytes]:
+def download_cover_image(cover_url: str, timeout: int | None = None) -> bytes | None:
     """Download the story cover image. Used to embed the cover in .docx/.epub files.
     Same contract as download_image: a failure must not stop the story download,
     return None on failure instead of raising. Kept as a separate name for
@@ -314,8 +313,8 @@ def get_chapter_html(
     part_id: int,
     retries: int = MAX_RETRIES,
     on_retry=None,
-    rate_limiter: Optional[AdaptiveRateLimiter] = None,
-    timeout: Optional[int] = None,
+    rate_limiter: AdaptiveRateLimiter | None = None,
+    timeout: int | None = None,
 ) -> str:
     """
     Download the chapter text HTML with automatic retry.

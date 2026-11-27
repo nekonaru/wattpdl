@@ -15,13 +15,17 @@ src/wattpdl/
 ├── writers.py    # konversi teks & penulisan file .txt/.docx/.epub/.zip
 ├── cli.py        # tampilan terminal (rich), interaksi dengan user
 ├── cli_args.py   # parsing & validasi argumen command line (mode non-interaktif)
+├── flows/        # alur CLI: common.py, download.py, single.py, batch.py, library.py, tooling.py
 ├── config.py     # simpan preferensi user (folder simpan, format, bahasa) di ~/.wattpdl/config.json
 ├── i18n.py       # terjemahan teks tampilan CLI (en/id)
 ├── metacache.py  # cache singkat metadata cerita (beberapa menit)
 ├── updater.py    # cek PyPI untuk versi wattpdl baru
 ├── library.py    # registry cerita yang tercatat pernah diunduh penuh
 └── progress.py   # cache chapter yang berhasil diunduh, untuk fitur resume
-tests/            # unit test (test_wattpdl.py) + security regression test (test_security.py)
+tests/            # unit test + regression test alur, security, dan audit
+scripts/          # scan_secrets.py (hook pre-commit lokal)
+requirements.lock.txt  # snapshot dependency dengan hash (pip-compile --generate-hashes)
+sbom.json         # snapshot SBOM CycloneDX (cyclonedx-py environment --of json -o sbom.json)
 ```
 
 Aturan sederhana:

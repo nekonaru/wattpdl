@@ -15,13 +15,17 @@ src/wattpdl/
 ├── writers.py    # text conversion and writing .txt/.docx/.epub/.md/.pdf/.zip files
 ├── cli.py        # terminal display (rich), user interaction
 ├── cli_args.py   # command line argument parsing & validation (non-interactive mode)
+├── flows/        # CLI flows: common.py, download.py, single.py, batch.py, library.py, tooling.py
 ├── config.py     # saves user preferences (save folder, format, language) in ~/.wattpdl/config.json
 ├── i18n.py       # translations for the CLI display text (en/id)
 ├── metacache.py  # short-lived cache of story metadata (few minutes)
 ├── updater.py    # checks PyPI for a newer wattpdl version
 ├── library.py    # registry of stories recorded as fully downloaded
 └── progress.py   # cache of successfully downloaded chapters, for the resume feature
-tests/            # unit tests (test_wattpdl.py) + security regression tests (test_security.py)
+tests/            # unit tests + flow, security and audit regression tests
+scripts/          # scan_secrets.py (local pre-commit hook)
+requirements.lock.txt  # hashed dependency snapshot (pip-compile --generate-hashes)
+sbom.json         # CycloneDX SBOM snapshot (cyclonedx-py environment --of json -o sbom.json)
 ```
 
 Simple rules:
