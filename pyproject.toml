@@ -9,14 +9,14 @@ description = "Download Wattpad stories as offline .txt, .docx, .epub, .md, or .
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Nicolas Dwi Dharma" }]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 keywords = ["wattpad", "downloader", "cli", "scraper", "offline-reading"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Environment :: Console",
@@ -28,8 +28,7 @@ dependencies = [
     "rich>=13.7",
     "python-docx>=1.1",
     "EbookLib>=0.18",
-    "reportlab>=4.0,<5; python_version < '3.10'",
-    "reportlab>=4.0; python_version >= '3.10'",
+    "reportlab>=4.0",
     "pillow>=10.0",
 ]
 
@@ -55,7 +54,7 @@ pythonpath = ["src"]
 
 [tool.ruff]
 line-length = 110
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [
@@ -65,7 +64,7 @@ select = [
     "UP",  # pyupgrade
     "B",   # flake8-bugbear
     "FA",  # flake8-future-annotations, catches PEP 604 syntax (`X | Y`) which is
-           # incompatible with target-version py39 (only supported from 3.10)
+           # incompatible with older target versions (only supported from 3.10)
 ]
 ignore = [
     "E501",   # long lines are tolerated for rich table/UI strings

@@ -28,6 +28,7 @@ htmlcov/
 *.epub
 *.zip
 !requirements.txt
+!requirements.lock.txt
 
 # ── OS files ────────────────────────────────────
 .DS_Store

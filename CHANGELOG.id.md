@@ -2,6 +2,20 @@
 
 Semua perubahan penting project ini didokumentasikan di file ini. Formatnya mengikuti release notes; lihat [CHANGELOG.md](CHANGELOG.md) untuk versi English.
 
+## v2.0.0
+
+Arsitektur, schema config, supply chain, dan akhirnya dukungan Python 3.9.
+
+### Breaking changes
+
+- **Python 3.9 tidak lagi didukung.** Minimal sekarang Python 3.10 (`requires-python >=3.10`; CI menguji 3.10 sampai 3.13). Python 3.9 mencapai akhir dukungan pada 2025.
+- **Schema config v2.** `~/.wattpdl/config.json` kini memuat `"version": 2`. File config lama dimigrasikan otomatis saat dibaca; skrip manual yang menulis file itu sebaiknya menyertakan versi.
+
+### Peningkatan
+
+- **`app.py` dipecah menjadi paket `flows/`.** `common.py`, `download.py`, `single.py`, `batch.py`, `library.py`, dan `tooling.py` masing-masing menguasai satu bagian CLI; `app.py` kini facade tipis. Tidak ada perilaku perintah yang berubah. Coverage test 84%.
+- **Supply chain.** Ditambahkan snapshot dependency dengan hash (`requirements.lock.txt`, dari `pip-compile --generate-hashes`) dan SBOM CycloneDX (`sbom.json`). Pre-commit sekarang menjalankan pemindai rahasia lokal untuk file yang di-stage.
+
 ## v1.12.0
 
 Filter search, penemuan via JSON, riwayat unduhan, opsi PDF/EPUB, dan perbaikan endpoint penulis yang rusak.

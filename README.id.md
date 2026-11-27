@@ -6,7 +6,7 @@
 
   <a href="https://github.com/nekonaru/wattpdl/releases"><img src="https://img.shields.io/github/v/release/nekonaru/wattpdl?style=flat-square&color=blue" alt="Release" /></a>
   <a href="https://github.com/nekonaru/wattpdl/actions/workflows/tests.yml"><img src="https://github.com/nekonaru/wattpdl/actions/workflows/tests.yml/badge.svg" alt="CI" /></a>
-  <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.9+" />
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+" />
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square" alt="Status" />
@@ -129,7 +129,7 @@
 
 | Dependency | Minimal Versi | Catatan |
 |------------|---------------|---------|
-| **Python** | 3.9 | Runtime; Windows, macOS, atau Linux |
+| **Python** | 3.10 | Runtime; Windows, macOS, atau Linux |
 | **Koneksi internet** | - | Dibutuhkan untuk mengakses public API Wattpad |
 | **requests** | 2.31 | HTTP client |
 | **rich** | 13.7 | Tampilan terminal |
@@ -675,6 +675,8 @@ wattpdl/
 
 Dibuat dengan Python, `requests`, `rich`, `python-docx`, `EbookLib`, `reportlab`, dan `pillow`.
 
+Alur CLI ada di `src/wattpdl/flows/`: `common.py` (helper bersama), `download.py` (pipeline unduhan), `single.py`, `batch.py`, `library.py`, dan `tooling.py`. `app.py` hanya facade tipis yang melakukan dispatch dari `main()`. Saat menambah perintah, taruh alurnya di modul yang sesuai lalu ekspor ulang dari `app.py`.
+
 ### Menambahkan string baru yang tampil ke pengguna
 
 1. Tambahkan string English dan Indonesian berdampingan di `src/wattpdl/i18n.py`
@@ -706,7 +708,7 @@ ruff check .
 | `pytest tests/ -v` | Harus lolos seluruh suite |
 | `ruff check .` | Harus melaporkan nol issue |
 
-Aturan lint ada di `pyproject.toml` di bagian `[tool.ruff]` (line-length 110, target Python 3.9). CI mensyaratkan coverage test minimal 80%.
+Aturan lint ada di `pyproject.toml` di bagian `[tool.ruff]` (line-length 110, target Python 3.10). CI mensyaratkan coverage test minimal 80%.
 
 ---
 
@@ -714,7 +716,7 @@ Aturan lint ada di `pyproject.toml` di bagian `[tool.ruff]` (line-length 110, ta
 
 | Workflow | Purpose |
 |----------|---------|
-| `tests.yml` | ruff lint, pip-audit dependency audit, pytest di Python 3.9-3.12 dengan coverage floor 80%, dan package build dengan `twine check` di setiap push ke `main`, pull request ke `main`, dan push tag `v*` |
+| `tests.yml` | ruff lint, pip-audit dependency audit, pytest di Python 3.10-3.13 dengan coverage floor 80%, dan package build dengan `twine check` di setiap push ke `main`, pull request ke `main`, dan push tag `v*` |
 | `publish.yml` | build dan publish ke PyPI lewat trusted publishing (OIDC) setiap GitHub Release dipublish |
 
 Lint, dependency audit, test, dan build check harus hijau sebelum setiap push (branch `main` memberlakukannya). Publish ke PyPI hanya terjadi lewat GitHub Release yang dipublish.

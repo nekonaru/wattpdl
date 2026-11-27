@@ -12,3 +12,8 @@ repos:
         language: system
         types: [python]
         pass_filenames: true
+      - id: secret-scan
+        name: secret scan
+        entry: python scripts/scan_secrets.py
+        language: system
+        pass_filenames: true

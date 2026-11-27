@@ -6,7 +6,7 @@
 
   <a href="https://github.com/nekonaru/wattpdl/releases"><img src="https://img.shields.io/github/v/release/nekonaru/wattpdl?style=flat-square&color=blue" alt="Release" /></a>
   <a href="https://github.com/nekonaru/wattpdl/actions/workflows/tests.yml"><img src="https://github.com/nekonaru/wattpdl/actions/workflows/tests.yml/badge.svg" alt="CI" /></a>
-  <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.9+" />
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+" />
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square" alt="Status" />
@@ -129,7 +129,7 @@
 
 | Dependency | Minimum Version | Notes |
 |------------|-----------------|-------|
-| **Python** | 3.9 | Runtime; Windows, macOS, or Linux |
+| **Python** | 3.10 | Runtime; Windows, macOS, or Linux |
 | **Internet connection** | - | Required to reach Wattpad's public API |
 | **requests** | 2.31 | HTTP client |
 | **rich** | 13.7 | Terminal display |
@@ -673,6 +673,8 @@ wattpdl/
 
 Built with Python, `requests`, `rich`, `python-docx`, `EbookLib`, `reportlab`, and `pillow`.
 
+The CLI flows live in `src/wattpdl/flows/`: `common.py` (shared helpers), `download.py` (the download pipeline), `single.py`, `batch.py`, `library.py` and `tooling.py`. `app.py` is a thin facade that dispatches from `main()`. When adding a command, put its flow in the matching module and re-export it from `app.py`.
+
 ### Adding a new user-facing string
 
 1. Add the English and Indonesian strings next to each other in `src/wattpdl/i18n.py`
@@ -704,7 +706,7 @@ ruff check .
 | `pytest tests/ -v` | Must pass the full suite |
 | `ruff check .` | Must report zero issues |
 
-Lint rules live in `pyproject.toml` under `[tool.ruff]` (line-length 110, target Python 3.9). CI requires at least 80% test coverage.
+Lint rules live in `pyproject.toml` under `[tool.ruff]` (line-length 110, target Python 3.10). CI requires at least 80% test coverage.
 
 ---
 
@@ -712,7 +714,7 @@ Lint rules live in `pyproject.toml` under `[tool.ruff]` (line-length 110, target
 
 | Workflow | Purpose |
 |----------|---------|
-| `tests.yml` | ruff lint, pip-audit dependency audit, pytest on Python 3.9-3.12 with an 80% coverage floor, and a package build with `twine check` on every push to `main`, pull request to `main`, and push to a `v*` tag |
+| `tests.yml` | ruff lint, pip-audit dependency audit, pytest on Python 3.10-3.13 with an 80% coverage floor, and a package build with `twine check` on every push to `main`, pull request to `main`, and push to a `v*` tag |
 | `publish.yml` | builds and publishes to PyPI via trusted publishing (OIDC) when a GitHub Release is published |
 
 Lint, the dependency audit, tests, and the build check must be green before every push (the `main` branch enforces this). Publishing to PyPI happens only through a published GitHub Release.
